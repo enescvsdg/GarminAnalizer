@@ -896,9 +896,10 @@ function ac(v, bag) {
   if (basladi) return; basladi = true;
   try { baslat(v, bag); } catch (hata) {
     if (!bag.canli) throw hata; // uydurma veri de patlıyorsa dönülecek yer yok
-    ['etiketler', 'gunler', 'secici', 'seritMetin'].forEach((id) => { $(id).textContent = ''; });
-    $('serit').hidden = true;
-    baslat(window.VERI, { baglanti: true, canli: false });
+    // Yarım kalan ilk başlatmanın dinleyicileri ve çizim döngüsü yaşamasın: sayfa temiz yeniden açılır,
+    // bu kez canlı veri denenmeden uydurma veriyle (bir kereliğine; sonraki elle yenileme yine canlıyı dener).
+    try { sessionStorage.setItem('gk-canli-hata', '1'); } catch (x) { throw hata; }
+    location.reload();
   }
 }
 (async () => {
@@ -911,6 +912,9 @@ function ac(v, bag) {
     };
   }
   if (!CANLI.baglantiOku()) return ac(window.VERI, { baglanti: false, canli: false });
+  let canliHata = false;
+  try { canliHata = sessionStorage.getItem('gk-canli-hata') === '1'; sessionStorage.removeItem('gk-canli-hata'); } catch (x) {}
+  if (canliHata) return ac(window.VERI, { baglanti: true, canli: false });
   telOlcek(); addEventListener('resize', telOlcek); $('bekle').hidden = false;
   let v = null;
   try { v = await CANLI.veriGetir(); } catch (e) { v = null; }
