@@ -113,6 +113,10 @@ yenilenir, 401'de istek bir kez tekrarlanır.
 - `push_subscriptions(endpoint PK, keys_json, created_at)`
 - `sync_state(key PK, value)` — son başarılı eşitleme, token önbelleği
 
+Ek sütunlar (2026-11-13): uyku evreleri ve uyku ihtiyacı, SpO₂, solunum hızı, HRV durumu ve haftalık ortalaması,
+Body Battery dolan/biten, stres dağılımı, aktif kalori, en yüksek nabız, çıkılan kat, günlük antrenman yükü;
+aktivitelerde antrenman yükü ve etkisi, nabız bölgeleri, koşu dinamikleri, kuvvet setleri. Tam liste planın Ek A bölümünde.
+
 Tüm yazmalar **upsert** (aynı günü tekrar çekmek çoğaltmaz). Eksik metrik
 `NULL` olur, asla `0` yazılmaz.
 
@@ -161,6 +165,9 @@ tarifidir ve gerçek uygulama aynı görünüm ve davranışı taşır.
   arasında gezilir; imlecin yanında o günün değeri ve durumu yazar. Üstte altı
   ölçüm arasında geçiş yapan seçici. Başlıkta ölçüm adı ve 28 günlük özet
   cümlesi (aralık dışı gün sayısı, ortalama).
+- **Trend'de dokuz ölçüm:** altı kart ölçümüne ek olarak derin uyku, SpO₂ ve solunum hızı yalnızca Trend'de
+  görünür. Seçili gün için ek ayrıntı satırı: uykuda evre dağılımı ve uyku ihtiyacı, Body Battery'de dolan/biten,
+  streste dağılım, HRV'de haftalık ortalama. "Dünkü yük" Garmin'in antrenman yükünden gelir.
 - **Ayarlar:** ses efektleri, kalp atışı sesi, ses seçimi, brifing saati,
   bildirim izni, Worker adresi ve `DEVICE_KEY`, son eşitleme zamanı, Garmin
   key'inin bitiş tarihi.

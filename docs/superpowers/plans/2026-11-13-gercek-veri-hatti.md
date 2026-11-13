@@ -461,3 +461,99 @@ test('veriGetir X-Device-Key başlığını gönderir, anahtarı URLye koymaz', 
 - [ ] **Step 3:** Kullanıcıyla birlikte doğrula: Bugün ekranındaki uyku skoru, dinlenme nabzı ve Body Battery, Garmin Connect'te aynı gün için görünen değerlerle eşleşiyor; Trend 28 günü gösteriyor; "Son eşitleme" zamanı son 3 saat içinde.
 - [ ] **Step 4:** Bir gün sonra tekrar bak: yeni gün eklenmiş, geçmiş doldurma ilerlemiş (`/api/durum` → `gecmisBitti`).
 - [ ] **Step 5:** `docs/garmin-alanlar.md`'ye ölçülen gerçek sınırları ve karşılaşılan sürprizleri ekle; spec Bölüm 4 ve 13'teki "bilinmeyen" maddelerini güncelle. Commit.
+
+---
+
+## Ek A (2026-11-13): Ek veriler
+
+Keşif, planda olmayan işe yarar veriler gösterdi; kullanıcı hepsinin saklanmasını ve kademeli gösterilmesini istedi. Bu ek, Task 3, 4, 5, 6 ve 8'i aşağıdaki gibi genişletir. Yürütme sırası: 1b → **10** → 4 → 5 → **11** → 7 → 8 → 9.
+
+Ek `daily` sütunları ve kaynakları (hepsi null olabilir):
+
+| sütun | tip | kaynak |
+|---|---|---|
+| sleep_deep_s, sleep_light_s, sleep_rem_s, sleep_awake_s | INTEGER | sleep `deepSleepSeconds`, `lightSleepSeconds`, `remSleepSeconds`, `awakeSleepSeconds` |
+| sleep_need_min | INTEGER | sleep `sleepNeed.actual` |
+| sleep_stress_avg | REAL | sleep `avgSleepStress` |
+| nap_seconds | INTEGER | sleep `napTimeSeconds` |
+| spo2_avg, spo2_min | REAL | dailysummaries `pulseOx.avgValue`, `pulseOx.minValue` |
+| resp_avg | REAL | dailysummaries `respiration.avgValue` |
+| hrv_weekly_avg | REAL | hrv `weeklyAvg` |
+| hrv_status | TEXT | hrv `status` |
+| bb_charged, bb_drained | INTEGER | dailysummaries `bodyBattery.chargedValue`, `drainedValue` |
+| stress_rest_s, stress_low_s, stress_med_s, stress_high_s | INTEGER | dailysummaries `stress.restDurationInMillis`, `lowStressDurationInMillis`, `mediumStressDurationInMillis`, `highStressDurationInMillis` ÷ 1000, yuvarlı |
+| calories_active | INTEGER | dailysummaries `calories.burnedActive` |
+| hr_max | INTEGER | dailysummaries `heartRate.maxValue` |
+| floors | REAL | dailysummaries `movement.floorsAscended.value` |
+| training_load | REAL | o günün aktivitelerinin `activityTrainingLoad` toplamı (Task 5 hesaplar) |
+
+Ek `activities` sütunları: `training_load REAL` (`activityTrainingLoad`), `aerobic_te REAL`, `anaerobic_te REAL` (`aerobicTrainingEffect`, `anaerobicTrainingEffect`), `calories REAL`, `max_hr REAL` (`maxHR`), `total_sets INTEGER`, `total_reps INTEGER`, `avg_cadence REAL` (`averageRunningCadenceInStepsPerMinute`), `avg_stride_m REAL` (`avgStrideLength`), `avg_gct_ms REAL` (`avgGroundContactTime`), `avg_power REAL` (`avgPower`), `hr_zones_json TEXT` (`hrTimeInZone_1..5` dizisi), `sets_json TEXT` (`summarizedExerciseSets`).
+
+### Task 10: Ek sütunlar (Task 3'ün uzantısı)
+
+**Files:**
+- Modify: `worker/schema.sql`, `worker/src/db.js`, `worker/test/db.test.mjs`
+
+**Interfaces:**
+- Produces: `gunUpsert` ve `gunleriOku` yukarıdaki ek `daily` sütunlarını da yazar/okur (aynı COALESCE kuralı; `hrv_status` metin). Yeni: `aktiviteUpsert(db, a: object): Promise<void>` (anahtar `id`; `activities` tablosunun bütün sütunları, eksik alan null, dolu değer null ile ezilmez) ve `aktiviteleriOku(db, bas: string, son: string): Promise<object[]>` (`date` aralığı, `start_ts` artan, `raw_json` hariç).
+- `daily.date` ve `activities.id` `NOT NULL` olur; `gunUpsert` tarihsiz, `aktiviteUpsert` kimliksiz çağrıda `TypeError` fırlatır.
+
+- [ ] **Step 1: Başarısız testleri yaz**
+
+```js
+test('ek sütunlar yazılır ve okunur', async () => { /* spo2_avg 96.5, sleep_deep_s 4200, hrv_status 'BALANCED', training_load 0 → aynen okunur */ });
+test('gerçek sıfır korunur ve sıfır dolu değeri ezer', async () => { /* steps 0 → 0; sonra steps 5 üzerine steps 0 → 0 */ });
+test('tarihsiz gunUpsert TypeError fırlatır ve satır eklemez', async () => {});
+test('aktiviteUpsert aynı id ile tek satır tutar, null ile ezmez', async () => {});
+test('aktiviteleriOku tarih aralığını kapsar, start_ts ile sıralar, raw_json döndürmez', async () => {});
+test('kimliksiz aktiviteUpsert TypeError fırlatır', async () => {});
+```
+
+- [ ] **Step 2:** Run: `node --test "worker/test/db.test.mjs"` → FAIL.
+- [ ] **Step 3:** `schema.sql` ve `db.js`'i genişlet. Sütun listeleri tek sabitte kalır.
+- [ ] **Step 4:** Run: `node --test "worker/test/**/*.test.mjs"` → hepsi PASS.
+- [ ] **Step 5:** `git commit -m "feat: ek sağlık ve aktivite sütunları"`
+
+### Task 11: Ek ölçümler (Task 6'nın uzantısı)
+
+**Files:**
+- Modify: `worker/src/stats/baseline.js`, `worker/src/stats/ozet.js`, `worker/test/baseline.test.mjs`, `worker/test/ozet.test.mjs`
+
+**Interfaces:**
+- `OLCUMLER` her öğeye `kart: boolean` alır ve şöyle değişir/genişler:
+
+  | id | ad | birim | iyi | kaynak | tabanSigma | varsayilan | agirlik | kart |
+  |---|---|---|---|---|---|---|---|---|
+  | yuk | Dünkü yük | `''` | -1 | training_load (bir önceki gün) | 25 | 40–150 | 0.05 | true |
+  | derin | Derin uyku | `' dk'` | 1 | sleep_deep_s ÷ 60, yuvarlı | 10 | 50–110 | 0 | false |
+  | spo2 | SpO₂ | `'%'` | 1 | spo2_avg | 1 | 94–99 | 0 | false |
+  | solunum | Solunum | `'/dk'` | -1 | resp_avg | 0.6 | 12–17 | 0 | false |
+
+  Diğer beş ölçüm (uyku, bb, hrv, nabiz, stres) aynen kalır, `kart: true`. `yuk` artık `intensity_minutes` değil `training_load` okur. Ağırlığı 0 olan ölçümler `enerji`'ye ve `gerekce`'ye girmez; bantları ve durumları hesaplanır.
+- `apiYaniti`: `olcumler[]` öğelerine `kart` eklenir; `gunler[].d` dokuz ölçümü taşır; `gunler[]` öğelerine `ek` eklenir:
+  ```js
+  ek: { uyku: { derin, hafif, rem, uyanik, ihtiyac },   // dakika, yuvarlı; yoksa null
+        bb: { dolan, biten },
+        stres: { dinlenme, dusuk, orta, yuksek },         // dakika
+        hrv: { durum, haftalik } }                        // durum: Garmin'in metni ya da null
+  ```
+
+- [ ] **Step 1: Başarısız testleri yaz**
+
+```js
+test('yuk bir önceki günün training_load değeridir', () => { /* 11 Kas training_load 180 → gunDegerleri(.., '2026-11-12').yuk === 180; intensity_minutes yok sayılır */ });
+test('derin dakikaya çevrilir', () => { /* sleep_deep_s 4230 → derin 71 (4230/60 = 70.5 → 71) */ });
+test('ağırlığı 0 olan ölçümler enerjiyi değiştirmez', () => { /* spo2 bant dışı olsa da enerji, o ölçüm null iken olanla aynı */ });
+test('gerekçe kart olmayan ölçümleri saymaz', () => { /* yalnız spo2 bant dışı → "Bütün ölçümlerin normal aralığında." */ });
+test('apiYaniti dokuz ölçüm, kart bayrağı ve ek alanı döner', () => { /* olcumler.length 9; kart true olan 6; gunler[27].ek.uyku.derin sayı; satır yoksa ek alanları null */ });
+test('apiYanitinda NaN ve undefined yok (ek dahil)', () => {});
+```
+
+- [ ] **Step 2:** Run → FAIL. **Step 3:** İki dosyayı genişlet. **Step 4:** Run: `node --test "worker/test/**/*.test.mjs"` → PASS.
+- [ ] **Step 5:** `git commit -m "feat: derin uyku, SpO2, solunum ölçümleri ve günlük ek ayrıntılar"`
+
+### Task 4, 5 ve 8'e ekler
+
+- **Task 4:** `gunleriCikar` yalnız `{ dailysummaries, sleep, hrv }` alır (stress/steps/bodybattery uç noktaları kullanılmaz) ve yukarıdaki ek `daily` sütunlarını da doldurur (`training_load` hariç). `intensity_minutes = moderate + 2 × vigorous`. `aktiviteleriCikar` ek `activities` sütunlarını da doldurur. Alan yolları `docs/garmin-alanlar.md`'dedir.
+- **Task 5:** Eşitleme dört uç nokta çağırır: dailysummaries, sleep, hrv, activities. Aktiviteler `aktiviteUpsert` ile yazılır. Çekilen aralıkta satırı olan her gün için `training_load` = o günün aktivitelerinin `training_load` toplamı (aktivite yoksa 0; aktiviteler uç noktası hata verdiyse o turda yazılmaz). Geçmiş parçası 28 gün.
+- **Task 8:** Trend seçicisi dokuz ölçümü gösterir; Bugün yörüngesinde yalnız `kart: true` olan altı ölçüm durur. Trend'de seçili gün için ek ayrıntı satırı: uykuda evre çubuğu (derin / hafif / REM / uyanık, dakikalarıyla) ve "İhtiyaç: 8s 10dk"; Body Battery'de "+62 doldu, −64 bitti"; streste dağılım çubuğu (dinlenme / düşük / orta / yüksek); HRV'de "Haftalık ortalama 53 ms". Ayrıntı verisi null ise satır gösterilmez. Çubuklarda her dilim renk dışında etiketle de verilir.
