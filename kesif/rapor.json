@@ -1,0 +1,82 @@
+{
+  "token": {
+    "status": 200,
+    "kalanSaat": 24
+  },
+  "uclar": {
+    "dailysummaries": {
+      "status": 200
+    },
+    "sleep": {
+      "status": 200
+    },
+    "bodybattery": {
+      "status": 200
+    },
+    "hrv": {
+      "status": 200
+    },
+    "stress": {
+      "status": 200
+    },
+    "steps": {
+      "status": 200
+    },
+    "activities": {
+      "status": 200
+    }
+  },
+  "aralik": [
+    {
+      "gun": 7,
+      "status": 200,
+      "ogeSayisi": 7,
+      "anahtarlar": [
+        "data"
+      ]
+    },
+    {
+      "gun": 28,
+      "status": 200,
+      "ogeSayisi": 28,
+      "anahtarlar": [
+        "data"
+      ]
+    },
+    {
+      "gun": 90,
+      "status": 200,
+      "ogeSayisi": 90,
+      "anahtarlar": [
+        "data"
+      ]
+    }
+  ],
+  "derinlik": [
+    {
+      "gunOnce": 90,
+      "status": 200,
+      "bos": false,
+      "anahtarlar": [
+        "data"
+      ]
+    },
+    {
+      "gunOnce": 180,
+      "status": 200,
+      "bos": false,
+      "anahtarlar": [
+        "data"
+      ]
+    },
+    {
+      "gunOnce": 365,
+      "status": 200,
+      "bos": true,
+      "anahtarlar": [
+        "data"
+      ]
+    }
+  ],
+  "durdurulduSebep": null
+}

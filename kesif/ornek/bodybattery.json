@@ -1,0 +1,523 @@
+[
+  {
+    "date": "2026-11-07",
+    "charged": 74,
+    "drained": 62,
+    "startTimestampGMT": "2026-11-06T00:00:00.0",
+    "endTimestampGMT": "2026-11-07T00:00:00.0",
+    "startTimestampLocal": "2026-11-07T00:00:00.0",
+    "endTimestampLocal": "2026-11-08T00:00:00.0",
+    "bodyBatteryValuesArray": [
+      [
+        1848426302471,
+        18
+      ],
+      [
+        1925907010945,
+        61
+      ],
+      [
+        1966249302970,
+        101
+      ],
+      [
+        1896022502664,
+        70
+      ],
+      [
+        1782477454945,
+        66
+      ],
+      [
+        1717099753594,
+        21
+      ]
+    ],
+    "bodyBatteryValueDescriptorDTOList": [
+      {
+        "bodyBatteryValueDescriptorIndex": 0,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxx"
+      },
+      {
+        "bodyBatteryValueDescriptorIndex": 1,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxxxxxxxxx"
+      }
+    ],
+    "bodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-07T00:00:00.0",
+      "bodyBatteryLevel": "xxxxxxxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "bodyBatteryActivityEvent": [
+      {
+        "eventType": "xxxxx",
+        "eventStartTimeGmt": "2026-11-06T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 35889730,
+        "bodyBatteryImpact": 76,
+        "feedbackType": "xxxx",
+        "shortFeedback": "xxxx"
+      }
+    ],
+    "endOfDayBodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-07T00:00:00.0",
+      "bodyBatteryLevel": "xxxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "date": "2026-11-08",
+    "charged": 36,
+    "drained": 56,
+    "startTimestampGMT": "2026-11-07T00:00:00.0",
+    "endTimestampGMT": "2026-11-08T00:00:00.0",
+    "startTimestampLocal": "2026-11-08T00:00:00.0",
+    "endTimestampLocal": "2026-11-09T00:00:00.0",
+    "bodyBatteryValuesArray": [
+      [
+        1924896588031,
+        26
+      ],
+      [
+        1906482654730,
+        45
+      ],
+      [
+        2043477045364,
+        40
+      ],
+      [
+        1710445753864,
+        62
+      ],
+      [
+        1767172074704,
+        46
+      ],
+      [
+        1666725808972,
+        18
+      ]
+    ],
+    "bodyBatteryValueDescriptorDTOList": [
+      {
+        "bodyBatteryValueDescriptorIndex": 0,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxx"
+      },
+      {
+        "bodyBatteryValueDescriptorIndex": 1,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxxxxxxxxx"
+      }
+    ],
+    "bodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-08T00:00:00.0",
+      "bodyBatteryLevel": "xxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "bodyBatteryActivityEvent": [
+      {
+        "eventType": "xxxxx",
+        "eventStartTimeGmt": "2026-11-07T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 25545305,
+        "bodyBatteryImpact": 24,
+        "feedbackType": "xxxx",
+        "shortFeedback": "xxxx"
+      },
+      {
+        "eventType": "xxx",
+        "eventStartTimeGmt": "2026-11-08T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 1838534,
+        "bodyBatteryImpact": 2,
+        "feedbackType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "shortFeedback": "xxxxxxxxxxx"
+      },
+      {
+        "eventType": "xxxxxxxx",
+        "eventStartTimeGmt": "2026-11-08T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 2374336,
+        "bodyBatteryImpact": -4,
+        "feedbackType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "shortFeedback": "xxxxxxxxxxxxxxxxxxxxxx"
+      }
+    ],
+    "endOfDayBodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-08T00:00:00.0",
+      "bodyBatteryLevel": "xxxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "date": "2026-11-09",
+    "charged": 37,
+    "drained": 55,
+    "startTimestampGMT": "2026-11-08T00:00:00.0",
+    "endTimestampGMT": "2026-11-09T00:00:00.0",
+    "startTimestampLocal": "2026-11-09T00:00:00.0",
+    "endTimestampLocal": "2026-11-10T00:00:00.0",
+    "bodyBatteryValuesArray": [
+      [
+        1857121214512,
+        11
+      ],
+      [
+        1914451012205,
+        52
+      ],
+      [
+        1875839502895,
+        55
+      ],
+      [
+        1971397882187,
+        22
+      ],
+      [
+        1979203521931,
+        29
+      ],
+      [
+        1690377916979,
+        7
+      ]
+    ],
+    "bodyBatteryValueDescriptorDTOList": [
+      {
+        "bodyBatteryValueDescriptorIndex": 0,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxx"
+      },
+      {
+        "bodyBatteryValueDescriptorIndex": 1,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxxxxxxxxx"
+      }
+    ],
+    "bodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-09T00:00:00.0",
+      "bodyBatteryLevel": "xxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "bodyBatteryActivityEvent": [
+      {
+        "eventType": "xxxxx",
+        "eventStartTimeGmt": "2026-11-08T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 18112297,
+        "bodyBatteryImpact": 30,
+        "feedbackType": "xxxx",
+        "shortFeedback": "xxxx"
+      },
+      {
+        "eventType": "xxxxxxxx",
+        "eventStartTimeGmt": "2026-11-09T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 4187122,
+        "bodyBatteryImpact": -6,
+        "feedbackType": "xxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "shortFeedback": "xxxxxxxxxxxxxxxxxxx"
+      }
+    ],
+    "endOfDayBodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-09T00:00:00.0",
+      "bodyBatteryLevel": "xxxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "date": "2026-11-10",
+    "charged": 41,
+    "drained": 43,
+    "startTimestampGMT": "2026-11-09T00:00:00.0",
+    "endTimestampGMT": "2026-11-10T00:00:00.0",
+    "startTimestampLocal": "2026-11-10T00:00:00.0",
+    "endTimestampLocal": "2026-11-11T00:00:00.0",
+    "bodyBatteryValuesArray": [
+      [
+        1910365832252,
+        5
+      ],
+      [
+        1768255673239,
+        40
+      ],
+      [
+        1623034809885,
+        38
+      ],
+      [
+        1966068090537,
+        25
+      ],
+      [
+        1586017472276,
+        20
+      ],
+      [
+        1574033231442,
+        7
+      ]
+    ],
+    "bodyBatteryValueDescriptorDTOList": [
+      {
+        "bodyBatteryValueDescriptorIndex": 0,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxx"
+      },
+      {
+        "bodyBatteryValueDescriptorIndex": 1,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxxxxxxxxx"
+      }
+    ],
+    "bodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-10T00:00:00.0",
+      "bodyBatteryLevel": "xxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "bodyBatteryActivityEvent": [
+      {
+        "eventType": "xxxxx",
+        "eventStartTimeGmt": "2026-11-09T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 19126978,
+        "bodyBatteryImpact": 34,
+        "feedbackType": "xxxx",
+        "shortFeedback": "xxxx"
+      }
+    ],
+    "endOfDayBodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-10T00:00:00.0",
+      "bodyBatteryLevel": "xxxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "date": "2026-11-11",
+    "charged": 63,
+    "drained": 63,
+    "startTimestampGMT": "2026-11-10T00:00:00.0",
+    "endTimestampGMT": "2026-11-11T00:00:00.0",
+    "startTimestampLocal": "2026-11-11T00:00:00.0",
+    "endTimestampLocal": "2026-11-12T00:00:00.0",
+    "bodyBatteryValuesArray": [
+      [
+        1700366561589,
+        7
+      ],
+      [
+        1709005304974,
+        71
+      ],
+      [
+        1865116769892,
+        70
+      ],
+      [
+        1734631197730,
+        36
+      ],
+      [
+        1679291277300,
+        36
+      ],
+      [
+        1788885623159,
+        5
+      ]
+    ],
+    "bodyBatteryValueDescriptorDTOList": [
+      {
+        "bodyBatteryValueDescriptorIndex": 0,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxx"
+      },
+      {
+        "bodyBatteryValueDescriptorIndex": 1,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxxxxxxxxx"
+      }
+    ],
+    "bodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-11T00:00:00.0",
+      "bodyBatteryLevel": "xxxxxxxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "bodyBatteryActivityEvent": [
+      {
+        "eventType": "xxxxx",
+        "eventStartTimeGmt": "2026-11-10T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 23050592,
+        "bodyBatteryImpact": 55,
+        "feedbackType": "xxxx",
+        "shortFeedback": "xxxx"
+      },
+      {
+        "eventType": "xxxxxxxx",
+        "eventStartTimeGmt": "2026-11-11T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 4723784,
+        "bodyBatteryImpact": -9,
+        "feedbackType": "xxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "shortFeedback": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      {
+        "eventType": "xxxxxxxx",
+        "eventStartTimeGmt": "2026-11-11T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 2558037,
+        "bodyBatteryImpact": -3,
+        "feedbackType": "xxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "shortFeedback": "xxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    ],
+    "endOfDayBodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-10T00:00:00.0",
+      "bodyBatteryLevel": "xxxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "date": "2026-11-12",
+    "charged": 38,
+    "drained": 32,
+    "startTimestampGMT": "2026-11-11T00:00:00.0",
+    "endTimestampGMT": "2026-11-12T00:00:00.0",
+    "startTimestampLocal": "2026-11-12T00:00:00.0",
+    "endTimestampLocal": "2026-11-13T00:00:00.0",
+    "bodyBatteryValuesArray": [
+      [
+        1975016277163,
+        5
+      ],
+      [
+        1911085365784,
+        39
+      ],
+      [
+        1750873346523,
+        38
+      ],
+      [
+        1815262255445,
+        24
+      ],
+      [
+        1850433996128,
+        21
+      ],
+      [
+        1597043388875,
+        5
+      ]
+    ],
+    "bodyBatteryValueDescriptorDTOList": [
+      {
+        "bodyBatteryValueDescriptorIndex": 0,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxx"
+      },
+      {
+        "bodyBatteryValueDescriptorIndex": 1,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxxxxxxxxx"
+      }
+    ],
+    "bodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-12T00:00:00.0",
+      "bodyBatteryLevel": "xxxxxxxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "bodyBatteryActivityEvent": [
+      {
+        "eventType": "xxxxx",
+        "eventStartTimeGmt": "2026-11-11T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 20485771,
+        "bodyBatteryImpact": 38,
+        "feedbackType": "xxxx",
+        "shortFeedback": "xxxx"
+      }
+    ],
+    "endOfDayBodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-12T00:00:00.0",
+      "bodyBatteryLevel": "xxxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "date": "2026-11-13",
+    "charged": 46,
+    "drained": 14,
+    "startTimestampGMT": "2026-11-12T00:00:00.0",
+    "endTimestampGMT": "2026-11-13T00:00:00.0",
+    "startTimestampLocal": "2026-11-13T00:00:00.0",
+    "endTimestampLocal": "2026-11-13T00:00:00.0",
+    "bodyBatteryValuesArray": [
+      [
+        1942672161428,
+        5
+      ],
+      [
+        1921795752469,
+        9
+      ],
+      [
+        1653365731123,
+        11
+      ],
+      [
+        1563664823654,
+        51
+      ],
+      [
+        1609812151924,
+        47
+      ],
+      [
+        1807062478462,
+        30
+      ]
+    ],
+    "bodyBatteryValueDescriptorDTOList": [
+      {
+        "bodyBatteryValueDescriptorIndex": 0,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxx"
+      },
+      {
+        "bodyBatteryValueDescriptorIndex": 1,
+        "bodyBatteryValueDescriptorKey": "xxxxxxxxxxxxxxxx"
+      }
+    ],
+    "bodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-13T00:00:00.0",
+      "bodyBatteryLevel": "xxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "bodyBatteryActivityEvent": [
+      {
+        "eventType": "xxxxx",
+        "eventStartTimeGmt": "2026-11-12T00:00:00.0",
+        "timezoneOffset": 0,
+        "durationInMilliseconds": 14539472,
+        "bodyBatteryImpact": 38,
+        "feedbackType": "xxxx",
+        "shortFeedback": "xxxx"
+      }
+    ],
+    "endOfDayBodyBatteryDynamicFeedbackEvent": {
+      "eventTimestampGmt": "2026-11-13T00:00:00.0",
+      "bodyBatteryLevel": "xxxx",
+      "feedbackShortType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "feedbackLongType": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  }
+]
