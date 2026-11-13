@@ -66,6 +66,8 @@ test('negatif yer tutucu null olur, 0 korunur', () => {
   ds.movement.steps.value = 0;
   const satirlar = gunleriCikar(y);
   assert.equal(satirlar.find((s) => s.date === gun).sleep_score, null);
+  const kardes = satirlar.find((s) => s.date === y.sleep[1].calendarDate);
+  assert.ok(kardes.sleep_score !== null, 'dokunulmamış gün dolu');
   assert.equal(satirlar.find((s) => s.date === ds.calendarDate).steps, 0);
 });
 
@@ -98,26 +100,78 @@ test('stres süreleri milisaniyeden saniyeye yuvarlanır', () => {
   assert.equal(s.stress_high_s, Math.round(d.stress.highStressDurationInMillis / 1000));
 });
 
-test('alanlar kaynak yollarından okunur', () => {
+// Bağımsız beklenti tablosu: hedef -> (kaynak öğe) => beklenen değer. normalize.js'ten içe aktarılmaz.
+const gecerli = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null);
+const sn = (v) => (gecerli(v) === null ? null : Math.round(v / 1000));
+const UYKU_BEKLENTI = {
+  sleep_score: (u) => gecerli(u.sleepScores?.overall?.value),
+  sleep_seconds: (u) => gecerli(u.sleepTimeSeconds),
+  sleep_deep_s: (u) => gecerli(u.deepSleepSeconds),
+  sleep_light_s: (u) => gecerli(u.lightSleepSeconds),
+  sleep_rem_s: (u) => gecerli(u.remSleepSeconds),
+  sleep_awake_s: (u) => gecerli(u.awakeSleepSeconds),
+  sleep_need_min: (u) => gecerli(u.sleepNeed?.actual),
+  sleep_stress_avg: (u) => gecerli(u.avgSleepStress),
+  nap_seconds: (u) => gecerli(u.napTimeSeconds),
+};
+const HRV_BEKLENTI = {
+  hrv_avg: (h) => gecerli(h.lastNightAvg),
+  hrv_weekly_avg: (h) => gecerli(h.weeklyAvg),
+  hrv_status: (h) => (typeof h.status === 'string' && h.status !== '' ? h.status : null),
+};
+const GUNLUK_BEKLENTI = {
+  resting_hr: (d) => gecerli(d.heartRate?.restingValue),
+  hr_max: (d) => gecerli(d.heartRate?.maxValue),
+  stress_avg: (d) => gecerli(d.stress?.avgLevel),
+  stress_rest_s: (d) => sn(d.stress?.restDurationInMillis),
+  stress_low_s: (d) => sn(d.stress?.lowStressDurationInMillis),
+  stress_med_s: (d) => sn(d.stress?.mediumStressDurationInMillis),
+  stress_high_s: (d) => sn(d.stress?.highStressDurationInMillis),
+  bb_high: (d) => gecerli(d.bodyBattery?.maxValue),
+  bb_low: (d) => gecerli(d.bodyBattery?.minValue),
+  bb_charged: (d) => gecerli(d.bodyBattery?.chargedValue),
+  bb_drained: (d) => gecerli(d.bodyBattery?.drainedValue),
+  steps: (d) => gecerli(d.movement?.steps?.value),
+  floors: (d) => gecerli(d.movement?.floorsAscended?.value),
+  intensity_minutes: (d) => {
+    const o = gecerli(d.intensityMinutes?.moderate);
+    const v = gecerli(d.intensityMinutes?.vigorous);
+    return o === null && v === null ? null : (o ?? 0) + 2 * (v ?? 0);
+  },
+  calories: (d) => gecerli(d.calories?.burnedTotal),
+  calories_active: (d) => gecerli(d.calories?.burnedActive),
+  spo2_avg: (d) => gecerli(d.pulseOx?.avgValue),
+  spo2_min: (d) => gecerli(d.pulseOx?.minValue),
+  resp_avg: (d) => gecerli(d.respiration?.avgValue),
+};
+// Örnek dosyalarda her gün null olan alanlar (varsa) burada açıkça listelenir.
+const ORNEKTE_BOS = new Set([]);
+
+test('her alan, her örnek günde kaynak yolundan beklenen değere eşittir', () => {
   const y = taze();
-  const d = y.dailysummaries.data[0];
-  const sl = y.sleep.find((x) => x.calendarDate === d.calendarDate);
-  const h = y.hrv.hrvSummaries.find((x) => x.calendarDate === d.calendarDate);
-  const s = gunleriCikar(y).find((x) => x.date === d.calendarDate);
-  assert.equal(s.resting_hr, d.heartRate.restingValue);
-  assert.equal(s.hr_max, d.heartRate.maxValue);
-  assert.equal(s.bb_charged, d.bodyBattery.chargedValue);
-  assert.equal(s.floors, d.movement.floorsAscended.value);
-  assert.equal(s.calories_active, d.calories.burnedActive);
-  assert.equal(s.spo2_min, d.pulseOx.minValue);
-  assert.equal(s.resp_avg, d.respiration.avgValue);
-  if (sl) {
-    assert.equal(s.sleep_need_min, sl.sleepNeed.actual);
-    assert.equal(s.sleep_deep_s, sl.deepSleepSeconds);
-  }
-  if (h) {
-    assert.equal(s.hrv_weekly_avg, h.weeklyAvg);
-    assert.equal(s.hrv_status, h.status);
+  assert.equal(y.dailysummaries.data.length, y.sleep.length);
+  assert.equal(y.hrv.hrvSummaries.length, y.sleep.length);
+  const satirlar = new Map(gunleriCikar(y).map((s) => [s.date, s]));
+  const kaynaklar = [
+    [UYKU_BEKLENTI, y.sleep],
+    [HRV_BEKLENTI, y.hrv.hrvSummaries],
+    [GUNLUK_BEKLENTI, y.dailysummaries.data],
+  ];
+  const tum = new Set(Object.keys({ ...UYKU_BEKLENTI, ...HRV_BEKLENTI, ...GUNLUK_BEKLENTI }));
+  assert.equal(tum.size, SAYISAL.length + 1, 'tablo tüm alanları kapsar');
+  for (const [tablo, liste] of kaynaklar) {
+    for (const [alan, bekle] of Object.entries(tablo)) {
+      let doluGun = 0;
+      for (const oge of liste) {
+        const satir = satirlar.get(oge.calendarDate);
+        assert.ok(satir, `${oge.calendarDate} satırı var`);
+        const beklenen = bekle(oge);
+        assert.deepEqual(satir[alan], beklenen, `${oge.calendarDate} ${alan}`);
+        if (beklenen !== null) doluGun++;
+      }
+      if (ORNEKTE_BOS.has(alan)) assert.equal(doluGun, 0, `${alan} örnekte boş olmalı`);
+      else assert.ok(doluGun > 0, `${alan} hiçbir örnek günde dolu değil`);
+    }
   }
 });
 
@@ -156,13 +210,41 @@ test('aktiviteleriCikar: her etkinlik için bir nesne', () => {
     assert.ok(a.hr_zones_json === null || Array.isArray(JSON.parse(a.hr_zones_json)));
     assert.equal(JSON.stringify(JSON.parse(a.raw_json)), a.raw_json);
   }
-  const i = 0;
-  assert.equal(liste[i].type, ham[i].activityType.typeKey);
-  assert.equal(liste[i].duration_s, Math.round(ham[i].duration));
-  assert.equal(liste[i].training_load, ham[i].activityTrainingLoad);
-  assert.equal(liste[i].avg_stride_m, ham[i].avgStrideLength);
-  const j = ham.findIndex((x) => Array.isArray(x.summarizedExerciseSets) && x.summarizedExerciseSets.length);
-  if (j >= 0) assert.deepEqual(JSON.parse(liste[j].sets_json), ham[j].summarizedExerciseSets);
+  const bekle = {
+    type: (x) => (typeof x.activityType?.typeKey === 'string' && x.activityType.typeKey !== '' ? x.activityType.typeKey : null),
+    start_ts: (x) => gecerli(x.beginTimestamp),
+    duration_s: (x) => (gecerli(x.duration) === null ? null : Math.round(x.duration)),
+    distance_m: (x) => gecerli(x.distance),
+    avg_hr: (x) => gecerli(x.averageHR),
+    max_hr: (x) => gecerli(x.maxHR),
+    training_load: (x) => gecerli(x.activityTrainingLoad),
+    aerobic_te: (x) => gecerli(x.aerobicTrainingEffect),
+    anaerobic_te: (x) => gecerli(x.anaerobicTrainingEffect),
+    calories: (x) => gecerli(x.calories),
+    total_sets: (x) => gecerli(x.totalSets),
+    total_reps: (x) => gecerli(x.totalReps),
+    avg_cadence: (x) => gecerli(x.averageRunningCadenceInStepsPerMinute),
+    avg_stride_m: (x) => gecerli(x.avgStrideLength),
+    avg_gct_ms: (x) => gecerli(x.avgGroundContactTime),
+    avg_power: (x) => gecerli(x.avgPower),
+    hr_zones_json: (x) => {
+      const z = [1, 2, 3, 4, 5].map((n) => gecerli(x[`hrTimeInZone_${n}`]));
+      return z.every((v) => v === null) ? null : JSON.stringify(z);
+    },
+    sets_json: (x) => (Array.isArray(x.summarizedExerciseSets) && x.summarizedExerciseSets.length ? JSON.stringify(x.summarizedExerciseSets) : null),
+    raw_json: (x) => JSON.stringify(x),
+  };
+  // Örnek dosyada her etkinlikte null olan alanlar açıkça burada listelenir.
+  const BOS = new Set([]);
+  for (const [alan, f] of Object.entries(bekle)) {
+    let dolu = 0;
+    ham.forEach((x, i) => {
+      assert.deepEqual(liste[i][alan], f(x), `etkinlik ${i} ${alan}`);
+      if (f(x) !== null) dolu++;
+    });
+    if (BOS.has(alan)) assert.equal(dolu, 0, alan);
+    else assert.ok(dolu > 0, `${alan} hiçbir etkinlikte dolu değil`);
+  }
 });
 
 test('aktiviteleriCikar: geçersiz girdi boş dizi, kimliksiz ve tarihsiz etkinlik atlanır', () => {
