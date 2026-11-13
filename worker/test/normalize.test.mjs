@@ -24,7 +24,9 @@ test('örnek yanıtlardan her gün için tek satır çıkar', () => {
 });
 
 test('sayısal alanlar sayı ya da null; training_load anahtarı yok', () => {
-  for (const s of gunleriCikar(taze())) {
+  const satirlar = gunleriCikar(taze());
+  assert.ok(satirlar.length > 0);
+  for (const s of satirlar) {
     for (const alan of SAYISAL) assert.ok(sayiyaDaNull(s[alan]), `${s.date} ${alan}: ${s[alan]}`);
     assert.ok(typeof s.hrv_status === 'string' || s.hrv_status === null);
     assert.ok(!('training_load' in s));
@@ -176,7 +178,9 @@ test('her alan, her örnek günde kaynak yolundan beklenen değere eşittir', ()
 });
 
 test('raw_json üç anahtarı içerir', () => {
-  for (const s of gunleriCikar(taze())) {
+  const satirlar = gunleriCikar(taze());
+  assert.ok(satirlar.length > 0);
+  for (const s of satirlar) {
     const ham = JSON.parse(s.raw_json);
     assert.deepEqual(Object.keys(ham).sort(), ['dailysummaries', 'hrv', 'sleep']);
   }
@@ -257,4 +261,10 @@ test('aktiviteleriCikar: geçersiz girdi boş dizi, kimliksiz ve tarihsiz etkinl
   assert.equal(a.distance_m, 0);
   assert.equal(a.hr_zones_json, null);
   assert.equal(a.sets_json, null);
+});
+
+test('aktivite tarihi yerel başlangıç saatinden alınır, GMT\'den değil', () => {
+  const [a] = aktiviteleriCikar([{ activityId: 9, startTimeLocal: '2026-03-02 00:30:00', startTimeGMT: '2026-03-01 21:30:00' }]);
+  assert.equal(a.date, '2026-03-02');
+  assert.equal(a.id, '9');
 });
