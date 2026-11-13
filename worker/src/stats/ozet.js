@@ -9,6 +9,7 @@ export function enerji(degerler, bantlar) {
   let agirlik = 0;
   let n = 0;
   for (const o of OLCUMLER) {
+    if (!(o.agirlik > 0)) continue;
     const v = degerler[o.id];
     if (!dolu(v)) continue;
     const b = bantlar[o.id];
@@ -31,9 +32,10 @@ export function hukum(e) {
 }
 
 export function gerekce(degerler, bantlar) {
-  if (!OLCUMLER.some((o) => dolu(degerler[o.id]))) return 'Saat verisi gelmemiş.';
+  const kartlar = OLCUMLER.filter((o) => o.kart);
+  if (!kartlar.some((o) => dolu(degerler[o.id]))) return 'Saat verisi gelmemiş.';
   const disarida = [];
-  for (const o of OLCUMLER) {
+  for (const o of kartlar) {
     const d = durum(bantlar[o.id], dolu(degerler[o.id]) ? degerler[o.id] : null);
     if (d === 'lo' || d === 'hi') disarida.push({ o, d });
   }
@@ -47,6 +49,19 @@ export function gerekce(degerler, bantlar) {
   return `${disarida.length} ölçümün normal aralığının dışında: ${liste}.`;
 }
 
+const say = (v) => (dolu(v) ? v : null);
+const dk = (v) => (dolu(v) ? Math.round(v / 60) : null);
+
+function ekKur(satirlar, tarih) {
+  const r = satirlar.find((x) => x.date === tarih) ?? {};
+  return {
+    uyku: { derin: dk(r.sleep_deep_s), hafif: dk(r.sleep_light_s), rem: dk(r.sleep_rem_s), uyanik: dk(r.sleep_awake_s), ihtiyac: say(r.sleep_need_min) },
+    bb: { dolan: say(r.bb_charged), biten: say(r.bb_drained) },
+    stres: { dinlenme: dk(r.stress_rest_s), dusuk: dk(r.stress_low_s), orta: dk(r.stress_med_s), yuksek: dk(r.stress_high_s) },
+    hrv: { durum: typeof r.hrv_status === 'string' && r.hrv_status ? r.hrv_status : null, haftalik: say(r.hrv_weekly_avg) },
+  };
+}
+
 const bantlariKur = (satirlar, tarih) =>
   Object.fromEntries(OLCUMLER.map((o) => [o.id, bant(satirlar, o, tarih)]));
 
@@ -58,7 +73,7 @@ export function apiYaniti(satirlar, bugun, gunSayisi, meta) {
     const d = gunDegerleri(satirlar, tarih);
     const bantlar = bantlariKur(satirlar, tarih); // o günün kendi bandı
     const e = enerji(d, bantlar);
-    gunler.push({ tarih, e, hukum: hukum(e), gerekce: gerekce(d, bantlar), d });
+    gunler.push({ tarih, e, hukum: hukum(e), gerekce: gerekce(d, bantlar), d, ek: ekKur(satirlar, tarih) });
   }
   return {
     bugun,
@@ -66,7 +81,7 @@ export function apiYaniti(satirlar, bugun, gunSayisi, meta) {
     keyDurum: meta?.keyDurum ?? null,
     olcumler: OLCUMLER.map((o) => ({
       id: o.id, ad: o.ad, birim: o.birim, iyi: o.iyi,
-      min: bugunBant[o.id].min, max: bugunBant[o.id].max, kisisel: bugunBant[o.id].kisisel,
+      min: bugunBant[o.id].min, max: bugunBant[o.id].max, kisisel: bugunBant[o.id].kisisel, kart: o.kart,
     })),
     gunler,
   };

@@ -92,18 +92,52 @@ test('durum: lo/ok/hi ve null', () => {
   assert.equal(durum(b, 0), 'lo');
 });
 
-test('yuk bir önceki günün yoğun dakikasıdır', () => {
+const DOKUZ_NULL = { uyku: null, bb: null, hrv: null, nabiz: null, stres: null, yuk: null, derin: null, spo2: null, solunum: null };
+
+test('yuk bir önceki günün training_load değeridir', () => {
   const s = [
-    { date: '2026-11-11', intensity_minutes: 170, sleep_score: 70 },
-    { date: '2026-11-12', intensity_minutes: 5, sleep_score: 82 },
+    { date: '2026-11-11', training_load: 180, intensity_minutes: 5, sleep_score: 70 },
+    { date: '2026-11-12', training_load: 20, intensity_minutes: 999, sleep_score: 82 },
   ];
   const d = gunDegerleri(s, '2026-11-12');
-  assert.equal(d.yuk, 170);
+  assert.equal(d.yuk, 180); // intensity_minutes yok sayılır
   assert.equal(d.uyku, 82);
-  const bos = gunDegerleri([], '2026-11-12');
-  assert.deepEqual(bos, { uyku: null, bb: null, hrv: null, nabiz: null, stres: null, yuk: null });
+  assert.deepEqual(gunDegerleri([], '2026-11-12'), DOKUZ_NULL);
+  // yalnız intensity_minutes olan satır yük vermez
+  assert.equal(gunDegerleri([{ date: '2026-11-11', intensity_minutes: 50 }], '2026-11-12').yuk, null);
   // 0 geçerli bir değerdir
-  assert.equal(gunDegerleri([{ date: '2026-11-11', intensity_minutes: 0 }], '2026-11-12').yuk, 0);
+  assert.equal(gunDegerleri([{ date: '2026-11-11', training_load: 0 }], '2026-11-12').yuk, 0);
+});
+
+test('derin dakikaya çevrilir', () => {
+  const g = (v) => gunDegerleri([{ date: '2026-11-12', sleep_deep_s: v }], '2026-11-12').derin;
+  assert.equal(g(4230), 71); // 70.5 → 71
+  assert.equal(g(0), 0); // 0 null değildir
+  assert.equal(g(null), null);
+});
+
+test('OLCUMLER sırası, kart bayrakları ve yeni ölçüm tabloları', () => {
+  assert.deepEqual(OLCUMLER.map((o) => o.id), ['uyku', 'bb', 'hrv', 'nabiz', 'stres', 'yuk', 'derin', 'spo2', 'solunum']);
+  assert.deepEqual(OLCUMLER.map((o) => o.kart), [true, true, true, true, true, true, false, false, false]);
+  const o = (id) => OLCUMLER.find((x) => x.id === id);
+  const sade = (x) => [x.ad, x.birim, x.iyi, x.kaynak, x.tabanSigma, x.varsayilan, x.agirlik];
+  assert.deepEqual(sade(o('yuk')), ['Dünkü yük', '', -1, 'training_load', 25, [40, 150], 0.05]);
+  assert.deepEqual(sade(o('derin')), ['Derin uyku', ' dk', 1, 'sleep_deep_s', 10, [50, 110], 0]);
+  assert.deepEqual(sade(o('spo2')), ['SpO₂', '%', 1, 'spo2_avg', 1, [94, 99], 0]);
+  assert.deepEqual(sade(o('solunum')), ['Solunum', '/dk', -1, 'resp_avg', 0.6, [12, 17], 0]);
+});
+
+test('derin bandı dakika cinsindendir (pencere değerleri dönüştürülür)', () => {
+  const derin = OLCUMLER.find((o) => o.id === 'derin');
+  const s = seri('2026-10-15', Array(28).fill(4200), 'sleep_deep_s'); // 70 dk
+  const b = bant(s, derin, '2026-11-12');
+  assert.equal(b.medyan, 70);
+  assert.equal(b.sigma, 10);
+  assert.equal(b.min, 55);
+  assert.equal(b.max, 85);
+  assert.equal(b.kisisel, true);
+  assert.equal(durum(b, 71), 'ok');
+  assert.equal(bant([], derin, '2026-11-12').kisisel, false);
 });
 
 // 28 gün 80 uyku (15 Eki..11 Kas) + verilen günler; bant 74..86
