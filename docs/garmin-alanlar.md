@@ -23,7 +23,7 @@ Senkronizasyonun kullandığı üç uç nokta ve etkinlikler; her yol `kesif/orn
 - Kullanılan alanlar: `activityId`, `startTimeLocal`, `activityType.typeKey`, `beginTimestamp`, `duration`, `distance`, `averageHR`.
 
 ### bodybattery, stress, steps (kullanılmıyor, yedek kaynak)
-Verileri zaten `dailysummaries` içinde var; senkronizasyon bunları çağırmaz.
+Verileri zaten `dailysummaries` içinde var; senkronizasyon bunları çağırmaz ve bunların anonim örnekleri `kesif/ornek/` içinde tutulmaz.
 - bodybattery: dizi, gün `[].date`.
 - stress: dizi, gün `[].calendarDate`, değer `[].values.overallStressLevel`.
 - steps: dizi, gün `[].calendarDate`, değer `[].totalSteps`.
