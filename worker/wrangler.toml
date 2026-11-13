@@ -1,0 +1,14 @@
+name = "garmin-analizer"
+main = "src/worker.js"
+compatibility_date = "2026-11-01"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "garmin-analizer"
+database_id = "DOLDURULACAK"
+
+[vars]
+IZINLI_ORIGIN = "https://enescvsdg.github.io,http://localhost:4173"
