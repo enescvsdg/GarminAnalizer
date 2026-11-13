@@ -33,14 +33,18 @@ export async function zamanliEsitle({ db, simdiMs, calistir }) {
   try {
     sonuc = await calistir();
   } catch (hata) {
-    await kismiIsle(db, simdiMs);
+    try {
+      await kismiIsle(db, simdiMs);
+    } catch {
+      // Durum yazımı da başarısız olsa özgün hata kaybolmasın.
+    }
     throw hata;
   }
   const durum = sonuc?.durum;
-  if (durum === 'tamam') {
+  if (durum === 'tamam' && sonuc.gecmisHata !== true) {
     await durumYaz(db, 'kismi_sayac', 0);
     await durumYaz(db, 'bekle_bitis', 0);
-  } else if (durum === 'kismi') {
+  } else if (durum === 'kismi' || durum === 'tamam') {
     await kismiIsle(db, simdiMs);
   }
   return { calisti: true, durum };

@@ -132,3 +132,84 @@ test('calistir fırlatırsa bekleme yazılır ve hata yeniden fırlatılır', as
   assert.equal(await durumOku(db, 'bekle_bitis'), SIMDI + 30 * DK);
   assert.equal(await durumOku(db, 'son_deneme'), SIMDI);
 });
+
+function sahteSonuc(sonuc) {
+  const f = async () => { f.sayi += 1; return sonuc; };
+  f.sayi = 0;
+  return f;
+}
+
+test('tamam + gecmisHata üst üste: bekleme 30/60/180 dk, beklerken çağrılmaz, gerçek durum döner', async () => {
+  const db = testD1();
+  await kur(db, { gecmis_imlec: BITMEDI });
+  const beklenen = [30, 60, 180];
+  let t = SIMDI;
+  for (let i = 0; i < beklenen.length; i += 1) {
+    const c = sahteSonuc({ durum: 'tamam', gecmisHata: true });
+    const s = await zamanliEsitle({ db, simdiMs: t, calistir: c });
+    assert.equal(c.sayi, 1);
+    assert.deepEqual(s, { calisti: true, durum: 'tamam' });
+    assert.equal(await durumOku(db, 'kismi_sayac'), i + 1);
+    assert.equal(await durumOku(db, 'bekle_bitis'), t + beklenen[i] * DK);
+    const bekleyen = sahteSonuc({ durum: 'tamam', gecmisHata: true });
+    const w = await zamanliEsitle({ db, simdiMs: t + beklenen[i] * DK - 1, calistir: bekleyen });
+    assert.equal(bekleyen.sayi, 0);
+    assert.deepEqual(w, { calisti: false, neden: 'bekleme' });
+    t += beklenen[i] * DK;
+  }
+});
+
+test('tamam + gecmisHata sonrası temiz tamam iki sayacı sıfırlar', async () => {
+  const db = testD1();
+  await kur(db, { gecmis_imlec: BITMEDI });
+  await zamanliEsitle({ db, simdiMs: SIMDI, calistir: sahteSonuc({ durum: 'tamam', gecmisHata: true }) });
+  assert.equal(await durumOku(db, 'kismi_sayac'), 1);
+  const t = SIMDI + 30 * DK;
+  const c = sahteSonuc({ durum: 'tamam', gecmisHata: false });
+  const s = await zamanliEsitle({ db, simdiMs: t, calistir: c });
+  assert.equal(c.sayi, 1);
+  assert.deepEqual(s, { calisti: true, durum: 'tamam' });
+  assert.equal(await durumOku(db, 'kismi_sayac'), 0);
+  assert.equal(await durumOku(db, 'bekle_bitis'), 0);
+});
+
+test('bekleme yazımı da patlarsa özgün calistir hatası fırlatılır', async () => {
+  const gercek = testD1();
+  let yazmaBozuk = false;
+  const db = {
+    prepare(sql) {
+      const h = gercek.prepare(sql);
+      if (!yazmaBozuk || !/INSERT|UPDATE|REPLACE/i.test(sql)) return h;
+      const hatali = { bind: () => hatali, run: async () => { throw new Error('yazma-hatasi'); } };
+      return hatali;
+    },
+  };
+  const c = async () => { yazmaBozuk = true; throw new Error('ozgun-hata'); };
+  await assert.rejects(() => zamanliEsitle({ db, simdiMs: SIMDI, calistir: c }), /^Error: ozgun-hata$/);
+});
+
+test('sınır: bekle_bitis tam simdiMs ise çalışır', async () => {
+  const db = testD1();
+  await kur(db, { bekle_bitis: SIMDI, gecmis_imlec: BITMEDI });
+  const c = sahte();
+  const s = await zamanliEsitle({ db, simdiMs: SIMDI, calistir: c });
+  assert.equal(c.sayi, 1);
+  assert.deepEqual(s, { calisti: true, durum: 'tamam' });
+});
+
+test('sınır: geçersiz key ve son_deneme tam 24 saat önce ise çalışır', async () => {
+  const db = testD1();
+  await kur(db, { key_durum: 'gecersiz', son_deneme: SIMDI - 24 * SAAT });
+  const c = sahte();
+  await zamanliEsitle({ db, simdiMs: SIMDI, calistir: c });
+  assert.equal(c.sayi, 1);
+});
+
+test('sınır: son_esitleme tam 3 saat eski ve geçmiş bitmiş ise çalışmaz', async () => {
+  const db = testD1();
+  await kur(db, { son_esitleme: SIMDI - 3 * SAAT, gecmis_imlec: BITTI });
+  const c = sahte();
+  const s = await zamanliEsitle({ db, simdiMs: SIMDI, calistir: c });
+  assert.equal(c.sayi, 0);
+  assert.deepEqual(s, { calisti: false, neden: 'taze' });
+});

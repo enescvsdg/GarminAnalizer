@@ -142,14 +142,14 @@ test('GarminKeyHatasi aralikEsitle dışına fırlar', async () => {
 test('esitle key hatasında key_durum gecersiz yazar, durum döner, son_esitleme dokunulmaz', async () => {
   await durumYaz(db, 'son_esitleme', 111);
   const r = await esitle({ istemci: sahte({ sleep: new GarminKeyHatasi('x') }), db, simdiMs: SIMDI });
-  assert.deepEqual(r, { durum: 'key-gecersiz' });
+  assert.deepEqual(r, { durum: 'key-gecersiz', gecmisHata: false });
   assert.equal(await durumOku(db, 'key_durum'), 'gecersiz');
   assert.equal(await durumOku(db, 'son_esitleme'), 111);
 });
 
 test('esitle başarıda son_esitleme ve key_durum gecerli yazar', async () => {
   const r = await esitle({ istemci: sahte(TAM), db, simdiMs: SIMDI });
-  assert.deepEqual(r, { durum: 'tamam' });
+  assert.deepEqual(r, { durum: 'tamam', gecmisHata: false });
   assert.equal(await durumOku(db, 'son_esitleme'), SIMDI);
   assert.equal(await durumOku(db, 'key_durum'), 'gecerli');
 });
@@ -157,7 +157,7 @@ test('esitle başarıda son_esitleme ve key_durum gecerli yazar', async () => {
 test('esitle yakın aralıkta kısmi hatada kismi döner, son_esitleme güncellenmez', async () => {
   await durumYaz(db, 'son_esitleme', 111);
   const r = await esitle({ istemci: sahte({ ...TAM, hrv: new GarminGeciciHata('x', 500) }), db, simdiMs: SIMDI });
-  assert.deepEqual(r, { durum: 'kismi' });
+  assert.deepEqual(r, { durum: 'kismi', gecmisHata: true }); // hrv hatası geçmiş parçada da var
   assert.equal(await durumOku(db, 'son_esitleme'), 111);
   assert.equal(await durumOku(db, 'key_durum'), 'gecerli');
 });
@@ -217,10 +217,31 @@ test('geçmiş doldurma 365 günde durur, daha eski parça istemez', async () =>
 test('geçmiş doldurma: hatalı parça imleci değiştirmez, esitle yine tamam döner', async () => {
   const ist = sahte({ dailysummaries: (p) => (p.endDate === gunEkle(BUGUN, -3) ? new GarminGeciciHata('x', 500) : { data: [gunluk(p.endDate)] }) });
   const r = await esitle({ istemci: ist, db, simdiMs: SIMDI });
-  assert.deepEqual(r, { durum: 'tamam' });
+  assert.deepEqual(r, { durum: 'tamam', gecmisHata: true });
+  assert.equal(await durumOku(db, 'son_esitleme'), SIMDI);
   assert.equal(await durumOku(db, 'gecmis_imlec'), null);
   await durumYaz(db, 'gecmis_imlec', { sonraki: '2026-09-01', bitti: false, bosArdisik: 1 });
   const ist2 = sahte({ hrv: (p, yol) => (yol.endsWith('/2026-09-01') ? new TypeError('fetch failed') : { hrvSummaries: [] }) });
   await esitle({ istemci: ist2, db, simdiMs: SIMDI });
   assert.deepEqual(await durumOku(db, 'gecmis_imlec'), { sonraki: '2026-09-01', bitti: false, bosArdisik: 1 });
+});
+
+test('gecmisHata: hatalı parça true, temiz çalışma false, imleç değişmez', async () => {
+  await durumYaz(db, 'gecmis_imlec', { sonraki: '2026-09-01', bitti: false, bosArdisik: 1 });
+  const bozuk = sahte({ hrv: (p, yol) => (yol.endsWith('/2026-09-01') ? new TypeError('fetch failed') : { hrvSummaries: [] }) });
+  const r = await esitle({ istemci: bozuk, db, simdiMs: SIMDI });
+  assert.deepEqual(r, { durum: 'tamam', gecmisHata: true });
+  assert.equal(await durumOku(db, 'son_esitleme'), SIMDI);
+  assert.deepEqual(await durumOku(db, 'gecmis_imlec'), { sonraki: '2026-09-01', bitti: false, bosArdisik: 1 });
+
+  const temiz = await esitle({ istemci: dolu(), db, simdiMs: SIMDI });
+  assert.deepEqual(temiz, { durum: 'tamam', gecmisHata: false });
+});
+
+test('gecmisHata: geçmiş bitmişse false ve parça istenmez', async () => {
+  await durumYaz(db, 'gecmis_imlec', { sonraki: '2025-01-01', bitti: true, bosArdisik: 2 });
+  const ist = sahte({});
+  const r = await esitle({ istemci: ist, db, simdiMs: SIMDI });
+  assert.deepEqual(r, { durum: 'tamam', gecmisHata: false });
+  assert.equal(ist.cagrilar.length, 4);
 });

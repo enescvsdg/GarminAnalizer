@@ -50,35 +50,36 @@ export async function aralikEsitle({ istemci, db, bas, son, simdiMs }) {
   return { gun: satirlar.length, aktivite: aktiviteSayisi, hatalar };
 }
 
-// Geçmiş doldurmayı bir parça ilerletir.
+// Geçmiş doldurmayı bir parça ilerletir. Parça denendi ve uç nokta hatası aldıysa true döner.
 async function gecmisIlerlet({ istemci, db, bugun, simdiMs }) {
   const imlec = (await durumOku(db, 'gecmis_imlec'))
     ?? { sonraki: gunEkle(bugun, -BASLANGIC_IMLEC_GERI), bitti: false, bosArdisik: 0 };
-  if (imlec.bitti) return;
+  if (imlec.bitti) return false;
 
   const sonuc = await aralikEsitle({
     istemci, db, bas: gunEkle(imlec.sonraki, -(PARCA_GUN - 1)), son: imlec.sonraki, simdiMs,
   });
-  if (sonuc.hatalar.length > 0) return; // imleç aynı kalır, sonra yeniden denenir
+  if (sonuc.hatalar.length > 0) return true; // imleç aynı kalır, sonra yeniden denenir
 
   const bosArdisik = sonuc.gun === 0 ? imlec.bosArdisik + 1 : 0;
   const sonraki = gunEkle(imlec.sonraki, -PARCA_GUN);
   const bitti = bosArdisik >= 2 || sonraki < gunEkle(bugun, -GECMIS_SINIRI_GUN);
   await durumYaz(db, 'gecmis_imlec', { sonraki, bitti, bosArdisik });
+  return false;
 }
 
 export async function esitle({ istemci, db, simdiMs }) {
   const bugun = yerelTarih(simdiMs);
   try {
     const son = await aralikEsitle({ istemci, db, bas: gunEkle(bugun, -2), son: bugun, simdiMs });
-    await gecmisIlerlet({ istemci, db, bugun, simdiMs });
+    const gecmisHata = await gecmisIlerlet({ istemci, db, bugun, simdiMs });
     await durumYaz(db, 'key_durum', 'gecerli');
-    if (son.hatalar.length > 0) return { durum: 'kismi' };
+    if (son.hatalar.length > 0) return { durum: 'kismi', gecmisHata };
     await durumYaz(db, 'son_esitleme', simdiMs);
-    return { durum: 'tamam' };
+    return { durum: 'tamam', gecmisHata };
   } catch (e) {
     if (!(e instanceof GarminKeyHatasi)) throw e;
     await durumYaz(db, 'key_durum', 'gecersiz');
-    return { durum: 'key-gecersiz' };
+    return { durum: 'key-gecersiz', gecmisHata: false };
   }
 }
