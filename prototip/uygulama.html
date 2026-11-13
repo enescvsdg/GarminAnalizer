@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c0812">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Garmin Koçu · prototip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--isaret:#ffc9a6;--iyi:#bfeedd;--metin:#fff6ec;--tb:66px}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:#050308;overflow:hidden}
+body{font-family:'Onest',system-ui,sans-serif;color:var(--metin);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+::selection{background:#ffc9a6;color:#1a0d14}
+:focus-visible{outline:2px solid var(--isaret);outline-offset:2px}
+.sahne{height:100dvh;display:grid;place-items:center}
+.tel{--st:40px;--sb:0px;width:390px;height:844px;position:relative;overflow:hidden;border-radius:46px;background:#0c0812;flex:none;box-shadow:0 40px 120px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.07);user-select:none;-webkit-user-select:none}
+.tel.mob{--st:env(safe-area-inset-top);--sb:env(safe-area-inset-bottom);position:fixed;left:0;top:0;border-radius:0;transform-origin:0 0;box-shadow:none}
+.tam{position:absolute;inset:0;width:100%;height:100%}
+svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+/* başlık */
+.bas{position:absolute;left:24px;right:24px;top:calc(var(--st) + 14px)}
+.bas .tarih{font-size:13px;font-weight:500;color:rgba(255,246,236,.78);padding-right:44px}
+.bas h1{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100,'opsz' 144;font-weight:430;font-size:42px;line-height:1.03;letter-spacing:-.025em;margin-top:6px;min-height:43px;text-wrap:balance}
+.bas .ger{font-size:15px;line-height:1.42;margin-top:8px;color:rgba(255,246,236,.9);text-wrap:pretty}
+.kel{display:inline-block;white-space:nowrap}.h{display:inline-block;will-change:transform}
+
+/* BUGÜN */
+#bugun .bas{pointer-events:none}
+#yor{pointer-events:none}
+#yor ellipse{stroke:rgba(255,246,236,.11);stroke-width:1}
+#yor .dis{stroke-dasharray:2 9;stroke:rgba(255,201,166,.3)}
+#dokun{position:absolute;border-radius:50%;touch-action:none;cursor:grab}
+#dokun:active{cursor:grabbing}
+.et{position:absolute;left:0;top:0;will-change:transform,opacity;border-radius:22px}
+.kart{position:relative;width:104px;height:100px;padding:10px 10px 8px;display:flex;flex-direction:column;text-align:left;border-radius:22px;overflow:hidden;
+  background:linear-gradient(158deg,rgba(255,246,236,.17),rgba(255,246,236,.045) 62%);
+  border:1px solid rgba(255,246,236,.17);
+  backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);
+  box-shadow:0 12px 30px rgba(4,2,8,.45),inset 0 1px 0 rgba(255,255,255,.2),inset 0 -14px 22px rgba(4,2,8,.18);
+  transition:transform .18s cubic-bezier(.2,.9,.3,1.5),border-color .25s,box-shadow .25s}
+.kart::before{content:"";position:absolute;left:-30%;top:-60%;width:90%;height:110%;background:radial-gradient(closest-side,rgba(255,255,255,.2),rgba(255,255,255,0));pointer-events:none}
+.et:hover .kart{border-color:rgba(255,246,236,.34)}
+.et:active .kart{transform:scale(.92)}
+.et.sap .kart{border-color:rgba(255,201,166,.5);box-shadow:0 12px 30px rgba(4,2,8,.45),0 0 26px rgba(255,150,100,.2),inset 0 1px 0 rgba(255,255,255,.2),inset 0 -14px 22px rgba(4,2,8,.18)}
+.kart .ust{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:500;color:rgba(255,246,236,.88);white-space:nowrap;line-height:14px}
+.kart .ust svg{width:9px;height:9px;stroke:rgba(255,246,236,.6);stroke-width:1.8;flex:none}
+.kart .orta{display:flex;align-items:baseline;gap:3px;margin-top:1px;line-height:28px}
+.kart .deger{font-size:27px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kart .br{font-size:11.5px;color:rgba(255,246,236,.75)}
+.kart .kiv{width:100%;height:20px;margin-top:2px;overflow:visible}
+.kart .kiv .bant{fill:rgba(255,246,236,.13);stroke:none}
+.kart .kiv .cz{stroke:var(--iyi);stroke-width:1.6;vector-effect:non-scaling-stroke}
+.kart .kiv .uc{fill:var(--iyi);stroke:none}
+.kart .dr{display:flex;align-items:center;gap:3px;font-size:11.5px;font-weight:500;color:rgba(255,246,236,.78);margin-top:3px;white-space:nowrap;line-height:13px}
+.dr svg{width:10px;height:10px;stroke:currentColor;stroke-width:1.7;flex:none}
+.et.sap .deger,.et.sap .dr{color:var(--isaret)}.et.sap .dr{font-weight:600}
+.et.sap .kiv .cz{stroke:var(--isaret)}.et.sap .kiv .uc{fill:var(--isaret)}
+.gunler{position:absolute;left:12px;right:12px;bottom:calc(var(--tb) + var(--sb));display:flex;justify-content:space-between}
+.gun{width:48px;height:58px;color:rgba(255,246,236,.68);font-size:11.5px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;border-radius:12px}
+.gun i{display:block;width:calc(7px + var(--e)*14px);height:calc(7px + var(--e)*14px);border-radius:50%;background:var(--c);box-shadow:0 0 calc(4px + var(--e)*14px) var(--c);outline:1.5px solid transparent;outline-offset:3px;transition:outline-color .3s}
+.gun .yuva{height:30px;display:grid;place-items:center}
+.gun[aria-pressed=true]{color:var(--metin);font-weight:600}
+.gun[aria-pressed=true] i{outline-color:rgba(255,246,236,.85)}
+
+/* TREND */
+#trend{visibility:hidden;opacity:0;touch-action:none;cursor:grab}
+#trend:active{cursor:grabbing}
+#yildiz i{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff}
+#gunes{position:absolute;left:0;top:0;width:132px;height:132px;margin:-66px 0 0 -66px;border-radius:50%;will-change:transform}
+#trend .bas{pointer-events:none;text-shadow:0 1px 16px rgba(10,6,20,.5)}
+.secici{display:flex;gap:6px;margin:0 22px 12px -24px;padding:2px 24px;overflow-x:auto;pointer-events:auto;scrollbar-width:none;touch-action:pan-x;-webkit-overflow-scrolling:touch;
+  mask-image:linear-gradient(90deg,transparent,#000 22px,#000 calc(100% - 22px),transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 22px,#000 calc(100% - 22px),transparent)}
+.secici::-webkit-scrollbar{display:none}
+.secici button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;font-size:13.5px;font-weight:500;white-space:nowrap;color:rgba(255,246,236,.86);background:rgba(12,8,18,.32);border:1px solid rgba(255,246,236,.2);text-shadow:none;transition:background .2s,color .2s,border-color .2s}
+.secici button[aria-pressed=true]{background:var(--metin);color:#1a1022;border-color:var(--metin);font-weight:600}
+#trend .tarih{padding-right:0}
+#ust{pointer-events:none}
+#imlec{stroke:rgba(255,246,236,.5);stroke-width:1;stroke-dasharray:2 5}
+#nokta{fill:var(--metin);stroke:rgba(10,6,16,.55);stroke-width:2}
+#nokta.sap{fill:var(--isaret)}
+#bantUst,#bantAlt{stroke:rgba(255,246,236,.42);stroke-width:1;stroke-dasharray:3 5}
+#bantDolgu{fill:rgba(255,246,236,.1)}
+#bantYazi{fill:rgba(255,246,236,.82);font:500 11.5px 'Onest',sans-serif;font-variant-numeric:tabular-nums}
+.gn{stroke:none}
+.cizgi text{fill:rgba(255,246,236,.68);font:500 11px 'Onest',sans-serif;text-anchor:middle;font-variant-numeric:tabular-nums}
+.cizgi line{stroke:rgba(255,246,236,.3);stroke-width:1}
+#balon{position:absolute;left:0;top:0;pointer-events:none;white-space:nowrap;text-shadow:0 1px 12px rgba(8,4,14,.9),0 0 3px rgba(8,4,14,.7);will-change:transform}
+#balon b{font-size:40px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.025em;line-height:1}
+#balon .br{font-size:14px;margin-left:3px;color:rgba(255,246,236,.85)}
+#balon .dr{display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;margin-top:3px;color:rgba(255,246,236,.9)}
+#balon.sap b,#balon.sap .dr{color:var(--isaret)}
+#cip{position:absolute;left:50%;bottom:calc(var(--tb) + var(--sb) + 10px);transform:translateX(-50%);font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:999px;background:var(--metin);color:#1a1022;font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none}
+#ipucu{position:absolute;left:0;right:0;top:0;text-align:center;font-size:12px;color:rgba(255,246,236,.8);pointer-events:none;text-shadow:0 1px 8px rgba(8,4,14,.8)}
+
+/* uçan sayı, sekmeler, ses, ayarlar */
+.ucan{position:absolute;left:0;top:0;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1;pointer-events:none;z-index:7;text-shadow:0 0 18px rgba(255,220,190,.7)}
+.sekme{position:absolute;left:0;right:0;bottom:0;height:calc(var(--tb) + var(--sb));padding:4px 10px var(--sb);display:flex;z-index:5;background:linear-gradient(180deg,rgba(8,5,12,0),rgba(8,5,12,.78) 40%)}
+.sekme button{flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;color:rgba(255,246,236,.68);border-radius:14px}
+.sekme svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.6}
+.sekme button[aria-current=page]{color:var(--metin);font-weight:600}
+#sesBtn{position:absolute;right:12px;top:calc(var(--st) + 2px);width:44px;height:44px;display:grid;place-items:center;z-index:5;border-radius:50%;color:rgba(255,246,236,.85)}
+#sesBtn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.6}
+#sesBtn .dalga{transition:opacity .2s}#sesBtn .cizik{opacity:0;transition:opacity .2s}
+#sesBtn[aria-pressed=false] .dalga{opacity:0}#sesBtn[aria-pressed=false] .cizik{opacity:1}
+#perde{position:absolute;inset:0;background:rgba(5,3,8,.55);z-index:6;visibility:hidden;opacity:0}
+#ayar{position:absolute;left:10px;right:10px;bottom:calc(10px + var(--sb));z-index:7;background:#1a1322;border:1px solid rgba(255,246,236,.12);border-radius:28px;padding:22px 22px 18px;visibility:hidden}
+#ayar h2{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100;font-weight:430;font-size:26px;letter-spacing:-.02em;margin-bottom:8px}
+.satir{display:flex;justify-content:space-between;align-items:center;min-height:56px;font-size:16px;border-top:1px solid rgba(255,246,236,.1)}
+.satir a{color:var(--isaret)}
+.anah{width:52px;height:32px;border-radius:999px;background:rgba(255,246,236,.18);position:relative;transition:background .2s}
+.anah::after{content:"";position:absolute;left:3px;top:3px;width:26px;height:26px;border-radius:50%;background:#fff6ec;transition:transform .22s cubic-bezier(.2,.9,.3,1.3)}
+.anah[aria-checked=true]{background:#e9966b}.anah[aria-checked=true]::after{transform:translateX(20px)}
+#ayar p{font-size:13px;line-height:1.45;color:rgba(255,246,236,.72);margin-top:8px}
+#ayar .kapat{width:100%;min-height:48px;margin-top:12px;border-radius:16px;background:rgba(255,246,236,.1);font-weight:600;font-size:15px}
+</style>
+</head>
+<body>
+<div class="sahne">
+  <div class="tel" id="tel">
+    <canvas id="gl" class="tam" aria-hidden="true"></canvas>
+
+    <section id="trend" class="tam" role="slider" tabindex="0" aria-label="Trend: gün seçmek için sola ve sağa kaydır" aria-valuemin="1" aria-valuemax="28">
+      <div id="gok" class="tam"></div>
+      <div id="yildiz" class="tam" aria-hidden="true"></div>
+      <div id="gunes" aria-hidden="true"></div>
+      <svg id="katman" class="tam" aria-hidden="true">
+        <g id="gArka"><path id="arkaDolgu"/><path id="arkaSirt"/></g>
+        <g id="gOn"><path id="onDolgu"/><path id="onSirt"/><g id="gunNokta"></g><g class="cizgi" id="cizgi"></g></g>
+        <rect id="bantDolgu" x="0" width="390"/><line id="bantUst" x1="0" x2="390"/><line id="bantAlt" x1="0" x2="390"/><text id="bantYazi" x="14"></text>
+      </svg>
+      <svg id="ust" class="tam" aria-hidden="true"><line id="imlec"/><circle id="nokta" r="6"/></svg>
+      <div id="balon"><div><b>0</b><span class="br"></span></div><div class="dr"></div></div>
+      <header class="bas" id="tBas">
+        <nav class="secici" id="secici" aria-label="Ölçüm seç"></nav>
+        <p class="tarih" id="tTarih"></p><h1 id="tAd"></h1><p class="ger" id="tGer"></p>
+      </header>
+      <p id="ipucu">Geçmiş günler için sola kaydır</p>
+      <div id="cip"></div>
+    </section>
+
+    <section id="bugun" class="tam">
+      <div id="bugunUst" class="tam">
+        <svg id="yor" class="tam" aria-hidden="true"><ellipse id="yIc"/><ellipse class="dis" id="yDis"/></svg>
+        <header class="bas" id="bBas"><p class="tarih" id="bTarih"></p><h1 id="bHukum"></h1><p class="ger" id="bGer"></p></header>
+        <nav class="gunler" id="gunler" aria-label="Son yedi gün"></nav>
+      </div>
+      <div id="dokun" aria-hidden="true"></div>
+      <div id="etiketler"></div>
+    </section>
+
+    <button id="sesBtn" type="button" aria-pressed="true" aria-label="Ses efektleri">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3.5v-11L6 8z"/><path class="dalga" d="M13 7.5a3.5 3.5 0 010 5M15.2 5.3a6.5 6.5 0 010 9.4"/><path class="cizik" d="M13.5 8l4 4M17.5 8l-4 4"/></svg>
+    </button>
+    <nav class="sekme" aria-label="Ekranlar">
+      <button type="button" id="sBugun" aria-current="page"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="4.2"/><circle cx="11" cy="11" r="8.2" stroke-dasharray="1.5 3.2"/></svg>Bugün</button>
+      <button type="button" id="sTrend"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2 14c3-5 5-5 7.5-2s4.5 2 6.5-2 3-3 4-3M2 19h18"/></svg>Trend</button>
+      <button type="button" id="sAyar"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 7h8M15 7h4M3 15h4M11 15h8"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="15" r="2"/></svg>Ayarlar</button>
+    </nav>
+    <div id="perde"></div>
+    <div id="ayar" role="dialog" aria-modal="true" aria-labelledby="ayarB">
+      <h2 id="ayarB">Ayarlar</h2>
+      <div class="satir"><span id="l1">Ses efektleri</span><button type="button" class="anah" id="aSes" role="switch" aria-labelledby="l1"></button></div>
+      <div class="satir"><span id="l2">Kalp atışı sesi</span><button type="button" class="anah" id="aKalp" role="switch" aria-labelledby="l2"></button></div>
+      <div class="satir"><a href="sesler.html">Sesleri seç</a></div>
+      <p>Sesler ekrana ilk dokunuşundan sonra başlar. Telefon sessizdeyse çalmaz.</p>
+      <button type="button" class="kapat" id="aKapat">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="veri.js"></script>
+<script src="ses.js"></script>
+<script>
+(() => {
+const { OLCUMLER: O, GUNLER, durum, OK, DURUM_METIN } = VERI;
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NS = 'http://www.w3.org/2000/svg', TAU = Math.PI * 2;
+const N = GUNLER.length, G0 = N - 7, W = 390, cx = 195, DW = 58;
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const TIK = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.5l2.5 2.5 4.5-6"/></svg>';
+const KISA = { nabiz: 'Nabız', yuk: 'Yük' };
+const tel = $('tel'), cv = $('gl');
+let H = 844, S = 1;
+let ekran = 'bugun', mesgul = false, sel7 = 6, sonOlcum = 0, ayarAcik = false;
+const st = { e: GUNLER[N - 1].e, bpm: GUNLER[N - 1].d.nabiz, ign: RM ? 1 : 0, orbit: 1, flat: 0, cy: 430, P: N - 1, gunesY: 1, yuk: 0, yukA: 0 };
+// Bugün yerleşimi: başlık ile gün şeridi arasında kalan boşluğa göre hesaplanır
+const lay = { cy: 430, rx: 139, ry0: 150, ry1: 166, ks: 1, rs: 0.86 };
+// Trend çizim alanı
+const tl = { ust: 300, alt: 640 };
+
+/* ================= WebGL: yaşayan, esneyen şekil ================= */
+const gl = cv.getContext('webgl', { antialias: false, alpha: false });
+const FS = `precision highp float;
+uniform vec2 uC,uTp,uPull;uniform float uT,uE,uBeat,uIgn,uPh,uSc,uFlat,uPress,uHold,uWave,uRs,uJig;
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+vec4 tis(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+float sn(vec3 v){const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.5,1.0,2.0);
+vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.0-g;
+vec3 i1=min(g.xyz,l.zxy);vec3 i2=max(g.xyz,l.zxy);vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;
+i=mod289(i);vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+float n_=0.142857142857;vec3 ns=n_*D.wyz-D.xzx;vec4 j=p-49.0*floor(p*ns.z*ns.z);
+vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.0*x_);vec4 x=x_*ns.x+ns.yyyy;vec4 y=y_*ns.x+ns.yyyy;vec4 h=1.0-abs(x)-abs(y);
+vec4 b0=vec4(x.xy,y.xy);vec4 b1=vec4(x.zw,y.zw);vec4 s0=floor(b0)*2.0+1.0;vec4 s1=floor(b1)*2.0+1.0;vec4 sh=-step(h,vec4(0.0));
+vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);
+vec4 nr=tis(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));p0*=nr.x;p1*=nr.y;p2*=nr.z;p3*=nr.w;
+vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);m=m*m;
+return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));}
+vec3 pal(float e,float k){
+ vec3 lc=vec3(1.00,0.52,0.24),le=vec3(0.62,0.17,0.86);
+ vec3 mc=vec3(1.00,0.83,0.52),me=vec3(0.93,0.33,0.56);
+ vec3 hc=vec3(0.96,1.00,0.74),he=vec3(0.12,0.82,0.68);
+ vec3 a=mix(lc,le,k),b=mix(mc,me,k),c=mix(hc,he,k);
+ return e<0.5?mix(a,b,e*2.0):mix(b,c,e*2.0-1.0);}
+void main(){
+ vec2 q=(gl_FragCoord.xy-uC)/uSc;float t=uT;
+ float tk=1.0-clamp(uFlat,0.0,1.0);
+ vec2 p=vec2(q.x*(1.0-0.66*uFlat),q.y/max(1.0-0.955*uFlat,0.02));
+ vec2 ph0=p;
+ float r0=mix(0.165,0.215,uE)*uRs*(0.12+0.88*uIgn)*(1.0+0.04*uBeat)*(1.0+0.14*uHold-0.03*uPress);
+ float pl=length(uPull);
+ if(pl>0.0005){
+  vec2 u=uPull/pl;vec2 w=vec2(-u.y,u.x);
+  p-=uPull*0.16*tk;
+  float a=dot(p,u),b=dot(p,w);
+  float lam=max(pl-r0*0.9,0.0)/max(r0,0.001)*tk;
+  float sg=smoothstep(-r0*0.5,r0*0.9,a);
+  float tip=clamp(a/(r0*(1.0+lam)),0.0,1.0);
+  a/=1.0+lam*sg;
+  b*=(1.0+0.07*lam)*(1.0+lam*0.9*sg*tip*tip);
+  p=u*a+w*b;
+ }
+ float len=length(p);
+ float amp=mix(0.062,0.022,uE)*uRs*(1.0-0.7*uFlat);float sp=mix(0.62,0.20,uE);
+ float n=sn(vec3(p*2.3/uRs,t*sp))*0.62+sn(vec3(p*5.1/uRs+3.1,t*sp*1.7))*0.3;
+ float d=len-r0-amp*n*uIgn;
+ d-=uJig*0.03*r0*sin(3.0*atan(p.y,p.x)-t*19.0)*tk;
+ vec2 dp=ph0-uTp;float dd=dot(dp,dp);
+ d+=uPress*(0.05*exp(-dd/0.0055)-0.016*exp(-dd/0.03))*uRs*tk;
+ vec3 bg=mix(vec3(0.052,0.030,0.072),vec3(0.018,0.070,0.082),uE)*(1.0-0.42*length(q*vec2(1.0,0.55)));
+ float depth=clamp(-d/max(r0,0.001),0.0,1.0);
+ float flow=sn(vec3(p*3.4/uRs-vec2(0.0,t*0.16),t*0.22))*0.5+0.5;
+ float k=clamp(1.0-depth*1.45+flow*0.42-0.08,0.0,1.0);
+ vec3 col=pal(uE,k);
+ vec2 hc2=vec2(-0.30,0.36)*r0+uTp*uPress*0.35;
+ col+=smoothstep(0.62,0.0,length(p-hc2)/max(r0,0.001))*0.34*mix(vec3(1.0,0.82,0.66),vec3(1.0),uE);
+ float sh=dot(p/max(len,0.0001),normalize(vec2(0.55,-0.83)));
+ col*=1.0-0.42*smoothstep(-0.1,0.9,sh)*(1.0-depth*0.75)*tk;
+ col*=mix(0.80,1.04,uE)+0.13*uBeat+0.5*uFlat+0.12*uHold;
+ float g=exp(-max(d,0.0)*mix(10.5,6.2,uE)/uRs)*mix(0.50,0.92,uE)*(0.82+0.34*uBeat)*uIgn;
+ vec3 c=bg+pal(uE,0.86)*g;
+ float rr=r0+uPh*0.5*uRs;
+ c+=pal(uE,0.55)*exp(-abs(len-rr-amp*n*0.5)*110.0)*(1.0-uPh)*(1.0-uPh)*0.42*uIgn*tk;
+ c+=pal(uE,0.35)*exp(-abs(length(ph0)-(r0+uWave*0.8))*55.0)*(1.0-uWave)*step(0.001,uWave)*0.9;
+ c=mix(c,col,smoothstep(0.0035,-0.0035,d));
+ c+=(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233))+t)*43758.5453)-0.5)*0.035;
+ gl_FragColor=vec4(c,1.0);}`;
+let U = null;
+if (gl) {
+  const mk = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); return s; };
+  const pr = gl.createProgram();
+  gl.attachShader(pr, mk(gl.VERTEX_SHADER, 'attribute vec2 a;void main(){gl_Position=vec4(a,0.0,1.0);}'));
+  gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(pr); gl.useProgram(pr);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const a = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+  U = {}; ['uC', 'uT', 'uE', 'uBeat', 'uIgn', 'uPh', 'uSc', 'uFlat', 'uTp', 'uPull', 'uPress', 'uHold', 'uWave', 'uRs', 'uJig'].forEach((n) => (U[n] = gl.getUniformLocation(pr, n)));
+} else cv.style.background = 'radial-gradient(circle at 50% 52%,#ff9a5c 0,#8a3bd0 18%,#0c0812 38%)';
+
+/* ================= Yardımcılar ================= */
+function bol(el, txt) {
+  el.textContent = ''; el.setAttribute('aria-label', txt); const out = [];
+  txt.split(' ').forEach((w, wi, a) => {
+    const ws = document.createElement('span'); ws.className = 'kel'; ws.setAttribute('aria-hidden', 'true');
+    [...w].forEach((ch) => { const s = document.createElement('span'); s.className = 'h'; s.textContent = ch; ws.appendChild(s); out.push(s); });
+    el.appendChild(ws); if (wi < a.length - 1) el.appendChild(document.createTextNode(' '));
+  });
+  return out;
+}
+function yaz(el, txt) {
+  if (el._tl) el._tl.kill();
+  const eski = [...el.querySelectorAll('.h')];
+  if (RM) { bol(el, txt); return; }
+  const t = (el._tl = gsap.timeline());
+  if (eski.length) t.to(eski, { yPercent: -70, autoAlpha: 0, duration: 0.2, stagger: 0.008, ease: 'power2.in' });
+  t.add(() => { gsap.from(bol(el, txt), { yPercent: 85, autoAlpha: 0, rotation: 7, duration: 0.65, stagger: 0.022, ease: 'back.out(1.8)' }); });
+}
+function titret(ms) {
+  try {
+    if (navigator.vibrate) { navigator.vibrate(ms); return; }
+    // iOS Safari titreşim API'sini desteklemez; anahtar tipli onay kutusu dokunsal geri bildirim verir (iOS 18+)
+    const l = document.createElement('label'); l.style.display = 'none';
+    const i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); l.appendChild(i);
+    document.body.appendChild(l); l.click(); l.remove();
+  } catch (e) {}
+}
+const telY = (el, kenar) => (el.getBoundingClientRect()[kenar] - tel.getBoundingClientRect().top) / S;
+function durumHtml(du, uzun) { return du === 'ok' ? TIK + 'normalde' : OK[du] + (uzun ? 'normalin ' : '') + DURUM_METIN[du]; }
+
+/* ================= BUGÜN: kartlar ================= */
+const L = O.map((o, i) => {
+  const el = document.createElement('button'); el.className = 'et'; el.type = 'button';
+  el.innerHTML = `<span class="kart"><span class="ust"><span>${KISA[o.id] || o.ad}</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5L7 5 3 8.5"/></svg></span>
+    <span class="orta"><span class="deger">0</span><span class="br">${o.birim.trim()}</span></span>
+    <svg class="kiv" viewBox="0 0 84 20" preserveAspectRatio="none" aria-hidden="true"><rect class="bant" x="0" width="84"/><path class="cz"/><circle class="uc" r="2.6"/></svg>
+    <span class="dr"></span></span>`;
+  $('etiketler').appendChild(el);
+  const l = { o, i, el, deg: el.querySelector('.deger'), dr: el.querySelector('.dr'), bant: el.querySelector('.bant'), cz: el.querySelector('.cz'), uc: el.querySelector('.uc'), k: 0, r: RM ? 1 : 0, val: 0 };
+  el.addEventListener('click', () => { titret(10); trendeGec(i, l); });
+  return l;
+});
+function kivrim(l, gi) { // kartın içindeki 7 günlük çizgi ve normal bandı
+  const v = []; for (let d = gi - 6; d <= gi; d++) v.push(GUNLER[Math.max(0, d)].d[l.o.id]);
+  const lo = Math.min(...v, l.o.min), hi = Math.max(...v, l.o.max), ar = hi - lo || 1, y = (x) => 18 - ((x - lo) / ar) * 16;
+  l.cz.setAttribute('d', v.map((x, j) => `${j ? 'L' : 'M'}${(j * 13.6).toFixed(1)} ${y(x).toFixed(1)}`).join(''));
+  l.uc.setAttribute('cx', 81.6); l.uc.setAttribute('cy', y(v[6]).toFixed(1));
+  l.bant.setAttribute('y', y(l.o.max).toFixed(1)); l.bant.setAttribute('height', Math.max(1, y(l.o.min) - y(l.o.max)).toFixed(1));
+}
+const renk = gsap.utils.interpolate(['#ff7a45', '#ffb07a', '#c9f5b4']);
+const gunBtn = GUNLER.slice(G0).map((g, i) => {
+  const b = document.createElement('button'); b.className = 'gun'; b.type = 'button';
+  b.style.setProperty('--e', g.e); b.style.setProperty('--c', renk(g.e));
+  b.setAttribute('aria-label', `${g.gunUzun} ${g.gun} ${g.ay}: ${g.hukum}`);
+  b.innerHTML = `<span class="yuva"><i></i></span>${g.gunKisa}`;
+  b.addEventListener('click', () => { if (i !== sel7) { titret(8); sec(i); SES.akor(g.e); } });
+  $('gunler').appendChild(b); return b;
+});
+function sec(i, sessiz) {
+  sel7 = i; const g = GUNLER[G0 + i], D = RM || sessiz ? 0 : 1;
+  gunBtn.forEach((b, j) => b.setAttribute('aria-pressed', j === i));
+  $('bTarih').textContent = `${g.gunUzun}, ${g.gun} ${g.ay}`;
+  gsap.to(st, { e: g.e, bpm: g.d.nabiz, duration: 1.5 * D, ease: 'power3.inOut', overwrite: 'auto' });
+  L.forEach((l, j) => {
+    const v = g.d[l.o.id], du = durum(l.o, v);
+    l.el.classList.toggle('sap', du !== 'ok'); l.dr.innerHTML = durumHtml(du); kivrim(l, G0 + i);
+    l.el.setAttribute('aria-label', `${l.o.ad} ${v}${l.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}. Trendini aç`);
+    gsap.to(l, { k: du === 'ok' ? 0 : 1, duration: 1.1 * D, delay: j * 0.045 * D, ease: 'back.out(1.7)', overwrite: 'auto' });
+    if (D) gsap.to(l, { val: v, duration: 0.9, ease: 'power2.out', onUpdate: () => (l.deg.textContent = Math.round(l.val)) });
+    else { l.val = v; l.deg.textContent = v; }
+  });
+  if (D) {
+    yaz($('bHukum'), g.hukum);
+    gsap.timeline().to('#bGer', { autoAlpha: 0, y: -6, duration: 0.18 })
+      .add(() => { $('bGer').textContent = g.gerekce; yerlesimB(true); })
+      .fromTo('#bGer', { y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power3.out' });
+  } else { bol($('bHukum'), g.hukum); $('bGer').textContent = g.gerekce; yerlesimB(false); }
+}
+function yerlesimB(yumusak) {
+  const ust = telY($('bBas'), 'bottom') + 8, alt = telY($('gunler'), 'top') - 4;
+  const a = Math.max(60, (alt - ust) / 2), ks = clamp(a / 196, 0.4, 1); // çok kısa ekranda kartlar küçülür, üst üste binmez
+  const ry1 = a - 50 * ks, ry0 = ry1 - 12 * ks, rx = 195 - 52 * ks - 5;
+  const orb = Math.max(26, Math.min(rx - 52 * ks, ry0 - 50 * ks) - 8);
+  const h = { cy: (ust + alt) / 2, rx, ry0, ry1, ks, rs: clamp(orb / 92, 0.3, 1.15) };
+  if (yumusak && !RM) gsap.to(lay, { ...h, duration: 0.6, ease: 'power3.out', overwrite: 'auto' }); else Object.assign(lay, h);
+  if (ekran === 'bugun' && !mesgul) { if (yumusak && !RM) gsap.to(st, { cy: h.cy, duration: 0.6, ease: 'power3.out' }); else st.cy = h.cy; }
+}
+
+/* ================= TREND: tek ölçüm ================= */
+const svg = $('katman'), trend = $('trend');
+// ölçüm başına: 0..1'e ölçeklenmiş günlük değer, 7 günlük ortalama, normal bandı, iyilik, özet cümlesi
+const T = O.map((o) => {
+  const v = GUNLER.map((g) => g.d[o.id]);
+  const ort = v.map((_, i) => { const a = v.slice(Math.max(0, i - 6), i + 1); return a.reduce((x, y) => x + y, 0) / a.length; });
+  let lo = Math.min(...v, o.min), hi = Math.max(...v, o.max); const pay = (hi - lo) * 0.12; lo -= pay; hi += pay;
+  const n = (x) => (x - lo) / (hi - lo);
+  const dis = v.filter((x) => durum(o, x) !== 'ok').length, ortalama = Math.round(v.reduce((x, y) => x + y, 0) / N);
+  const ozet = dis === 0 ? `Son 28 günde hep normal aralığında kaldın. Ortalaman ${ortalama}${o.birim}.`
+    : `Son 28 günde ${dis} gün normal aralığının dışında. Ortalaman ${ortalama}${o.birim}.`;
+  const iyi = v.map((x) => clamp(((x - (o.min + o.max) / 2) / (((o.max - o.min) / 2) * 2.4)) * o.iyi, -1, 1) * 0.5 + 0.5);
+  return { o, v, nv: v.map(n), na: ort.map(n), bant: [n(o.min), n(o.max)], iyi, ozet };
+});
+const cur = { v: T[0].nv.slice(), a: T[0].na.slice(), b0: T[0].bant[0], b1: T[0].bant[1] };
+function cr(arr, x) {
+  const g = (i) => arr[clamp(i, 0, N - 1)];
+  const i = Math.floor(x), t = x - i, p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2);
+  return 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (3 * p1 - p0 - 3 * p2 + p3) * t * t * t);
+}
+const yy = (n01) => tl.alt - n01 * (tl.alt - tl.ust);
+const gunNokta = GUNLER.map(() => { const c = document.createElementNS(NS, 'circle'); c.setAttribute('class', 'gn'); $('gunNokta').appendChild(c); return c; });
+function yollar() {
+  let d = '', da = '';
+  for (let x = -5; x <= N + 4.001; x += 0.1) {
+    d += `${d ? 'L' : 'M'}${(x * DW).toFixed(1)} ${yy(cr(cur.v, x)).toFixed(1)}`;
+    da += `${da ? 'L' : 'M'}${(x * DW).toFixed(1)} ${(yy(cr(cur.a, x)) - 26).toFixed(1)}`;
+  }
+  const kap = `L${(N + 4) * DW} ${H + 300}L${-5 * DW} ${H + 300}Z`;
+  $('onSirt').setAttribute('d', d); $('onDolgu').setAttribute('d', d + kap);
+  $('arkaSirt').setAttribute('d', da); $('arkaDolgu').setAttribute('d', da + kap);
+  const t = T[sonOlcum];
+  gunNokta.forEach((c, i) => {
+    const dis = durum(t.o, t.v[i]) !== 'ok';
+    c.setAttribute('cx', i * DW); c.setAttribute('cy', yy(cur.v[i]).toFixed(1));
+    c.setAttribute('fill', dis ? '#ffc9a6' : 'rgba(255,246,236,.55)'); c.setAttribute('r', dis ? 3.4 : 2.4);
+  });
+  const y1 = yy(cur.b1), y0 = yy(cur.b0);
+  $('bantDolgu').setAttribute('y', y1.toFixed(1)); $('bantDolgu').setAttribute('height', Math.max(2, y0 - y1).toFixed(1));
+  $('bantUst').setAttribute('y1', y1); $('bantUst').setAttribute('y2', y1); $('bantAlt').setAttribute('y1', y0); $('bantAlt').setAttribute('y2', y0);
+  $('bantYazi').setAttribute('y', (y1 - 7).toFixed(1));
+}
+function eksen() {
+  const c = $('cizgi'); c.innerHTML = '';
+  GUNLER.forEach((g, i) => {
+    const l = document.createElementNS(NS, 'line'); l.setAttribute('x1', i * DW); l.setAttribute('x2', i * DW);
+    l.setAttribute('y1', tl.alt + 44); l.setAttribute('y2', tl.alt + 52); c.appendChild(l);
+    const t = document.createElementNS(NS, 'text'); t.setAttribute('x', i * DW); t.setAttribute('y', tl.alt + 68);
+    t.textContent = g.gun === 1 ? `1 ${g.ay.slice(0, 3)}` : g.gun; c.appendChild(t);
+  });
+}
+const secBtn = O.map((o, i) => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = KISA[o.id] || o.ad; b.setAttribute('aria-label', o.ad + ' trendi');
+  b.addEventListener('click', () => { if (i !== sonOlcum && !mesgul) { titret(8); SES.tik(); olcumSec(i, true); } });
+  $('secici').appendChild(b); return b;
+});
+$('secici').addEventListener('pointerdown', (ev) => ev.stopPropagation());
+let selT = -1;
+function olcumSec(oi, animasyon) {
+  sonOlcum = oi; const t = T[oi];
+  secBtn.forEach((b, j) => b.setAttribute('aria-pressed', j === oi));
+  const sc = $('secici'), b = secBtn[oi];
+  sc.scrollTo({ left: b.offsetLeft - (sc.clientWidth - b.offsetWidth) / 2, behavior: animasyon && !RM ? 'smooth' : 'auto' });
+  $('bantYazi').textContent = `normal ${t.o.min}–${t.o.max}${t.o.birim}`;
+  $('tGer').textContent = t.ozet;
+  if (animasyon && !RM) {
+    yaz($('tAd'), t.o.ad);
+    const a = { v: cur.v.slice(), a: cur.a.slice(), b0: cur.b0, b1: cur.b1 }, pr = { t: 0 };
+    gsap.to(pr, { t: 1, duration: 0.75, ease: 'power3.inOut', onUpdate() {
+      for (let i = 0; i < N; i++) { cur.v[i] = lerp(a.v[i], t.nv[i], pr.t); cur.a[i] = lerp(a.a[i], t.na[i], pr.t); }
+      cur.b0 = lerp(a.b0, t.bant[0], pr.t); cur.b1 = lerp(a.b1, t.bant[1], pr.t); yollar();
+    } });
+    gsap.fromTo('#tGer', { autoAlpha: 0.3 }, { autoAlpha: 1, duration: 0.5 });
+  } else {
+    bol($('tAd'), t.o.ad);
+    cur.v = t.nv.slice(); cur.a = t.na.slice(); cur.b0 = t.bant[0]; cur.b1 = t.bant[1];
+  }
+  yerlesimT(); selT = -1; gunYaz(clamp(Math.round(st.P), 0, N - 1));
+}
+function gunYaz(i, canli) {
+  if (i === selT) return; const ilk = selT < 0; selT = i; const g = GUNLER[i], t = T[sonOlcum], v = t.v[i], du = durum(t.o, v);
+  $('tTarih').textContent = `${g.gunUzun}, ${g.gun} ${g.ay}`;
+  $('cip').textContent = i === N - 1 ? `Bugün, ${g.gun} ${g.ay}` : `${g.gunKisa} ${g.gun} ${g.ay}`;
+  const bl = $('balon'); bl.querySelector('b').textContent = v; bl.querySelector('.br').textContent = t.o.birim.trim();
+  bl.querySelector('.dr').innerHTML = durumHtml(du, true); bl.classList.toggle('sap', du !== 'ok'); $('nokta').classList.toggle('sap', du !== 'ok');
+  trend.setAttribute('aria-valuenow', i + 1);
+  trend.setAttribute('aria-valuetext', `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} ${v}${t.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}`);
+  if (!ilk && canli && ekran === 'trend' && !mesgul) SES.nota(t.iyi[i]);
+}
+function yerlesimT() {
+  tl.ust = Math.round(telY($('tBas'), 'bottom') + 96);
+  tl.alt = Math.round(telY($('cip'), 'top') - 86);
+  if (tl.alt - tl.ust < 90) tl.ust = tl.alt - 90;
+  const im = $('imlec'); im.setAttribute('x1', cx); im.setAttribute('x2', cx); im.setAttribute('y1', tl.ust - 30); im.setAttribute('y2', tl.alt + 40);
+  $('nokta').setAttribute('cx', cx); $('ipucu').style.top = tl.alt + 16 + 'px';
+  yollar(); eksen();
+}
+for (let i = 0; i < 46; i++) {
+  const s = document.createElement('i');
+  s.style.left = Math.random() * 100 + '%'; s.style.top = Math.random() * 40 + '%';
+  s.style.transform = `scale(${0.5 + Math.random()})`; s.dataset.f = (0.6 + Math.random() * 1.6).toFixed(2); s.dataset.o = (Math.random() * 6).toFixed(2);
+  $('yildiz').appendChild(s);
+}
+const yildizlar = [...$('yildiz').children];
+const ip = (a) => gsap.utils.interpolate(a);
+const cTop = ip(['#170d2b', '#141f42', '#0a2748']), cMid = ip(['#5a2a5e', '#3d4f7c', '#2a7a8c']), cBot = ip(['#e0705f', '#eaa47e', '#f7dc9c']);
+const cUzak = ip(['#6a3d68', '#3f4f78', '#2a6f78']), cYakin = ip(['#1b0d23', '#111b33', '#092730']);
+const cSirt = ip(['#ffc9b4', '#e4def5', '#d6f6ec']), cGunes = ip(['#ff7d62', '#ffc08a', '#fff3c6']);
+
+let hedef = N - 1, pA = N - 1;
+function git(i, sure) { hedef = clamp(Math.round(i), 0, N - 1); gsap.to(st, { P: hedef, duration: RM ? 0 : sure || 0.75, ease: 'power3.out', overwrite: 'auto' }); }
+let suruk = false, surukledi = false, x0 = 0, P0 = 0, sonX = 0, sonT = 0, hiz = 0;
+trend.addEventListener('pointerdown', (ev) => {
+  if (mesgul) return; suruk = true; surukledi = false; x0 = sonX = ev.clientX; P0 = st.P; sonT = performance.now(); hiz = 0; gsap.killTweensOf(st, 'P');
+});
+addEventListener('pointermove', (ev) => {
+  if (!suruk) return;
+  if (!surukledi && Math.abs(ev.clientX - x0) < 6) return;
+  if (!surukledi) { surukledi = true; gsap.to('#ipucu', { autoAlpha: 0, duration: 0.4 }); }
+  const t = performance.now(); if (t > sonT) hiz = hiz * 0.6 + ((ev.clientX - sonX) / (t - sonT)) * 0.4;
+  sonX = ev.clientX; sonT = t;
+  let p = P0 - (ev.clientX - x0) / S / DW;
+  if (p < 0) p *= 0.35; if (p > N - 1) p = N - 1 + (p - N + 1) * 0.35;
+  st.P = p;
+});
+const birak = () => { if (!suruk) return; suruk = false; if (surukledi) git(st.P - (hiz * 1000 * 0.16) / S / DW, 0.8); };
+addEventListener('pointerup', birak); addEventListener('pointercancel', birak);
+trend.addEventListener('keydown', (ev) => {
+  if (ev.target !== trend) return;
+  if (ev.key === 'ArrowLeft') git(hedef - 1, 0.45); else if (ev.key === 'ArrowRight') git(hedef + 1, 0.45);
+  else if (ev.key === 'Home') git(0); else if (ev.key === 'End') git(N - 1); else return;
+  ev.preventDefault(); gsap.to('#ipucu', { autoAlpha: 0, duration: 0.4 });
+});
+trend.addEventListener('wheel', (ev) => { ev.preventDefault(); if (!mesgul) git(hedef + Math.sign(ev.deltaX || ev.deltaY), 0.45); }, { passive: false });
+
+/* ================= Ekran geçişleri ================= */
+function sekmeGuncelle() {
+  [['sBugun', !ayarAcik && ekran === 'bugun'], ['sTrend', !ayarAcik && ekran === 'trend'], ['sAyar', ayarAcik]].forEach(([id, a]) => {
+    if (a) $(id).setAttribute('aria-current', 'page'); else $(id).removeAttribute('aria-current');
+  });
+}
+function trendeGec(oi, kaynak) {
+  if (mesgul || ekran === 'trend') return;
+  dokunBirak(); ekran = 'trend'; sekmeGuncelle();
+  st.P = hedef = G0 + sel7; pA = st.P;
+  gsap.set(trend, { visibility: 'visible' });
+  olcumSec(oi == null ? sonOlcum : oi, false);
+  gsap.set('#ipucu', { autoAlpha: 1 });
+  const ufuk = yy(cur.v[hedef]);
+  if (RM) {
+    st.yuk = st.yukA = 1; st.flat = 1; st.cy = ufuk;
+    gsap.set(trend, { autoAlpha: 1 }); gsap.set([cv, '#bugun'], { autoAlpha: 0 }); return;
+  }
+  mesgul = true; SES.tik(); st.yuk = st.yukA = 0;
+  gsap.set('#balon', { autoAlpha: kaynak ? 0 : 1 });
+  const z = gsap.timeline({ onComplete: () => (mesgul = false) });
+  z.to(L, { r: 0, duration: 0.42, stagger: 0.03, ease: 'power2.in' }, 0)
+    .to('#bugunUst', { autoAlpha: 0, duration: 0.3 }, 0)
+    .add(() => SES.gecis(true), 0.12)
+    .to(st, { flat: 1, cy: ufuk, duration: 0.62, ease: 'power3.inOut' }, 0.12)
+    .to(trend, { autoAlpha: 1, duration: 0.45 }, 0.58)
+    .to(cv, { autoAlpha: 0, duration: 0.5 }, 0.72)
+    .to(st, { yukA: 1, duration: 1.3, ease: 'expo.out' }, 0.6)
+    .to(st, { yuk: 1, duration: 1.3, ease: 'expo.out' }, 0.7)
+    .fromTo(st, { gunesY: 0 }, { gunesY: 1, duration: 1.5, ease: 'power3.out' }, 0.6)
+    .fromTo(['#secici', '#tTarih', '#tAd', '#tGer'], { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out' }, 0.75)
+    .set('#bugun', { autoAlpha: 0 }, 1.3);
+  if (kaynak) {
+    const r = kaynak.deg.getBoundingClientRect(), tr = tel.getBoundingClientRect();
+    const u = document.createElement('div'); u.className = 'ucan'; u.textContent = kaynak.deg.textContent;
+    u.style.color = getComputedStyle(kaynak.deg).color; tel.appendChild(u);
+    gsap.set(u, { x: (r.left - tr.left) / S, y: (r.top - tr.top) / S, fontSize: 27 * lay.ks });
+    z.to(u, { x: cx + 16, y: Math.max(tl.ust - 92, ufuk - 70), fontSize: 40, duration: 0.95, ease: 'power3.inOut' }, 0.08)
+      .add(() => { SES.can(T[sonOlcum].iyi[hedef]); gsap.set('#balon', { autoAlpha: 1 }); u.remove(); }, 1.06)
+      .fromTo('#balon .dr', { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 1.1);
+  }
+}
+function bugunGec() {
+  if (mesgul || ekran === 'bugun') return;
+  ekran = 'bugun'; sekmeGuncelle();
+  const gi = clamp(Math.round(st.P), 0, N - 1); if (gi >= G0 && gi - G0 !== sel7) sec(gi - G0, true);
+  yerlesimB(false);
+  if (RM) {
+    st.flat = 0; st.cy = lay.cy; L.forEach((l) => (l.r = 1));
+    gsap.set(trend, { autoAlpha: 0 }); gsap.set([cv, '#bugun', '#bugunUst'], { autoAlpha: 1 }); return;
+  }
+  mesgul = true; SES.gecis(false);
+  gsap.timeline({ onComplete: () => (mesgul = false) })
+    .to(st, { yuk: 0, duration: 0.5, ease: 'power3.in' }, 0)
+    .to(st, { yukA: 0, duration: 0.5, ease: 'power3.in' }, 0.06)
+    .set('#bugun', { autoAlpha: 1 }, 0.2)
+    .to(cv, { autoAlpha: 1, duration: 0.35 }, 0.3)
+    .to(trend, { autoAlpha: 0, duration: 0.4 }, 0.42)
+    .to(st, { flat: 0, cy: lay.cy, duration: 1.2, ease: 'elastic.out(1,0.62)' }, 0.5)
+    .to(L, { r: 1, duration: 0.9, stagger: 0.06, ease: 'back.out(1.5)' }, 0.72)
+    .to('#bugunUst', { autoAlpha: 1, duration: 0.5 }, 0.85);
+}
+$('sBugun').addEventListener('click', () => { ayarKapat(); bugunGec(); });
+$('sTrend').addEventListener('click', () => { ayarKapat(); trendeGec(null, null); });
+
+/* ================= Ses ve ayarlar ================= */
+const sesAc = () => SES.ac();
+addEventListener('pointerdown', sesAc, { capture: true }); addEventListener('keydown', sesAc, { capture: true });
+function sesGoster() {
+  $('sesBtn').setAttribute('aria-pressed', SES.ayar.acik); $('aSes').setAttribute('aria-checked', SES.ayar.acik); $('aKalp').setAttribute('aria-checked', SES.ayar.kalp);
+}
+const sesDegis = (anahtar) => () => { SES.ayar[anahtar] = !SES.ayar[anahtar]; SES.kaydet(); sesGoster(); SES.tik(); };
+$('sesBtn').addEventListener('click', sesDegis('acik')); $('aSes').addEventListener('click', sesDegis('acik')); $('aKalp').addEventListener('click', sesDegis('kalp'));
+let ayarOnce = null;
+function ayarAc() {
+  if (ayarAcik) return; ayarAcik = true; ayarOnce = document.activeElement; sekmeGuncelle(); SES.tik();
+  gsap.to('#perde', { autoAlpha: 1, duration: RM ? 0 : 0.25 });
+  gsap.fromTo('#ayar', { yPercent: 110, autoAlpha: 1 }, { yPercent: 0, duration: RM ? 0 : 0.5, ease: 'power4.out' });
+  $('aSes').focus({ preventScroll: true });
+}
+function ayarKapat() {
+  if (!ayarAcik) return; ayarAcik = false; sekmeGuncelle();
+  gsap.to('#perde', { autoAlpha: 0, duration: RM ? 0 : 0.25 });
+  gsap.to('#ayar', { yPercent: 110, duration: RM ? 0 : 0.32, ease: 'power3.in', onComplete: () => gsap.set('#ayar', { autoAlpha: 0 }) });
+  if (ayarOnce) ayarOnce.focus({ preventScroll: true });
+}
+$('sAyar').addEventListener('click', () => (ayarAcik ? ayarKapat() : ayarAc()));
+$('perde').addEventListener('click', ayarKapat); $('aKapat').addEventListener('click', ayarKapat);
+addEventListener('keydown', (ev) => { if (ev.key === 'Escape') ayarKapat(); });
+sesGoster();
+
+/* ================= Dokunma: şekil yumuşak bir madde gibi tepki verir ================= */
+const tch = { x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, px: 0, py: 0, press: 0, pv: 0, pt: 0, hold: 0, wave: 0, jig: 0, aktif: false };
+const KOPMA = 0.5; // bu kadar çekilince parmaktan kayar (ekran genişliğinin oranı)
+const dokun = $('dokun');
+function dokunHedef(ev) {
+  const r = tel.getBoundingClientRect(), ux = ((ev.clientX - r.left) / S - cx) / W, uy = -((ev.clientY - r.top) / S - lay.cy) / W, m = Math.hypot(ux, uy);
+  tch.px = ux; tch.py = uy; tch.tx = ux; tch.ty = uy;
+  SES.dokunAyar(clamp(m / KOPMA, 0, 1));
+  if (m > KOPMA) dokunBirak();
+}
+dokun.addEventListener('pointerdown', (ev) => {
+  if (mesgul || ekran !== 'bugun') return;
+  tch.aktif = true; tch.pt = 1; try { dokun.setPointerCapture(ev.pointerId); } catch (e) {}
+  gsap.killTweensOf(tch, 'hold,wave'); tch.wave = 0;
+  SES.ac(); SES.dokunBasla(); dokunHedef(ev); titret(8);
+});
+dokun.addEventListener('pointermove', (ev) => { if (tch.aktif) dokunHedef(ev); });
+function dokunBirak() {
+  if (!tch.aktif) return; tch.aktif = false; tch.pt = 0; tch.tx = 0; tch.ty = 0; SES.dokunBitir();
+  const gerilim = Math.hypot(tch.x, tch.y);
+  if (tch.hold > 0.55 && gerilim < 0.12) { // yerinde uzun basış: dışarı dalga
+    gsap.fromTo(tch, { wave: 0.001 }, { wave: 1, duration: 1.1, ease: 'power2.out', onComplete: () => (tch.wave = 0) });
+    SES.can(st.e); titret(22);
+  } else titret(gerilim > 0.2 ? 18 : 6);
+  gsap.to(tch, { hold: 0, duration: 0.6, ease: 'power3.out' });
+}
+dokun.addEventListener('pointerup', dokunBirak); dokun.addEventListener('pointercancel', dokunBirak);
+function dokunAdim(ds) {
+  if (ds <= 0) return;
+  if (tch.aktif) { // tutarken parmağı gecikmesiz izler
+    const f = 1 - Math.exp(-ds * 34), nx = tch.x + (tch.tx - tch.x) * f, ny = tch.y + (tch.ty - tch.y) * f;
+    tch.vx = (nx - tch.x) / ds; tch.vy = (ny - tch.y) / ds; tch.x = nx; tch.y = ny;
+    tch.hold = Math.min(1, tch.hold + ds / 1.1);
+  } else { // bırakınca yay: iyi günde sıkı ve çabuk, kötü günde gevşek ve ağır
+    const k = 55 + 190 * st.e, c = 3.2 + 7 * st.e, n = 4, h = ds / n;
+    for (let i = 0; i < n; i++) {
+      tch.vx += (-k * tch.x - c * tch.vx) * h; tch.x += tch.vx * h;
+      tch.vy += (-k * tch.y - c * tch.vy) * h; tch.y += tch.vy * h;
+    }
+  }
+  const n = 4, h = ds / n;
+  for (let i = 0; i < n; i++) { tch.pv += (-240 * (tch.press - tch.pt) - 15 * tch.pv) * h; tch.press += tch.pv * h; }
+  const hj = tch.aktif ? 0 : clamp(Math.hypot(tch.vx, tch.vy) * 0.9, 0, 1);
+  tch.jig += (hj - tch.jig) * (1 - Math.exp(-ds * (hj > tch.jig ? 30 : 4)));
+}
+
+/* ================= Ölçek ================= */
+function sigdir() {
+  const mob = innerWidth <= 520;
+  S = mob ? innerWidth / W : Math.min(1, (innerHeight - 32) / 844);
+  H = mob ? innerHeight / S : 844;
+  tel.classList.toggle('mob', mob); tel.style.height = H + 'px'; tel.style.transform = `scale(${S})`;
+  const dpr = Math.min(devicePixelRatio || 1, 2) * S;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  if (gl) gl.viewport(0, 0, cv.width, cv.height);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); $('ust').setAttribute('viewBox', `0 0 ${W} ${H}`);
+  yerlesimB(false);
+  if (ekran === 'trend') { yerlesimT(); st.cy = yy(cur.v[hedef]); }
+}
+addEventListener('resize', sigdir);
+
+/* ================= Döngü ================= */
+let ang = -0.35, bt = 0, curT = 60 / st.bpm, ph = 1, beat = 0;
+gsap.ticker.add((time, dt) => {
+  const ds = Math.min(dt, 50) / 1000;
+  const bugunGorunur = ekran === 'bugun' || mesgul;
+  dokunAdim(ds);
+  if (!RM) {
+    ang += ds * 0.07 * st.orbit; bt += ds;
+    if (bt > curT) {
+      bt -= curT; curT = (60 / st.bpm) * (1 + (Math.random() - 0.5) * (1 - st.e) * 0.38);
+      if (ekran === 'bugun' && !mesgul && !ayarAcik && !tch.aktif && !document.hidden) SES.kalp(0.55 + st.e * 0.25);
+    }
+    ph = bt / curT; beat = Math.exp(-ph * 10) + (ph > 0.2 ? 0.55 * Math.exp(-(ph - 0.2) * 13) : 0);
+  }
+  if (U && bugunGorunur) {
+    gl.uniform2f(U.uC, (cx / W) * cv.width, (1 - st.cy / H) * cv.height);
+    gl.uniform1f(U.uT, RM ? 3 : time); gl.uniform1f(U.uE, st.e); gl.uniform1f(U.uBeat, beat * (1 - st.flat));
+    gl.uniform1f(U.uIgn, st.ign); gl.uniform1f(U.uPh, ph); gl.uniform1f(U.uSc, cv.width); gl.uniform1f(U.uFlat, clamp(st.flat, -0.2, 1));
+    gl.uniform2f(U.uTp, tch.px, tch.py); gl.uniform2f(U.uPull, tch.x, tch.y);
+    gl.uniform1f(U.uPress, tch.press); gl.uniform1f(U.uHold, tch.hold); gl.uniform1f(U.uWave, tch.wave);
+    gl.uniform1f(U.uRs, lay.rs); gl.uniform1f(U.uJig, tch.jig);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  if (bugunGorunur) {
+    for (const l of L) {
+      const a = ang + (l.i * TAU) / 6 - Math.PI / 2, wob = RM ? 0 : l.k * 2.5 * Math.sin(time * 2.1 + l.i * 1.7);
+      const ry = lerp(lay.ry0, lay.ry1, l.k) + wob;
+      const x = cx + Math.cos(a) * lay.rx * l.r, y = lay.cy + Math.sin(a) * ry * l.r;
+      l.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-50%) scale(${(lay.ks * (0.5 + 0.5 * l.r)).toFixed(3)})`;
+      l.el.style.opacity = Math.min(1, l.r * 1.6); l.el.style.pointerEvents = l.r > 0.9 ? 'auto' : 'none';
+    }
+    const dr = Math.max(40, lay.rx - 52 * lay.ks);
+    dokun.style.left = cx - dr + 'px'; dokun.style.top = lay.cy - dr + 'px'; dokun.style.width = dokun.style.height = dr * 2 + 'px';
+    [[$('yIc'), lay.ry0], [$('yDis'), lay.ry1]].forEach(([e, ry]) => { e.setAttribute('cx', cx); e.setAttribute('cy', lay.cy); e.setAttribute('rx', lay.rx); e.setAttribute('ry', ry); });
+    $('yDis').style.strokeDashoffset = RM ? 0 : -time * 6;
+  }
+  if (ekran === 'trend' || mesgul) {
+    pA = RM ? st.P : pA + (st.P - pA) * (1 - Math.exp(-ds * 7));
+    const scl = (y) => `translate(0 ${(tl.alt * (1 - y)).toFixed(2)}) scale(1 ${Math.max(0.0001, y).toFixed(4)})`;
+    $('gOn').setAttribute('transform', `translate(${(cx - st.P * DW).toFixed(2)} 0) ${scl(st.yuk)}`);
+    $('gArka').setAttribute('transform', `translate(${(cx - pA * DW).toFixed(2)} 0) ${scl(st.yukA)}`);
+    const pc = clamp(st.P, 0, N - 1), ny = tl.alt - (tl.alt - yy(cr(cur.v, pc))) * st.yuk;
+    $('nokta').setAttribute('cy', ny.toFixed(1)); $('nokta').style.opacity = st.yuk;
+    ['bantDolgu', 'bantUst', 'bantAlt', 'bantYazi'].forEach((id) => ($(id).style.opacity = st.yuk));
+    $('balon').style.transform = `translate(${cx + 16}px,${Math.max(tl.ust - 92, ny - 70).toFixed(1)}px)`;
+    const e = clamp(cr(T[sonOlcum].iyi, pc), 0, 1);
+    $('gok').style.background = `linear-gradient(180deg,${cTop(e)} 0%,${cMid(e)} ${Math.round((tl.ust / H) * 62)}%,${cBot(e)} ${Math.round((tl.alt / H) * 86)}%)`;
+    $('onDolgu').setAttribute('fill', cYakin(e)); $('arkaDolgu').setAttribute('fill', cUzak(e));
+    $('onSirt').setAttribute('stroke', cSirt(e)); $('onSirt').setAttribute('stroke-width', 2.4);
+    $('arkaSirt').setAttribute('stroke', cSirt(e)); $('arkaSirt').setAttribute('stroke-opacity', 0.35); $('arkaSirt').setAttribute('stroke-width', 1.2);
+    const gy = tl.ust + 30 - e * 70 + (1 - st.gunesY) * 160, [gr, gg, gb] = gsap.utils.splitColor(cGunes(e));
+    $('gunes').style.transform = `translate(${cx - 104}px,${gy.toFixed(1)}px) scale(${(0.8 + e * 0.28 + (RM ? 0 : Math.sin(time * 0.9) * 0.012)).toFixed(3)})`;
+    $('gunes').style.background = `radial-gradient(circle,rgb(${gr},${gg},${gb}) 0 34%,rgba(${gr},${gg},${gb},.6) 46%,rgba(${gr},${gg},${gb},0) 70%)`;
+    const yo = Math.pow(1 - e, 1.4);
+    for (const s of yildizlar) s.style.opacity = RM ? yo * 0.7 : yo * (0.45 + 0.55 * Math.sin(time * s.dataset.f + +s.dataset.o));
+    gunYaz(clamp(Math.round(st.P), 0, N - 1), true);
+  }
+});
+
+/* ================= Açılış ================= */
+sigdir(); olcumSec(0, false); sec(6, true); st.cy = lay.cy;
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (ekran === 'bugun') { yerlesimB(false); if (!mesgul) st.cy = lay.cy; } else yerlesimT(); });
+if (!RM) {
+  L.forEach((l) => { l.val = 0; l.deg.textContent = '0'; });
+  const g = GUNLER[N - 1];
+  gsap.set($('bHukum').querySelectorAll('.h'), { autoAlpha: 0 });
+  gsap.set(['#bTarih', '#bGer'], { autoAlpha: 0, y: 12 }); gsap.set('#yor', { autoAlpha: 0 });
+  mesgul = true; // açılış bitmeden ekran değiştirilmesin
+  gsap.timeline({ delay: 0.3 })
+    .add(() => (mesgul = false), 1.9)
+    .to(st, { ign: 1, duration: 2, ease: 'elastic.out(1,0.5)' }, 0)
+    .add(() => gsap.fromTo($('bHukum').querySelectorAll('.h'), { yPercent: 85, autoAlpha: 0, rotation: 7 }, { yPercent: 0, autoAlpha: 1, rotation: 0, duration: 0.65, stagger: 0.022, ease: 'back.out(1.8)' }), 0.4)
+    .to(['#bTarih', '#bGer'], { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.14, ease: 'power3.out' }, 0.65)
+    .to(L, { r: 1, duration: 1.2, stagger: 0.085, ease: 'back.out(1.5)' }, 0.55)
+    .add(() => L.forEach((l, j) => gsap.to(l, { val: g.d[l.o.id], duration: 1.3, delay: j * 0.08, ease: 'power2.out', onUpdate: () => (l.deg.textContent = Math.round(l.val)) })), 0.6)
+    .to('#yor', { autoAlpha: 1, duration: 1.2 }, 1.2)
+    .from('.gun', { y: 22, autoAlpha: 0, duration: 0.7, stagger: 0.045, ease: 'power3.out' }, 1.0)
+    .from(['.sekme', '#sesBtn'], { autoAlpha: 0, duration: 0.8 }, 1.3);
+}
+})();
+</script>
+</body>
+</html>

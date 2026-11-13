@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c0812">
+<title>Nabız · prototip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--isaret:#ffc2a3;--metin:#fff6ec}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:#050308;overflow:hidden}
+body{font-family:'Onest',system-ui,sans-serif;color:var(--metin);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+::selection{background:#ffc2a3;color:#1a0d14}
+.sahne{height:100dvh;display:grid;place-items:center}
+.tel{width:390px;height:844px;position:relative;overflow:hidden;border-radius:46px;background:#0c0812;flex:none;box-shadow:0 40px 120px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.07)}
+.tel.mob{position:fixed;left:0;top:0;border-radius:0;transform-origin:0 0;box-shadow:none}
+canvas,.yor{position:absolute;inset:0;width:100%;height:100%}
+.yor{pointer-events:none}
+.yor ellipse{fill:none;stroke:rgba(255,246,236,.13);stroke-width:1}
+.yor .dis{stroke-dasharray:2 9;stroke:rgba(255,194,163,.34)}
+header{position:absolute;left:26px;right:26px;top:calc(56px + env(safe-area-inset-top))}
+#tarih{font-size:13px;font-weight:500;color:rgba(255,246,236,.74)}
+h1{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100,'opsz' 144;font-weight:430;font-size:46px;line-height:1.02;letter-spacing:-.025em;margin-top:8px;min-height:47px}
+.kel{display:inline-block;white-space:nowrap}.h{display:inline-block;will-change:transform}
+#gerekce{font-size:15px;line-height:1.45;margin-top:10px;color:rgba(255,246,236,.88);max-width:32ch;text-wrap:pretty}
+.et{position:absolute;left:0;top:0;min-width:48px;min-height:48px;padding:4px 6px;background:none;border:0;color:inherit;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;will-change:transform,opacity;cursor:pointer;text-shadow:0 1px 14px rgba(8,4,14,.95),0 0 3px rgba(8,4,14,.8);border-radius:14px}
+.et .deger{font-size:25px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.et .ad{font-size:11.5px;font-weight:500;color:rgba(255,246,236,.82);margin-top:4px;white-space:nowrap}
+.et .dr{display:none;font-size:11.5px;font-weight:600;color:var(--isaret);align-items:center;gap:3px;margin-top:2px;white-space:nowrap}
+.et .dr svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.et.sap .dr{display:inline-flex}.et.sap .deger{color:var(--isaret)}
+.et .ar{display:none;font-size:11.5px;color:rgba(255,246,236,.82);margin-top:2px;white-space:nowrap}
+.et.acik .ar{display:block}
+.et.acik{background:rgba(12,8,18,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:10px 12px;z-index:3}
+.et:focus-visible,.gun:focus-visible{outline:2px solid var(--isaret);outline-offset:2px}
+.gunler{position:absolute;left:14px;right:14px;bottom:calc(20px + env(safe-area-inset-bottom));display:flex;justify-content:space-between}
+.gun{width:48px;height:74px;background:none;border:0;color:rgba(255,246,236,.62);font:inherit;font-size:11.5px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:9px;cursor:pointer;border-radius:12px}
+.gun i{display:block;width:calc(8px + var(--e)*17px);height:calc(8px + var(--e)*17px);border-radius:50%;background:var(--c);box-shadow:0 0 calc(4px + var(--e)*16px) var(--c);transition:outline-color .3s;outline:1.5px solid transparent;outline-offset:4px}
+.gun .yuva{height:34px;display:grid;place-items:center}
+.gun[aria-pressed=true]{color:var(--metin);font-weight:600}
+.gun[aria-pressed=true] i{outline-color:rgba(255,246,236,.85)}
+</style>
+</head>
+<body>
+<div class="sahne">
+  <main class="tel" id="tel">
+    <canvas id="gl" aria-hidden="true"></canvas>
+    <svg class="yor" id="yor" aria-hidden="true"><ellipse class="ic" id="yIc"/><ellipse class="dis" id="yDis"/></svg>
+    <header>
+      <p id="tarih"></p>
+      <h1 id="hukum"></h1>
+      <p id="gerekce"></p>
+    </header>
+    <div id="etiketler"></div>
+    <nav class="gunler" id="gunler" aria-label="Son yedi gün"></nav>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="veri.js"></script>
+<script>
+(() => {
+const { OLCUMLER: O, GUNLER, durum, OK, DURUM_METIN } = VERI;
+const G7 = GUNLER.slice(-7);
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TAU = Math.PI * 2, W = 390;
+const tel = document.getElementById('tel'), cv = document.getElementById('gl');
+const elH = document.getElementById('hukum'), elG = document.getElementById('gerekce'), elT = document.getElementById('tarih');
+let H = 844, S = 1, cx = 195, cy = 450;
+const st = { e: G7[6].e, bpm: G7[6].d.nabiz, ign: RM ? 1 : 0, orbit: 1 };
+let sel = 6;
+
+/* ---------- WebGL: yaşayan şekil ---------- */
+const gl = cv.getContext('webgl', { antialias: false, alpha: false });
+const FS = `precision highp float;
+uniform vec2 uC;uniform float uT,uE,uBeat,uIgn,uPh,uSc;
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+vec4 tis(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+float sn(vec3 v){const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.5,1.0,2.0);
+vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.0-g;
+vec3 i1=min(g.xyz,l.zxy);vec3 i2=max(g.xyz,l.zxy);vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;
+i=mod289(i);vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+float n_=0.142857142857;vec3 ns=n_*D.wyz-D.xzx;vec4 j=p-49.0*floor(p*ns.z*ns.z);
+vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.0*x_);vec4 x=x_*ns.x+ns.yyyy;vec4 y=y_*ns.x+ns.yyyy;vec4 h=1.0-abs(x)-abs(y);
+vec4 b0=vec4(x.xy,y.xy);vec4 b1=vec4(x.zw,y.zw);vec4 s0=floor(b0)*2.0+1.0;vec4 s1=floor(b1)*2.0+1.0;vec4 sh=-step(h,vec4(0.0));
+vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);
+vec4 nr=tis(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));p0*=nr.x;p1*=nr.y;p2*=nr.z;p3*=nr.w;
+vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);m=m*m;
+return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));}
+vec3 pal(float e,float k){
+ vec3 lc=vec3(1.00,0.52,0.24),le=vec3(0.62,0.17,0.86);
+ vec3 mc=vec3(1.00,0.83,0.52),me=vec3(0.93,0.33,0.56);
+ vec3 hc=vec3(0.96,1.00,0.74),he=vec3(0.12,0.82,0.68);
+ vec3 a=mix(lc,le,k),b=mix(mc,me,k),c=mix(hc,he,k);
+ return e<0.5?mix(a,b,e*2.0):mix(b,c,e*2.0-2.0+1.0);}
+void main(){
+ vec2 p=(gl_FragCoord.xy-uC)/uSc;float t=uT;float len=length(p);
+ float r0=mix(0.165,0.232,uE)*(0.12+0.88*uIgn)*(1.0+0.04*uBeat);
+ float amp=mix(0.062,0.022,uE);float sp=mix(0.62,0.20,uE);
+ float n=sn(vec3(p*2.3,t*sp))*0.62+sn(vec3(p*5.1+3.1,t*sp*1.7))*0.3;
+ float d=len-r0-amp*n*uIgn;
+ vec3 bgL=vec3(0.052,0.030,0.072),bgH=vec3(0.018,0.070,0.082);
+ vec3 bg=mix(bgL,bgH,uE)*(1.0-0.42*length(p*vec2(1.0,0.55)));
+ float depth=clamp(-d/max(r0,0.001),0.0,1.0);
+ float flow=sn(vec3(p*3.4-vec2(0.0,t*0.16),t*0.22))*0.5+0.5;
+ float k=clamp(1.0-depth*1.45+flow*0.42-0.08,0.0,1.0);
+ vec3 col=pal(uE,k);
+ vec2 hp=p-vec2(-0.30,0.36)*r0;
+ col+=smoothstep(0.62,0.0,length(hp)/max(r0,0.001))*0.34*mix(vec3(1.0,0.82,0.66),vec3(1.0),uE);
+ float sh=dot(p/max(len,0.0001),normalize(vec2(0.55,-0.83)));
+ col*=1.0-0.42*smoothstep(-0.1,0.9,sh)*(1.0-depth*0.75);
+ col*=mix(0.80,1.04,uE)+0.13*uBeat;
+ float g=exp(-max(d,0.0)*mix(10.5,6.2,uE))*mix(0.50,0.92,uE)*(0.82+0.34*uBeat)*uIgn;
+ vec3 c=bg+pal(uE,0.86)*g;
+ float rr=r0+uPh*0.5;
+ c+=pal(uE,0.55)*exp(-abs(len-rr-amp*n*0.5)*110.0)*(1.0-uPh)*(1.0-uPh)*0.42*uIgn;
+ c=mix(c,col,smoothstep(0.0035,-0.0035,d));
+ c+=(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233))+t)*43758.5453)-0.5)*0.035;
+ gl_FragColor=vec4(c,1.0);}`;
+let U = null;
+if (gl) {
+  const mk = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); return s; };
+  const pr = gl.createProgram();
+  gl.attachShader(pr, mk(gl.VERTEX_SHADER, 'attribute vec2 a;void main(){gl_Position=vec4(a,0.0,1.0);}'));
+  gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(pr); gl.useProgram(pr);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const a = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+  U = {}; ['uC', 'uT', 'uE', 'uBeat', 'uIgn', 'uPh', 'uSc'].forEach((n) => (U[n] = gl.getUniformLocation(pr, n)));
+} else {
+  cv.style.background = 'radial-gradient(circle at 50% 53%,#ff9a5c 0,#8a3bd0 18%,#0c0812 38%)';
+}
+
+/* ---------- Ölçüm etiketleri ---------- */
+const kap = document.getElementById('etiketler');
+const L = O.map((o, i) => {
+  const el = document.createElement('button');
+  el.className = 'et'; el.type = 'button';
+  el.innerHTML = `<span class="deger">0</span><span class="ad">${o.ad}</span><span class="dr"></span><span class="ar">normal ${o.min}–${o.max}${o.birim}</span>`;
+  kap.appendChild(el);
+  const l = { o, el, deg: el.querySelector('.deger'), dr: el.querySelector('.dr'), k: 0, r: RM ? 1 : 0, val: 0 };
+  el.addEventListener('click', (ev) => { ev.stopPropagation(); const a = !el.classList.contains('acik'); kapat(); if (a) { el.classList.add('acik'); el.setAttribute('aria-expanded', 'true'); } hiz(); });
+  return l;
+});
+function kapat() { L.forEach((l) => { l.el.classList.remove('acik'); l.el.setAttribute('aria-expanded', 'false'); }); }
+function hiz() { gsap.to(st, { orbit: document.querySelector('.et.acik') ? 0 : 1, duration: 0.6, ease: 'power2.out' }); }
+tel.addEventListener('click', () => { kapat(); hiz(); });
+
+/* ---------- Metin ---------- */
+function bol(el, txt) {
+  el.textContent = ''; el.setAttribute('aria-label', txt); const out = [];
+  txt.split(' ').forEach((w, wi, a) => {
+    const ws = document.createElement('span'); ws.className = 'kel'; ws.setAttribute('aria-hidden', 'true');
+    [...w].forEach((ch) => { const s = document.createElement('span'); s.className = 'h'; s.textContent = ch; ws.appendChild(s); out.push(s); });
+    el.appendChild(ws); if (wi < a.length - 1) el.appendChild(document.createTextNode(' '));
+  });
+  return out;
+}
+function yaz(el, txt) {
+  if (el._tl) el._tl.kill();
+  const eski = [...el.querySelectorAll('.h')];
+  if (RM) { bol(el, txt); return; }
+  const tl = (el._tl = gsap.timeline());
+  if (eski.length) tl.to(eski, { yPercent: -70, autoAlpha: 0, duration: 0.2, stagger: 0.008, ease: 'power2.in' });
+  tl.add(() => { gsap.from(bol(el, txt), { yPercent: 85, autoAlpha: 0, rotation: 7, duration: 0.65, stagger: 0.022, ease: 'back.out(1.8)' }); });
+}
+
+/* ---------- Gün şeridi ---------- */
+const renk = gsap.utils.interpolate(['#ff7a45', '#ffb07a', '#c9f5b4']);
+const nav = document.getElementById('gunler');
+const gunBtn = G7.map((g, i) => {
+  const b = document.createElement('button'); b.className = 'gun'; b.type = 'button';
+  b.style.setProperty('--e', g.e); b.style.setProperty('--c', renk(g.e));
+  b.setAttribute('aria-label', `${g.gunUzun} ${g.gun} ${g.ay}: ${g.hukum}`);
+  b.innerHTML = `<span class="yuva"><i></i></span>${g.gunKisa}`;
+  b.addEventListener('click', (ev) => { ev.stopPropagation(); sec(i); });
+  nav.appendChild(b); return b;
+});
+
+function sec(i, ilk) {
+  sel = i; const g = G7[i]; const D = RM || ilk ? 0 : 1;
+  kapat(); hiz();
+  gunBtn.forEach((b, j) => b.setAttribute('aria-pressed', j === i));
+  elT.textContent = `${g.gunUzun}, ${g.gun} ${g.ay}`;
+  gsap.to(st, { e: g.e, bpm: g.d.nabiz, duration: 1.5 * D, ease: 'power3.inOut', overwrite: 'auto' });
+  L.forEach((l, j) => {
+    const v = g.d[l.o.id], du = durum(l.o, v);
+    l.el.classList.toggle('sap', du !== 'ok');
+    l.dr.innerHTML = du === 'ok' ? '' : OK[du] + DURUM_METIN[du];
+    l.el.setAttribute('aria-label', `${l.o.ad} ${v}${l.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}`);
+    gsap.to(l, { k: du === 'ok' ? 0 : 1, duration: 1.1 * D, delay: j * 0.045 * D, ease: 'back.out(1.7)', overwrite: 'auto' });
+    gsap.to(l, { val: v, duration: (ilk ? 1.4 : 0.9) * (RM ? 0 : 1), delay: ilk && !RM ? 0.6 + j * 0.08 : 0, ease: 'power2.out',
+      onUpdate: () => (l.deg.textContent = Math.round(l.val)) });
+  });
+  if (!ilk) {
+    yaz(elH, g.hukum);
+    if (RM) elG.textContent = g.gerekce;
+    else gsap.timeline().to(elG, { autoAlpha: 0, y: -6, duration: 0.18 }).add(() => (elG.textContent = g.gerekce)).fromTo(elG, { y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power3.out' });
+  } else elG.textContent = g.gerekce;
+}
+
+/* ---------- Ölçek ---------- */
+const yIc = document.getElementById('yIc'), yDis = document.getElementById('yDis');
+const RX = [148, 152], RY = [146, 188];
+function sigdir() {
+  const mob = innerWidth <= 520;
+  S = mob ? innerWidth / W : Math.min(1, (innerHeight - 32) / 844);
+  H = mob ? innerHeight / S : 844;
+  tel.classList.toggle('mob', mob); tel.style.height = H + 'px'; tel.style.transform = `scale(${S})`;
+  cy = Math.round(H * 0.535);
+  const dpr = Math.min(devicePixelRatio || 1, 2) * S;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  if (gl) gl.viewport(0, 0, cv.width, cv.height);
+  [[yIc, 0], [yDis, 1]].forEach(([e, k]) => { e.setAttribute('cx', cx); e.setAttribute('cy', cy); e.setAttribute('rx', RX[k]); e.setAttribute('ry', RY[k]); });
+}
+addEventListener('resize', sigdir); sigdir();
+
+/* ---------- Döngü ---------- */
+let ang = -0.35, bt = 0, curT = 60 / st.bpm, ph = 1, beat = 0;
+gsap.ticker.add((time, dt) => {
+  const ds = Math.min(dt, 50) / 1000;
+  if (!RM) {
+    ang += ds * 0.075 * st.orbit;
+    bt += ds;
+    if (bt > curT) { bt -= curT; curT = (60 / st.bpm) * (1 + (Math.random() - 0.5) * (1 - st.e) * 0.38); }
+    ph = bt / curT;
+    beat = Math.exp(-ph * 10) + (ph > 0.2 ? 0.55 * Math.exp(-(ph - 0.2) * 13) : 0);
+  }
+  if (U) {
+    gl.uniform2f(U.uC, (cx / W) * cv.width, (1 - cy / H) * cv.height);
+    gl.uniform1f(U.uT, RM ? 3 : time); gl.uniform1f(U.uE, st.e); gl.uniform1f(U.uBeat, beat);
+    gl.uniform1f(U.uIgn, st.ign); gl.uniform1f(U.uPh, ph); gl.uniform1f(U.uSc, cv.width);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  for (let i = 0; i < L.length; i++) {
+    const l = L[i], a = ang + (i * TAU) / 6 - Math.PI / 2;
+    const wob = RM ? 0 : l.k * 3.2 * Math.sin(time * 2.1 + i * 1.7);
+    const rx = RX[0] + (RX[1] - RX[0]) * l.k + wob, ry = RY[0] + (RY[1] - RY[0]) * l.k + wob;
+    const x = cx + Math.cos(a) * rx * l.r, y = cy + Math.sin(a) * ry * l.r;
+    l.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-50%) scale(${(0.55 + 0.45 * l.r).toFixed(3)})`;
+    l.el.style.opacity = Math.min(1, l.r * 1.6);
+  }
+  yDis.style.strokeDashoffset = RM ? 0 : -time * 6;
+});
+
+/* ---------- Açılış ---------- */
+sec(6, true);
+if (RM) { bol(elH, G7[6].hukum); }
+else {
+  gsap.set([elT, elG], { autoAlpha: 0, y: 12 });
+  gsap.set('#yor', { autoAlpha: 0 });
+  gsap.timeline({ delay: 0.3 })
+    .to(st, { ign: 1, duration: 2, ease: 'elastic.out(1,0.5)' }, 0)
+    .add(() => yaz(elH, G7[6].hukum), 0.4)
+    .to([elT, elG], { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.14, ease: 'power3.out' }, 0.65)
+    .to(L, { r: 1, duration: 1.2, stagger: 0.085, ease: 'back.out(1.5)' }, 0.55)
+    .to('#yor', { autoAlpha: 1, duration: 1.2 }, 1.2)
+    .from('.gun', { y: 28, autoAlpha: 0, duration: 0.7, stagger: 0.045, ease: 'power3.out' }, 1.0);
+}
+})();
+</script>
+</body>
+</html>

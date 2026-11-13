@@ -1,0 +1,13 @@
+{
+  "name": "garmin-analizer",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "test": "node --test worker/test/ tools/",
+    "kesif": "node tools/kesif.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

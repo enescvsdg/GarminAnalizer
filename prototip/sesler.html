@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c0812">
+<title>Ses seçimi · Garmin Koçu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--isaret:#ffc9a6;--metin:#fff6ec}
+*{box-sizing:border-box;margin:0}
+body{font-family:'Onest',system-ui,sans-serif;color:var(--metin);background:#0c0812;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+  padding:calc(28px + env(safe-area-inset-top)) 18px calc(40px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto}
+h1{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100,'opsz' 144;font-weight:430;font-size:38px;line-height:1.05;letter-spacing:-.025em}
+.giris{font-size:15px;line-height:1.5;color:rgba(255,246,236,.82);margin-top:10px}
+h2{font-size:17px;font-weight:600;margin:30px 0 4px}
+h2+p{font-size:13.5px;color:rgba(255,246,236,.72);margin-bottom:12px;line-height:1.45}
+.liste{display:grid;gap:8px}
+.ses{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 14px;text-align:left;font:inherit;color:inherit;cursor:pointer;
+  background:rgba(255,246,236,.06);border:1px solid rgba(255,246,236,.13);border-radius:18px;transition:background .15s,border-color .15s,transform .12s}
+.ses:active{transform:scale(.98);background:rgba(255,246,236,.14)}
+.ses b{display:block;font-size:16px;font-weight:600}
+.ses span span{display:block;font-size:13px;color:rgba(255,246,236,.72);margin-top:1px}
+.ses>span{flex:1}
+.ses i{flex:none;width:24px;height:24px;border-radius:50%;border:1.5px solid rgba(255,246,236,.4);display:grid;place-items:center}
+.ses[aria-pressed=true]{border-color:var(--isaret);background:rgba(255,201,166,.12)}
+.ses[aria-pressed=true] i{border-color:var(--isaret);background:var(--isaret)}
+.ses[aria-pressed=true] i::after{content:"";width:10px;height:6px;border-left:2px solid #1a0d14;border-bottom:2px solid #1a0d14;transform:rotate(-45deg) translate(1px,-1px)}
+:focus-visible{outline:2px solid var(--isaret);outline-offset:2px}
+.alt{margin-top:30px;font-size:14px;line-height:1.5;color:rgba(255,246,236,.8)}
+.alt a{color:var(--isaret)}
+#ozet{margin-top:10px;padding:12px 14px;border-radius:14px;background:rgba(255,246,236,.07);font-size:14px;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<h1>Hangi sesleri seçelim?</h1>
+<p class="giris">Bir satıra dokun: ses çalar ve seçilir. Seçimin kaydedilir, uygulama hemen onu kullanır. Telefonun sessizde olmasın.</p>
+
+<h2>Butona basınca</h2>
+<p>Bir ölçüme ya da düğmeye dokunduğunda çalan kısa ses.</p>
+<div class="liste" id="tik"></div>
+
+<h2>Ekran geçişi</h2>
+<p>Bugün ile Trend arasında geçerken çalar. Dokununca önce gidiş, sonra dönüş sesi gelir.</p>
+<div class="liste" id="gecis"></div>
+
+<h2>Sayı yerine oturunca</h2>
+<p>Dokunduğun sayı Trend'de yerine vardığında çalar.</p>
+<div class="liste" id="can"></div>
+
+<p class="alt">Seçimin:</p>
+<div id="ozet"></div>
+<p class="alt"><a href="uygulama.html">Uygulamaya dön</a> ve seçtiğin seslerle dene.</p>
+
+<script src="ses.js"></script>
+<script>
+(() => {
+  const AD = { tik: 'Buton', gecis: 'Geçiş', can: 'Oturma' };
+  function ozet() {
+    document.getElementById('ozet').textContent = ['tik', 'gecis', 'can'].map((t) => `${AD[t]}: ${(SES.SECENEK[t][SES.ayar[t]] || {}).ad || '?'}`).join('  |  ');
+  }
+  for (const tur of ['tik', 'gecis', 'can']) {
+    const kap = document.getElementById(tur);
+    for (const [id, s] of Object.entries(SES.SECENEK[tur])) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'ses';
+      b.setAttribute('aria-pressed', SES.ayar[tur] === id);
+      b.innerHTML = `<span><b>${s.ad}</b><span>${s.tarif}</span></span><i aria-hidden="true"></i>`;
+      b.addEventListener('click', () => {
+        SES.ac(); SES.ayar.acik = true; SES.ayar[tur] = id; SES.kaydet();
+        kap.querySelectorAll('.ses').forEach((x) => x.setAttribute('aria-pressed', x === b));
+        if (tur === 'gecis') { SES.cal(tur, id, true); setTimeout(() => SES.cal(tur, id, false), 1100); }
+        else if (tur === 'can') SES.cal(tur, id, 0.6);
+        else SES.cal(tur, id);
+        ozet();
+      });
+      kap.appendChild(b);
+    }
+  }
+  ozet();
+})();
+</script>
+</body>
+</html>
