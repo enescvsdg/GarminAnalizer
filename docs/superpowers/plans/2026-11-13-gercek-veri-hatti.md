@@ -557,3 +557,33 @@ test('apiYanitinda NaN ve undefined yok (ek dahil)', () => {});
 - **Task 4:** `gunleriCikar` yalnız `{ dailysummaries, sleep, hrv }` alır (stress/steps/bodybattery uç noktaları kullanılmaz) ve yukarıdaki ek `daily` sütunlarını da doldurur (`training_load` hariç). `intensity_minutes = moderate + 2 × vigorous`. `aktiviteleriCikar` ek `activities` sütunlarını da doldurur. Alan yolları `docs/garmin-alanlar.md`'dedir.
 - **Task 5:** Eşitleme dört uç nokta çağırır: dailysummaries, sleep, hrv, activities. Aktiviteler `aktiviteUpsert` ile yazılır. Çekilen aralıkta satırı olan her gün için `training_load` = o günün aktivitelerinin `training_load` toplamı (aktivite yoksa 0; aktiviteler uç noktası hata verdiyse o turda yazılmaz). Geçmiş parçası 28 gün.
 - **Task 8:** Trend seçicisi dokuz ölçümü gösterir; Bugün yörüngesinde yalnız `kart: true` olan altı ölçüm durur. Trend'de seçili gün için ek ayrıntı satırı: uykuda evre çubuğu (derin / hafif / REM / uyanık, dakikalarıyla) ve "İhtiyaç: 8s 10dk"; Body Battery'de "+62 doldu, −64 bitti"; streste dağılım çubuğu (dinlenme / düşük / orta / yüksek); HRV'de "Haftalık ortalama 53 ms". Ayrıntı verisi null ise satır gösterilmez. Çubuklarda her dilim renk dışında etiketle de verilir.
+
+---
+
+## Ek B (2026-11-14): Gemini yorumu
+
+Kullanıcı kararı: bugünün hüküm ve gerekçesini Gemini yazar; ücretsiz katman kullanılır. Yürütme sırası: 8 → **12a** → **12b** → 9.
+
+Bağlayıcı kurallar:
+- Gemini'ye yalnızca **bugünün** özet sayıları gider: dokuz ölçümün değeri, normal aralığı, durumu (altında/normalde/üstünde), bandın kişisel olup olmadığı, enerji puanı ve şablon hükmün kademesi. Ad, tarih, haftanın günü, ham kayıt, aktivite, geçmiş gün ve konum **gitmez**.
+- İstek durumsuzdur (`store: false`); Google tarafında saklanması istenmez.
+- Gemini bir süs katmanıdır: yanıt gelmezse, bozuksa, kurala uymazsa ya da kapalıysa şablon metin kullanılır. Gemini hiçbir zaman eşitlemeyi ya da API'yi bozmaz.
+- Enerji puanı, bantlar ve durumlar Gemini'den **etkilenmez**; Gemini yalnızca iki metni yazar.
+- Kullanıcı Ayarlar'dan kapatabilir; kapalıyken Gemini'ye hiçbir istek gitmez.
+- `GEMINI_API_KEY` yalnızca Worker secret'ıdır. Model adı `GEMINI_MODEL` değişkenidir (varsayılan `gemini-3.5-flash-lite`).
+- Günde en çok 8 Gemini isteği; aynı girdi için ikinci istek atılmaz.
+
+### Task 12a: Worker — Gemini yorumu ve ayar
+
+**Files:**
+- Create: `worker/src/yorum/gemini.js`, `worker/src/yorum/yorum.js`, `worker/test/gemini.test.mjs`, `worker/test/yorum.test.mjs`
+- Modify: `worker/src/api/router.js`, `worker/src/worker.js`, `worker/wrangler.toml`, `worker/test/router.test.mjs`
+
+Ayrıntılı kararlar görev tanımındadır (`task-12a-brief.md`).
+
+### Task 12b: Arayüz — yorum kaynağı ve ayar anahtarı
+
+**Files:**
+- Modify: `prototip/veri-canli.js`, `prototip/veri-canli.test.mjs`, `prototip/uygulama.html`
+
+Ayarlar'a "Yapay zekâ yorumu" anahtarı (bağlıyken etkin); gerekçenin altında yorum Gemini'den geldiyse küçük "yapay zekâ yorumu" etiketi. Ayrıntılar `task-12b-brief.md`.

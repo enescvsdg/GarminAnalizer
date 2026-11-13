@@ -253,6 +253,16 @@ worker ikisini de önbelleğe alır.
 - Repo herkese açık olacağından test örnekleri anonimleştirilir veya
   `.gitignore`'da tutulur.
 
+### Gemini'ye giden veri (2026-11-14)
+
+Bugünün hüküm ve gerekçesini Gemini yazar (ücretsiz katman; Google bu katmandaki veriyi ürün geliştirmede kullanabilir ve insan incelemesine açabilir). Bu yüzden gönderilen veri en aza indirilir:
+
+- Giden: yalnız bugünün dokuz ölçüm değeri, normal aralıkları, durumları, enerji puanı ve hüküm kademesi.
+- Gitmeyen: ad, tarih, haftanın günü, ham Garmin kaydı, aktiviteler, geçmiş günler, konum.
+- İstek durumsuzdur (`store: false`). Anahtar yalnız Worker secret'ıdır.
+- Ayarlar'daki "Yapay zekâ yorumu" kapatılınca Gemini'ye istek gitmez; şablon metin gösterilir.
+- Gemini yanıt vermezse ya da kurala uymayan metin dönerse şablon metin gösterilir.
+
 ## 12. Test
 
 Node test koşucusu (Fittakip gibi).
