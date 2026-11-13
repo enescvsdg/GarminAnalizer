@@ -21,9 +21,15 @@ export default {
       tokenYaz: (t) => durumYaz(env.DB, 'garmin_token', t),
       simdi: () => Math.floor(Date.now() / 1000), // client.js saniye bekler
     });
+    let neden = null; // key reddinde Garmin'in HTTP kodu (teşhis için); sağlık verisi ya da gizli değer içermez
+    const calistir = async () => {
+      const r = await esitle({ istemci, db: env.DB, simdiMs });
+      neden = r.neden ?? null;
+      return r;
+    };
     ctx.waitUntil(
-      zamanliEsitle({ db: env.DB, simdiMs, calistir: () => esitle({ istemci, db: env.DB, simdiMs }) })
-        .then((s) => console.log(s.calisti ? `esitleme: ${s.durum}` : `atlandi: ${s.neden}`))
+      zamanliEsitle({ db: env.DB, simdiMs, calistir })
+        .then((s) => console.log(s.calisti ? `esitleme: ${s.durum}${neden ? ` (${neden})` : ''}` : `atlandi: ${s.neden}`))
         .catch(hataYaz),
     );
   },

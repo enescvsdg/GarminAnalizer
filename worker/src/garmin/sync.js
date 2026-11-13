@@ -80,6 +80,6 @@ export async function esitle({ istemci, db, simdiMs }) {
   } catch (e) {
     if (!(e instanceof GarminKeyHatasi)) throw e;
     await durumYaz(db, 'key_durum', 'gecersiz');
-    return { durum: 'key-gecersiz', gecmisHata: false };
+    return { durum: 'key-gecersiz', gecmisHata: false, neden: e.message }; // ileti yalnız uç nokta adı ve HTTP kodu taşır
   }
 }

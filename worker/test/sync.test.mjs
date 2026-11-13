@@ -142,7 +142,9 @@ test('GarminKeyHatasi aralikEsitle dışına fırlar', async () => {
 test('esitle key hatasında key_durum gecersiz yazar, durum döner, son_esitleme dokunulmaz', async () => {
   await durumYaz(db, 'son_esitleme', 111);
   const r = await esitle({ istemci: sahte({ sleep: new GarminKeyHatasi('x') }), db, simdiMs: SIMDI });
-  assert.deepEqual(r, { durum: 'key-gecersiz', gecmisHata: false });
+  assert.equal(r.durum, 'key-gecersiz');
+  assert.equal(r.gecmisHata, false);
+  assert.equal(r.neden, 'x'); // hata iletisi (uç nokta + HTTP kodu) teşhis için aktarılır
   assert.equal(await durumOku(db, 'key_durum'), 'gecersiz');
   assert.equal(await durumOku(db, 'son_esitleme'), 111);
 });
