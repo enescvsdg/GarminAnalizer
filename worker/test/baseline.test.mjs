@@ -37,19 +37,48 @@ test('28 gün sabit 80 uyku: sigma tabana oturur', () => {
   assert.equal(b.kisisel, true);
 });
 
-test('bant hesabı tarihin kendisini ve null günleri katmaz', () => {
-  const s = [
-    ...seri('2026-10-15', Array(28).fill(80), 'sleep_score'),
-    { date: '2026-11-12', sleep_score: 10 },
-    { date: '2026-11-13', sleep_score: 10 },
-  ];
-  s[3].sleep_score = null; // bir gün boş
-  const b = bant(s, uyku, '2026-11-12');
-  assert.equal(b.medyan, 80);
-  assert.equal(b.kisisel, true);
-  // 28 günlük pencerenin dışındaki eski satır da yok sayılır
-  const eski = [{ date: '2026-10-01', sleep_score: 0 }, ...seri('2026-10-15', Array(28).fill(80), 'sleep_score')];
-  assert.equal(bant(eski, uyku, '2026-11-12').medyan, 80);
+// Pencere sınırları: 14 dolu değer eşiği kisisel'i belirler; bir sınır satırının
+// eksik ya da fazla sayılması sayıyı 13/14 arasında oynatır.
+const T = '2026-11-12';
+const gunler = (ofsetler, v = 80) => ofsetler.map((n) => ({ date: gunEkle(T, n), sleep_score: v }));
+const aralik = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+
+test('bant penceresi tam olarak tarih-28 ... tarih-1 günlerini kapsar', () => {
+  const tam = gunler([-28, ...aralik(-14, -3), -1]); // 14 değer, iki sınır dahil
+  assert.equal(tam.length, 14);
+  assert.equal(bant(tam, uyku, T).kisisel, true);
+});
+
+test('tarih-28 günü pencerededir (çıkarılırsa 13 kalır)', () => {
+  const s = gunler([-28, ...aralik(-13, -2)]); // 13 değer, son gün -2
+  assert.equal(bant(s, uyku, T).kisisel, false);
+  assert.equal(bant([...s, ...gunler([-1])], uyku, T).kisisel, true);
+});
+
+test('tarih-1 günü pencerededir', () => {
+  const s = gunler(aralik(-27, -15).concat([-1])); // 14 değer, son sınır -1
+  assert.equal(bant(s, uyku, T).kisisel, true);
+  assert.equal(bant(s.slice(0, -1), uyku, T).kisisel, false);
+});
+
+test('tarih-29 pencerenin dışındadır', () => {
+  const s = gunler([-29, ...aralik(-12, -1)]); // pencerede 12 + dışarıda 1
+  assert.equal(bant([...s, ...gunler([-13])], uyku, T).kisisel, false); // 13 pencere içi + tarih-29
+  assert.equal(bant(gunler([-29, ...aralik(-27, -15)]), uyku, T).kisisel, false);
+});
+
+test('tarihin kendisi ve sonraki günler pencere dışıdır', () => {
+  const s = gunler(aralik(-13, -1)); // pencerede 13
+  assert.equal(bant([...s, ...gunler([0, 1], 10)], uyku, T).kisisel, false);
+  // ek olarak değer de katılmaz: 14 pencere içi değer + aşırı değer tarihte
+  const d = [...gunler(aralik(-14, -1)), ...gunler([0], 1000)];
+  assert.equal(bant(d, uyku, T).medyan, 80);
+});
+
+test('null günler sayılmaz', () => {
+  const s = gunler(aralik(-14, -1));
+  s[0].sleep_score = null;
+  assert.equal(bant(s, uyku, T).kisisel, false);
 });
 
 test('durum: lo/ok/hi ve null', () => {

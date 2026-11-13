@@ -1,8 +1,7 @@
 // Enerji skoru, şablon hüküm/gerekçe ve API gövdesi. Saf fonksiyonlar.
 import { gunEkle } from '../zaman.js';
-import { OLCUMLER, gunDegerleri, bant, durum } from './baseline.js';
+import { OLCUMLER, gunDegerleri, bant, durum, dolu } from './baseline.js';
 
-const dolu = (v) => v !== null && v !== undefined && Number.isFinite(v);
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 
 export function enerji(degerler, bantlar) {

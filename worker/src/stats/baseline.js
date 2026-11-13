@@ -1,7 +1,7 @@
 // Saf istatistik: 28 günlük medyan/MAD tabanlı kişisel normal bandı.
 import { gunEkle } from '../zaman.js';
 
-const dolu = (v) => v !== null && v !== undefined && Number.isFinite(v);
+export const dolu = (v) => v !== null && v !== undefined && Number.isFinite(v);
 
 export function medyan(a) {
   if (!a.length) return null;
