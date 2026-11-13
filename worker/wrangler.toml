@@ -8,7 +8,7 @@ crons = ["*/15 * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "garmin-analizer"
-database_id = "DOLDURULACAK"
+database_id = "6cf0299c-0772-4ccc-ae37-9ccb3ce8c9e4"
 
 [vars]
 IZINLI_ORIGIN = "https://enescvsdg.github.io,http://localhost:4173"
