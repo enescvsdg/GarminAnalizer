@@ -1,5 +1,10 @@
 // Gerçek sağlık verisinin yapısını koruyup değerlerini maskeler.
 const KIMLIK = /id$|pk$|uuid|guid|email|name/i;
+// Konum kişisel veridir: anahtar sözcüklerinden biri lat/lon/lng/latitude/longitude ise sayı 0 olur.
+// Sözcük bazlı eşleşir; calendarDate, elevation, relative gibi anahtarlara takılmaz.
+const KOORD = new Set(['lat', 'lon', 'lng', 'latitude', 'longitude']);
+const koordMu = (anahtar) =>
+  anahtar.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[^A-Za-z0-9]+/).some((w) => KOORD.has(w.toLowerCase()));
 const TARIH = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
 
 function sayiKaydir(n) {
@@ -18,7 +23,7 @@ export function anonimlestir(deger, anahtar = '') {
     return Object.fromEntries(Object.entries(deger).map(([k, v]) => [k, anonimlestir(v, k)]));
   }
   const kimlik = KIMLIK.test(anahtar);
-  if (typeof deger === 'number') return kimlik ? 0 : sayiKaydir(deger);
+  if (typeof deger === 'number') return kimlik || koordMu(anahtar) ? 0 : sayiKaydir(deger);
   if (typeof deger === 'string') {
     if (kimlik) return 'x';
     return TARIH.test(deger) ? deger : 'x'.repeat(deger.length);

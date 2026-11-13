@@ -3,7 +3,8 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { anonimlestir } from './anonim.mjs';
-import { yapiOzeti } from './yapi.mjs';
+import { yapiOzeti, ozetle } from './yapi.mjs';
+import { istanbulGunu } from './tarih.mjs';
 
 const KOK = fileURLToPath(new URL('..', import.meta.url));
 const TABAN = 'https://personal.connectapi.garmin.com';
@@ -25,7 +26,7 @@ if (!key) {
 }
 
 const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
-const gun = (geri) => new Date(Date.now() - geri * 864e5).toISOString().slice(0, 10);
+const gun = (geri) => istanbulGunu(new Date(Date.now() - geri * 864e5));
 
 let jwt;
 let durduruldu = false;
@@ -43,16 +44,6 @@ async function al(yol) {
 }
 
 const ayristir = (m) => { try { return JSON.parse(m); } catch { return undefined; } };
-
-// Dönen öğe sayısı: dizi ise uzunluğu, nesne ise en uzun dizi alanı, yoksa 1.
-function ogeSayisi(v) {
-  if (Array.isArray(v)) return v.length;
-  if (v && typeof v === 'object') {
-    const diziler = Object.values(v).filter(Array.isArray).map((d) => d.length);
-    return diziler.length ? Math.max(...diziler) : 1;
-  }
-  return 0;
-}
 
 const uclar = (b, s) => ({
   dailysummaries: `/usersummary-service/v2/dailysummaries?startDate=${b}&endDate=${s}`,
@@ -106,17 +97,18 @@ async function main() {
   for (const n of [7, 28, 90]) {
     if (durduruldu) break;
     const { status, metin } = await al(uclar(gun(n - 1), gun(0)).dailysummaries);
-    const sayi = status === 200 ? ogeSayisi(ayristir(metin)) : null;
-    rapor.aralik.push({ gun: n, status, ogeSayisi: sayi });
-    console.log(`Aralık ${n} gün: HTTP ${status}, öğe ${sayi}`);
+    const oz = status === 200 ? ozetle(ayristir(metin)) : null;
+    rapor.aralik.push({ gun: n, status, ogeSayisi: oz?.sayi ?? null, anahtarlar: oz?.anahtarlar ?? null });
+    console.log(`Aralık ${n} gün: HTTP ${status}, öğe ${oz?.sayi ?? null}`);
   }
 
   // 4. Geçmiş derinliği (tek gün, dailysummaries)
   for (const n of [90, 180, 365]) {
     if (durduruldu) break;
     const { status, metin } = await al(uclar(gun(n), gun(n)).dailysummaries);
-    const bos = status === 200 ? ogeSayisi(ayristir(metin)) === 0 : null;
-    rapor.derinlik.push({ gunOnce: n, status, bos });
+    const oz = status === 200 ? ozetle(ayristir(metin)) : null;
+    const bos = oz ? oz.bos : null;
+    rapor.derinlik.push({ gunOnce: n, status, bos, anahtarlar: oz?.anahtarlar ?? null });
     console.log(`Geçmiş ${n} gün önce: HTTP ${status}, boş: ${bos}`);
   }
 }

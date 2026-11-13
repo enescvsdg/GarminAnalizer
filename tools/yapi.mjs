@@ -28,3 +28,25 @@ export function yapiOzeti(deger) {
     .map(([yol, tipler]) => `${yol}: ${[...tipler].sort().join('|')}`)
     .sort();
 }
+
+const bosMu = (v) =>
+  v === null || v === undefined || v === '' ||
+  (Array.isArray(v) && v.length === 0) ||
+  (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0);
+
+// Yanıtın boş olup olmadığı, öğe sayısı ve üst düzey anahtar adları (değer yok).
+export function ozetle(v) {
+  if (Array.isArray(v)) {
+    const anahtarlar = [...new Set(v.flatMap((e) => (e && typeof e === 'object' && !Array.isArray(e) ? Object.keys(e) : [])))].sort();
+    return { bos: v.length === 0, sayi: v.length, anahtarlar };
+  }
+  if (v && typeof v === 'object') {
+    const degerler = Object.values(v);
+    const anahtarlar = Object.keys(v).sort();
+    if (degerler.every(bosMu)) return { bos: true, sayi: 0, anahtarlar };
+    const diziler = degerler.filter(Array.isArray).map((d) => d.length);
+    return { bos: false, sayi: diziler.length && Math.max(...diziler) > 0 ? Math.max(...diziler) : 1, anahtarlar };
+  }
+  const bos = bosMu(v);
+  return { bos, sayi: bos ? 0 : 1, anahtarlar: [] };
+}
