@@ -119,6 +119,45 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .anah[aria-checked=true]{background:#e9966b}.anah[aria-checked=true]::after{transform:translateX(20px)}
 #ayar p{font-size:13px;line-height:1.45;color:rgba(255,246,236,.72);margin-top:8px}
 #ayar .kapat{width:100%;min-height:48px;margin-top:12px;border-radius:16px;background:rgba(255,246,236,.1);font-weight:600;font-size:15px}
+#ayar{max-height:calc(100% - var(--st) - 24px);overflow-y:auto;overscroll-behavior:contain}
+
+/* bağlantı bölümü */
+.bag{border-top:1px solid rgba(255,246,236,.1);padding:14px 0 4px;margin-top:4px}
+.bag h3{font-size:15px;font-weight:600}
+.bag label{display:block;font-size:13px;color:rgba(255,246,236,.78);margin-top:10px}
+.bag input{width:100%;min-height:44px;margin-top:4px;padding:0 14px;border-radius:14px;border:1px solid rgba(255,246,236,.22);background:rgba(255,246,236,.07);color:var(--metin);font:inherit;font-size:16px;user-select:text;-webkit-user-select:text}
+.bag input::placeholder{color:rgba(255,246,236,.45)}
+.bag .dgm{display:flex;gap:8px;margin-top:12px}
+.bag .dgm button{flex:1;min-height:48px;border-radius:16px;background:rgba(255,246,236,.1);font-weight:600;font-size:15px}
+.bag .dgm .bagla{background:var(--metin);color:#1a1022}
+.bag .dgm button:disabled{opacity:.45;cursor:default}
+.bag .hata{color:var(--isaret);font-weight:600}
+.bag [hidden]{display:none}
+
+/* uyarı şeridi (Bugün başlığının üstünde, akış içinde: başlık aşağı itilir) */
+.serit{display:flex;gap:8px;align-items:flex-start;margin:0 44px 10px 0;padding:8px 12px;border-radius:14px;background:rgba(255,201,166,.14);border:1px solid rgba(255,201,166,.5);font-size:12.5px;line-height:1.4;color:var(--metin);text-wrap:pretty}
+.serit[hidden]{display:none}
+.serit svg{width:14px;height:14px;flex:none;margin-top:2px;stroke:var(--isaret);stroke-width:1.8}
+
+/* bekleme durumu: bağlantı varken veri gelene kadar nötr şekil */
+#bekle{position:absolute;inset:0;z-index:8;display:grid;place-items:center;background:#0c0812}
+#bekle[hidden]{display:none}
+#bekle div{display:flex;flex-direction:column;align-items:center;gap:28px;text-align:center}
+#bekle i{display:block;width:92px;height:92px;border-radius:50%;background:radial-gradient(circle at 38% 34%,#ffe3bd,#d98f7e 40%,#6d3a92 80%);box-shadow:0 0 64px rgba(217,143,126,.3);animation:nefes 2.4s ease-in-out infinite}
+#bekle p{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100;font-weight:430;font-size:22px;letter-spacing:-.01em;color:rgba(255,246,236,.9)}
+@keyframes nefes{50%{transform:scale(1.09);opacity:.82}}
+@media (prefers-reduced-motion:reduce){#bekle i{animation:none}}
+
+/* Trend: seçili günün ek ayrıntı satırı (akış dışı; grafiğin altında, sekme çubuğunun üstünde) */
+#ekSatir{position:absolute;left:24px;right:24px;pointer-events:none;color:rgba(255,246,236,.92);text-shadow:0 1px 10px rgba(8,4,14,.85)}
+#ekSatir[hidden]{display:none}
+#ekSatir .em{font-size:12.5px;font-weight:600;line-height:16px;font-variant-numeric:tabular-nums}
+#ekSatir .cb{display:flex;gap:2px;height:8px;margin:5px 0 4px;border-radius:4px;overflow:hidden}
+#ekSatir .cb span{min-width:3px;background:var(--c)}
+#ekSatir .lg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;font-size:11px;line-height:14px;font-variant-numeric:tabular-nums}
+#ekSatir .lg b{display:flex;align-items:center;gap:4px;font-weight:500;color:rgba(255,246,236,.82);white-space:nowrap}
+#ekSatir .lg i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--c)}
+#ekSatir .lg span{padding-left:11px;font-weight:600;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -142,13 +181,14 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
         <p class="tarih" id="tTarih"></p><h1 id="tAd"></h1><p class="ger" id="tGer"></p>
       </header>
       <p id="ipucu">Geçmiş günler için sola kaydır</p>
+      <div id="ekSatir" hidden></div>
       <div id="cip"></div>
     </section>
 
     <section id="bugun" class="tam">
       <div id="bugunUst" class="tam">
         <svg id="yor" class="tam" aria-hidden="true"><ellipse id="yIc"/><ellipse class="dis" id="yDis"/></svg>
-        <header class="bas" id="bBas"><p class="tarih" id="bTarih"></p><h1 id="bHukum"></h1><p class="ger" id="bGer"></p></header>
+        <header class="bas" id="bBas"><div class="serit" id="serit" role="status" hidden><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.8l5.6 9.8H1.4zM7 5.6v2.8M7 10v.01"/></svg><div id="seritMetin"></div></div><p class="tarih" id="bTarih"></p><h1 id="bHukum"></h1><p class="ger" id="bGer"></p></header>
         <nav class="gunler" id="gunler" aria-label="Son yedi gün"></nav>
       </div>
       <div id="dokun" aria-hidden="true"></div>
@@ -163,12 +203,22 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
       <button type="button" id="sTrend"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2 14c3-5 5-5 7.5-2s4.5 2 6.5-2 3-3 4-3M2 19h18"/></svg>Trend</button>
       <button type="button" id="sAyar"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 7h8M15 7h4M3 15h4M11 15h8"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="15" r="2"/></svg>Ayarlar</button>
     </nav>
+    <div id="bekle" role="status" hidden><div><i aria-hidden="true"></i><p>Veriler alınıyor…</p></div></div>
     <div id="perde"></div>
     <div id="ayar" role="dialog" aria-modal="true" aria-labelledby="ayarB">
       <h2 id="ayarB">Ayarlar</h2>
       <div class="satir"><span id="l1">Ses efektleri</span><button type="button" class="anah" id="aSes" role="switch" aria-labelledby="l1"></button></div>
       <div class="satir"><span id="l2">Kalp atışı sesi</span><button type="button" class="anah" id="aKalp" role="switch" aria-labelledby="l2"></button></div>
       <div class="satir"><a href="sesler.html">Sesleri seç</a></div>
+      <div class="bag" role="group" aria-labelledby="bagB">
+        <h3 id="bagB">Bağlantı</h3>
+        <label for="bAdres">Worker adresi</label>
+        <input id="bAdres" type="text" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="https://…workers.dev">
+        <label for="bAnahtar">Cihaz anahtarı <span id="bKayitli" hidden>· kayıtlı</span></label>
+        <input id="bAnahtar" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
+        <div class="dgm"><button type="button" class="bagla" id="bBagla">Bağlan</button><button type="button" id="bKaldir">Bağlantıyı kaldır</button></div>
+        <p id="bDurum" role="status"></p>
+      </div>
       <p>Sesler ekrana ilk dokunuşundan sonra başlar. Telefon sessizdeyse çalmaz.</p>
       <button type="button" class="kapat" id="aKapat">Kapat</button>
     </div>
@@ -178,21 +228,33 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="veri.js"></script>
 <script src="ses.js"></script>
-<script>
-(() => {
+<script type="module">
+import { CANLI } from './veri-canli.js';
+const $ = (id) => document.getElementById(id);
+const telKok = $('tel');
+// Ölçekleme: veri beklenirken de ekran doğru oturur
+function telOlcek() {
+  const mob = innerWidth <= 520, S = mob ? innerWidth / 390 : Math.min(1, (innerHeight - 32) / 844), H = mob ? innerHeight / S : 844;
+  telKok.classList.toggle('mob', mob); telKok.style.height = H + 'px'; telKok.style.transform = `scale(${S})`;
+  return { S, H };
+}
+
+// bag: { baglanti: bağlantı kayıtlı mı, canli: veri Worker'dan mı geldi }
+function baslat(VERI, bag) {
 const { OLCUMLER: O, GUNLER, durum, OK, DURUM_METIN } = VERI;
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NS = 'http://www.w3.org/2000/svg', TAU = Math.PI * 2;
 const N = GUNLER.length, G0 = N - 7, W = 390, cx = 195, DW = 58;
-const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const TIK = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.5l2.5 2.5 4.5-6"/></svg>';
 const KISA = { nabiz: 'Nabız', yuk: 'Yük' };
+const bicim = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 10) / 10));
+const bpmDe = (g) => g.d.nabiz ?? 60; // nabız verisi yoksa nötr tempo
 const tel = $('tel'), cv = $('gl');
 let H = 844, S = 1;
 let ekran = 'bugun', mesgul = false, sel7 = 6, sonOlcum = 0, ayarAcik = false;
-const st = { e: GUNLER[N - 1].e, bpm: GUNLER[N - 1].d.nabiz, ign: RM ? 1 : 0, orbit: 1, flat: 0, cy: 430, P: N - 1, gunesY: 1, yuk: 0, yukA: 0 };
+const st = { e: GUNLER[N - 1].e, bpm: bpmDe(GUNLER[N - 1]), ign: RM ? 1 : 0, orbit: 1, flat: 0, cy: 430, P: N - 1, gunesY: 1, yuk: 0, yukA: 0 };
 // Bugün yerleşimi: başlık ile gün şeridi arasında kalan boşluğa göre hesaplanır
 const lay = { cy: 430, rx: 139, ry0: 150, ry1: 166, ks: 1, rs: 0.86 };
 // Trend çizim alanı
@@ -312,45 +374,57 @@ const telY = (el, kenar) => (el.getBoundingClientRect()[kenar] - tel.getBounding
 function durumHtml(du, uzun) { return du === 'ok' ? TIK + 'normalde' : OK[du] + (uzun ? 'normalin ' : '') + DURUM_METIN[du]; }
 
 /* ================= BUGÜN: kartlar ================= */
-const L = O.map((o, i) => {
+const L = O.filter((o) => o.kart).map((o, i) => {
   const el = document.createElement('button'); el.className = 'et'; el.type = 'button';
   el.innerHTML = `<span class="kart"><span class="ust"><span>${KISA[o.id] || o.ad}</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5L7 5 3 8.5"/></svg></span>
     <span class="orta"><span class="deger">0</span><span class="br">${o.birim.trim()}</span></span>
     <svg class="kiv" viewBox="0 0 84 20" preserveAspectRatio="none" aria-hidden="true"><rect class="bant" x="0" width="84"/><path class="cz"/><circle class="uc" r="2.6"/></svg>
     <span class="dr"></span></span>`;
   $('etiketler').appendChild(el);
-  const l = { o, i, el, deg: el.querySelector('.deger'), dr: el.querySelector('.dr'), bant: el.querySelector('.bant'), cz: el.querySelector('.cz'), uc: el.querySelector('.uc'), k: 0, r: RM ? 1 : 0, val: 0 };
-  el.addEventListener('click', () => { titret(10); trendeGec(i, l); });
+  const l = { o, i, el, br: el.querySelector('.br'), deg: el.querySelector('.deger'), dr: el.querySelector('.dr'), bant: el.querySelector('.bant'), cz: el.querySelector('.cz'), uc: el.querySelector('.uc'), k: 0, r: RM ? 1 : 0, val: 0 };
+  el.addEventListener('click', () => { titret(10); trendeGec(O.indexOf(o), l); });
   return l;
 });
-function kivrim(l, gi) { // kartın içindeki 7 günlük çizgi ve normal bandı
+function kivrim(l, gi) { // kartın içindeki 7 günlük çizgi ve normal bandı; veri olmayan günler atlanır
   const v = []; for (let d = gi - 6; d <= gi; d++) v.push(GUNLER[Math.max(0, d)].d[l.o.id]);
-  const lo = Math.min(...v, l.o.min), hi = Math.max(...v, l.o.max), ar = hi - lo || 1, y = (x) => 18 - ((x - lo) / ar) * 16;
-  l.cz.setAttribute('d', v.map((x, j) => `${j ? 'L' : 'M'}${(j * 13.6).toFixed(1)} ${y(x).toFixed(1)}`).join(''));
-  l.uc.setAttribute('cx', 81.6); l.uc.setAttribute('cy', y(v[6]).toFixed(1));
+  const dolu = v.filter((x) => x !== null);
+  const lo = Math.min(...dolu, l.o.min), hi = Math.max(...dolu, l.o.max), ar = hi - lo || 1, y = (x) => 18 - ((x - lo) / ar) * 16;
+  let yol = '', bagli = false;
+  v.forEach((x, j) => {
+    if (x === null) { bagli = false; return; }
+    const px = j * 13.6, py = y(x).toFixed(1);
+    yol += `${bagli ? 'L' : 'M'}${px.toFixed(1)} ${py}`;
+    if (!bagli && v[j + 1] == null) yol += `L${(px + 0.01).toFixed(2)} ${py}`; // yalnız kalan gün: yuvarlak uçlu nokta
+    bagli = true;
+  });
+  l.cz.setAttribute('d', yol);
+  if (v[6] === null) l.uc.setAttribute('visibility', 'hidden');
+  else { l.uc.setAttribute('visibility', 'visible'); l.uc.setAttribute('cx', 81.6); l.uc.setAttribute('cy', y(v[6]).toFixed(1)); }
   l.bant.setAttribute('y', y(l.o.max).toFixed(1)); l.bant.setAttribute('height', Math.max(1, y(l.o.min) - y(l.o.max)).toFixed(1));
 }
 const renk = gsap.utils.interpolate(['#ff7a45', '#ffb07a', '#c9f5b4']);
 const gunBtn = GUNLER.slice(G0).map((g, i) => {
   const b = document.createElement('button'); b.className = 'gun'; b.type = 'button';
-  b.style.setProperty('--e', g.e); b.style.setProperty('--c', renk(g.e));
+  b.style.setProperty('--e', g.e); b.style.setProperty('--c', g.veriYok ? 'rgba(255,246,236,.4)' : renk(g.e));
   b.setAttribute('aria-label', `${g.gunUzun} ${g.gun} ${g.ay}: ${g.hukum}`);
   b.innerHTML = `<span class="yuva"><i></i></span>${g.gunKisa}`;
-  b.addEventListener('click', () => { if (i !== sel7) { titret(8); sec(i); SES.akor(g.e); } });
+  b.addEventListener('click', () => { if (i !== sel7) { titret(8); sec(i); if (!g.veriYok) SES.akor(g.e); } });
   $('gunler').appendChild(b); return b;
 });
 function sec(i, sessiz) {
   sel7 = i; const g = GUNLER[G0 + i], D = RM || sessiz ? 0 : 1;
   gunBtn.forEach((b, j) => b.setAttribute('aria-pressed', j === i));
   $('bTarih').textContent = `${g.gunUzun}, ${g.gun} ${g.ay}`;
-  gsap.to(st, { e: g.e, bpm: g.d.nabiz, duration: 1.5 * D, ease: 'power3.inOut', overwrite: 'auto' });
+  gsap.to(st, { e: g.e, bpm: bpmDe(g), duration: 1.5 * D, ease: 'power3.inOut', overwrite: 'auto' });
   L.forEach((l, j) => {
-    const v = g.d[l.o.id], du = durum(l.o, v);
-    l.el.classList.toggle('sap', du !== 'ok'); l.dr.innerHTML = durumHtml(du); kivrim(l, G0 + i);
-    l.el.setAttribute('aria-label', `${l.o.ad} ${v}${l.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}. Trendini aç`);
-    gsap.to(l, { k: du === 'ok' ? 0 : 1, duration: 1.1 * D, delay: j * 0.045 * D, ease: 'back.out(1.7)', overwrite: 'auto' });
-    if (D) gsap.to(l, { val: v, duration: 0.9, ease: 'power2.out', onUpdate: () => (l.deg.textContent = Math.round(l.val)) });
-    else { l.val = v; l.deg.textContent = v; }
+    const v = g.d[l.o.id], du = durum(l.o, v), sap = du === 'lo' || du === 'hi';
+    l.el.classList.toggle('sap', sap); l.dr.innerHTML = du === null ? 'veri yok' : durumHtml(du); kivrim(l, G0 + i);
+    l.el.setAttribute('aria-label', du === null ? `${l.o.ad}: veri yok. Trendini aç` : `${l.o.ad} ${bicim(v)}${l.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}. Trendini aç`);
+    gsap.to(l, { k: sap ? 1 : 0, duration: 1.1 * D, delay: j * 0.045 * D, ease: 'back.out(1.7)', overwrite: 'auto' });
+    gsap.killTweensOf(l, 'val'); l.br.textContent = v === null ? '' : l.o.birim.trim();
+    if (v === null) l.deg.textContent = '–';
+    else if (D) gsap.to(l, { val: v, duration: 0.9, ease: 'power2.out', onUpdate: () => (l.deg.textContent = Math.round(l.val)) });
+    else { l.val = v; l.deg.textContent = Math.round(v); }
   });
   if (D) {
     yaz($('bHukum'), g.hukum);
@@ -372,16 +446,36 @@ function yerlesimB(yumusak) {
 /* ================= TREND: tek ölçüm ================= */
 const svg = $('katman'), trend = $('trend');
 // ölçüm başına: 0..1'e ölçeklenmiş günlük değer, 7 günlük ortalama, normal bandı, iyilik, özet cümlesi
+// null günler: sırt komşu dolu günler arasında doğrusal geçer, uçlarda en yakın dolu değerde kalır
+function doldur(a) {
+  const dolu = []; a.forEach((x, i) => { if (x !== null) dolu.push(i); });
+  if (!dolu.length) return null;
+  return a.map((x, i) => {
+    if (x !== null) return x;
+    let sol = -1, sag = -1;
+    for (const k of dolu) { if (k < i) sol = k; else { sag = k; break; } }
+    if (sol < 0) return a[sag]; if (sag < 0) return a[sol];
+    return a[sol] + ((a[sag] - a[sol]) * (i - sol)) / (sag - sol);
+  });
+}
+const toplam = (a) => a.reduce((x, y) => x + y, 0);
 const T = O.map((o) => {
-  const v = GUNLER.map((g) => g.d[o.id]);
-  const ort = v.map((_, i) => { const a = v.slice(Math.max(0, i - 6), i + 1); return a.reduce((x, y) => x + y, 0) / a.length; });
-  let lo = Math.min(...v, o.min), hi = Math.max(...v, o.max); const pay = (hi - lo) * 0.12; lo -= pay; hi += pay;
+  const v = GUNLER.map((g) => g.d[o.id]); // null = veri yok
+  const dolular = v.filter((x) => x !== null), bos = dolular.length === 0, orta = (o.min + o.max) / 2;
+  const vf = doldur(v) || v.map(() => orta);
+  const ortHam = v.map((_, i) => { const a = v.slice(Math.max(0, i - 6), i + 1).filter((x) => x !== null); return a.length ? toplam(a) / a.length : null; });
+  const af = doldur(ortHam) || vf;
+  let lo = Math.min(...vf, o.min), hi = Math.max(...vf, o.max); const pay = (hi - lo) * 0.12 || 1; lo -= pay; hi += pay;
   const n = (x) => (x - lo) / (hi - lo);
-  const dis = v.filter((x) => durum(o, x) !== 'ok').length, ortalama = Math.round(v.reduce((x, y) => x + y, 0) / N);
-  const ozet = dis === 0 ? `Son 28 günde hep normal aralığında kaldın. Ortalaman ${ortalama}${o.birim}.`
-    : `Son 28 günde ${dis} gün normal aralığının dışında. Ortalaman ${ortalama}${o.birim}.`;
-  const iyi = v.map((x) => clamp(((x - (o.min + o.max) / 2) / (((o.max - o.min) / 2) * 2.4)) * o.iyi, -1, 1) * 0.5 + 0.5);
-  return { o, v, nv: v.map(n), na: ort.map(n), bant: [n(o.min), n(o.max)], iyi, ozet };
+  const dis = dolular.filter((x) => durum(o, x) !== 'ok').length;
+  const eksik = N - dolular.length, not = eksik ? ` ${eksik} günün verisi yok.` : '';
+  const ort0 = bos ? 0 : toplam(dolular) / dolular.length, ortalama = o.id === 'spo2' || o.id === 'solunum' ? bicim(Math.round(ort0 * 10) / 10) : Math.round(ort0);
+  const ozet = bos ? 'Bu ölçüm için henüz veri yok.'
+    : (dis === 0 ? `Son ${N} günde hep normal aralığında kaldın. Ortalaman ${ortalama}${o.birim}.`
+      : `Son ${N} günde ${dis} gün normal aralığının dışında. Ortalaman ${ortalama}${o.birim}.`) + not;
+  const yarim = ((o.max - o.min) / 2) * 2.4 || 1;
+  const iyi = vf.map((x) => clamp(((x - orta) / yarim) * o.iyi, -1, 1) * 0.5 + 0.5);
+  return { o, v, nv: vf.map(n), na: af.map(n), bant: [n(o.min), n(o.max)], iyi, ozet };
 });
 const cur = { v: T[0].nv.slice(), a: T[0].na.slice(), b0: T[0].bant[0], b1: T[0].bant[1] };
 function cr(arr, x) {
@@ -402,7 +496,8 @@ function yollar() {
   $('arkaSirt').setAttribute('d', da); $('arkaDolgu').setAttribute('d', da + kap);
   const t = T[sonOlcum];
   gunNokta.forEach((c, i) => {
-    const dis = durum(t.o, t.v[i]) !== 'ok';
+    const du = durum(t.o, t.v[i]), dis = du === 'lo' || du === 'hi';
+    c.setAttribute('visibility', du === null ? 'hidden' : 'visible'); // veri olmayan günde nokta yok
     c.setAttribute('cx', i * DW); c.setAttribute('cy', yy(cur.v[i]).toFixed(1));
     c.setAttribute('fill', dis ? '#ffc9a6' : 'rgba(255,246,236,.55)'); c.setAttribute('r', dis ? 3.4 : 2.4);
   });
@@ -426,13 +521,32 @@ const secBtn = O.map((o, i) => {
   $('secici').appendChild(b); return b;
 });
 $('secici').addEventListener('pointerdown', (ev) => ev.stopPropagation());
-let selT = -1;
+let selT = -1, ekDestek = false;
+const EK_RENK = { derin: '#8f9bff', hafif: '#bfeedd', rem: '#ffc9a6', uyanik: 'rgba(255,246,236,.55)', dinlenme: '#bfeedd', dusuk: '#9ad6ff', orta: '#ffc9a6', yuksek: '#ff8a6b' };
+function ekYaz(g) { // seçili günün ek ayrıntısı; gösterilecek veri yoksa satır gizlenir (yer kaplamaz)
+  const el = $('ekSatir'), s = CANLI.ekSatiri(T[sonOlcum].o.id, g.ek);
+  el.textContent = '';
+  if (!s) { el.hidden = true; return; }
+  const ek = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+  if (s.metin) el.appendChild(ek('div', 'em', s.metin));
+  if (s.dilimler) {
+    const cb = ek('div', 'cb'), lg = ek('div', 'lg'); cb.setAttribute('aria-hidden', 'true');
+    s.dilimler.forEach((d) => {
+      const dl = ek('span'); dl.style.setProperty('--c', EK_RENK[d.id]); dl.style.flex = `${d.dk} 1 0`; cb.appendChild(dl);
+      const h = ek('div'), b = ek('b', null, d.etiket), sw = ek('i'); sw.style.setProperty('--c', EK_RENK[d.id]); b.prepend(sw);
+      h.append(b, ek('span', null, d.metin)); lg.appendChild(h);
+    });
+    el.append(cb, lg);
+  }
+  el.hidden = false;
+}
 function olcumSec(oi, animasyon) {
   sonOlcum = oi; const t = T[oi];
   secBtn.forEach((b, j) => b.setAttribute('aria-pressed', j === oi));
   const sc = $('secici'), b = secBtn[oi];
   sc.scrollTo({ left: b.offsetLeft - (sc.clientWidth - b.offsetWidth) / 2, behavior: animasyon && !RM ? 'smooth' : 'auto' });
-  $('bantYazi').textContent = `normal ${t.o.min}–${t.o.max}${t.o.birim}`;
+  $('bantYazi').textContent = `${t.o.kisisel === false ? 'genel aralık' : 'normal'} ${t.o.min}–${t.o.max}${t.o.birim}`;
+  ekDestek = GUNLER.some((g) => CANLI.ekSatiri(t.o.id, g.ek) !== null);
   $('tGer').textContent = t.ozet;
   if (animasyon && !RM) {
     yaz($('tAd'), t.o.ad);
@@ -449,18 +563,20 @@ function olcumSec(oi, animasyon) {
   yerlesimT(); selT = -1; gunYaz(clamp(Math.round(st.P), 0, N - 1));
 }
 function gunYaz(i, canli) {
-  if (i === selT) return; const ilk = selT < 0; selT = i; const g = GUNLER[i], t = T[sonOlcum], v = t.v[i], du = durum(t.o, v);
+  if (i === selT) return; const ilk = selT < 0; selT = i; const g = GUNLER[i], t = T[sonOlcum], v = t.v[i], du = durum(t.o, v), yok = v === null, sap = du === 'lo' || du === 'hi';
   $('tTarih').textContent = `${g.gunUzun}, ${g.gun} ${g.ay}`;
   $('cip').textContent = i === N - 1 ? `Bugün, ${g.gun} ${g.ay}` : `${g.gunKisa} ${g.gun} ${g.ay}`;
-  const bl = $('balon'); bl.querySelector('b').textContent = v; bl.querySelector('.br').textContent = t.o.birim.trim();
-  bl.querySelector('.dr').innerHTML = durumHtml(du, true); bl.classList.toggle('sap', du !== 'ok'); $('nokta').classList.toggle('sap', du !== 'ok');
+  const bl = $('balon'); bl.querySelector('b').textContent = yok ? '–' : bicim(v); bl.querySelector('.br').textContent = yok ? '' : t.o.birim.trim();
+  bl.querySelector('.dr').innerHTML = yok ? 'veri yok' : durumHtml(du, true); bl.classList.toggle('sap', sap); $('nokta').classList.toggle('sap', sap);
   trend.setAttribute('aria-valuenow', i + 1);
-  trend.setAttribute('aria-valuetext', `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} ${v}${t.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}`);
-  if (!ilk && canli && ekran === 'trend' && !mesgul) SES.nota(t.iyi[i]);
+  trend.setAttribute('aria-valuetext', yok ? `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} için veri yok` : `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} ${bicim(v)}${t.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}`);
+  ekYaz(g);
+  if (!ilk && canli && ekran === 'trend' && !mesgul && !yok) SES.nota(t.iyi[i]);
 }
 function yerlesimT() {
   tl.ust = Math.round(telY($('tBas'), 'bottom') + 96);
-  tl.alt = Math.round(telY($('cip'), 'top') - 86);
+  tl.alt = Math.round(telY($('cip'), 'top') - 86 - (ekDestek ? 64 : 0));
+  $('ekSatir').style.top = tl.alt + 78 + 'px';
   if (tl.alt - tl.ust < 90) tl.ust = tl.alt - 90;
   const im = $('imlec'); im.setAttribute('x1', cx); im.setAttribute('x2', cx); im.setAttribute('y1', tl.ust - 30); im.setAttribute('y2', tl.alt + 40);
   $('nokta').setAttribute('cx', cx); $('ipucu').style.top = tl.alt + 16 + 'px';
@@ -542,7 +658,7 @@ function trendeGec(oi, kaynak) {
     u.style.color = getComputedStyle(kaynak.deg).color; tel.appendChild(u);
     gsap.set(u, { x: (r.left - tr.left) / S, y: (r.top - tr.top) / S, fontSize: 27 * lay.ks });
     z.to(u, { x: cx + 16, y: Math.max(tl.ust - 92, ufuk - 70), fontSize: 40, duration: 0.95, ease: 'power3.inOut' }, 0.08)
-      .add(() => { SES.can(T[sonOlcum].iyi[hedef]); gsap.set('#balon', { autoAlpha: 1 }); u.remove(); }, 1.06)
+      .add(() => { if (T[sonOlcum].v[hedef] !== null) SES.can(T[sonOlcum].iyi[hedef]); gsap.set('#balon', { autoAlpha: 1 }); u.remove(); }, 1.06)
       .fromTo('#balon .dr', { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 1.1);
   }
 }
@@ -595,6 +711,37 @@ $('perde').addEventListener('click', ayarKapat); $('aKapat').addEventListener('c
 addEventListener('keydown', (ev) => { if (ev.key === 'Escape') ayarKapat(); });
 sesGoster();
 
+/* ================= Bağlantı ve uyarı şeridi ================= */
+const kayitli = CANLI.baglantiOku();
+$('bAdres').value = kayitli ? kayitli.adres : ''; // anahtar alana geri doldurulmaz; yalnız "kayıtlı" gösterilir
+$('bKayitli').hidden = !kayitli; $('bKaldir').disabled = !kayitli;
+function bagDurum() {
+  const m = VERI.meta || {};
+  if (bag.canli) return m.sonEsitleme ? `Son eşitleme: ${CANLI.sonEsitlemeMetni(m.sonEsitleme)}` : 'Bağlı. Henüz eşitleme yapılmadı.';
+  if (bag.baglanti) return 'Bağlanılamadı. Adresi ve anahtarı kontrol et. Uydurma veri gösteriliyor.';
+  return 'Uydurma veri gösteriliyor.';
+}
+$('bDurum').textContent = bagDurum();
+function bagHata(msg) { $('bDurum').textContent = msg; $('bDurum').classList.add('hata'); }
+$('bBagla').addEventListener('click', () => {
+  const adres = $('bAdres').value, anahtar = $('bAnahtar').value.trim() || (kayitli ? kayitli.anahtar : '');
+  if (!CANLI.adresDuzelt(adres)) return bagHata('Adres https:// ile başlamalı.');
+  if (!anahtar) return bagHata('Cihaz anahtarını gir.');
+  if (!CANLI.baglantiYaz({ adres, anahtar })) return bagHata('Bağlantı kaydedilemedi.');
+  $('bAnahtar').value = ''; location.reload();
+});
+$('bKaldir').addEventListener('click', () => { CANLI.baglantiSil(); location.reload(); });
+[$('bAdres'), $('bAnahtar')].forEach((e) => e.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') $('bBagla').click(); }));
+function seritKur() { // Bugün başlığının üstünde kalıcı uyarı (yalnız canlı veride)
+  if (!bag.canli) return;
+  const m = VERI.meta || {}, satirlar = [], eski = CANLI.eskilikSaat(m.sonEsitleme, Date.now());
+  if (m.keyDurum === 'gecersiz') satirlar.push("Garmin key'inin süresi dolmuş. Yenileyene kadar veri güncellenmez.");
+  if (eski !== null) satirlar.push(`Son eşitleme ${eski} saat önce.`);
+  if (!satirlar.length) return;
+  satirlar.forEach((t) => { const p = document.createElement('p'); p.textContent = t; $('seritMetin').appendChild(p); });
+  $('serit').hidden = false;
+}
+
 /* ================= Dokunma: şekil yumuşak bir madde gibi tepki verir ================= */
 const tch = { x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, px: 0, py: 0, press: 0, pv: 0, pt: 0, hold: 0, wave: 0, jig: 0, aktif: false };
 const KOPMA = 0.5; // bu kadar çekilince parmaktan kayar (ekran genişliğinin oranı)
@@ -617,7 +764,7 @@ function dokunBirak() {
   const gerilim = Math.hypot(tch.x, tch.y);
   if (tch.hold > 0.55 && gerilim < 0.12) { // yerinde uzun basış: dışarı dalga
     gsap.fromTo(tch, { wave: 0.001 }, { wave: 1, duration: 1.1, ease: 'power2.out', onComplete: () => (tch.wave = 0) });
-    SES.can(st.e); titret(22);
+    if (!GUNLER[G0 + sel7].veriYok) SES.can(st.e); titret(22);
   } else titret(gerilim > 0.2 ? 18 : 6);
   gsap.to(tch, { hold: 0, duration: 0.6, ease: 'power3.out' });
 }
@@ -643,10 +790,7 @@ function dokunAdim(ds) {
 
 /* ================= Ölçek ================= */
 function sigdir() {
-  const mob = innerWidth <= 520;
-  S = mob ? innerWidth / W : Math.min(1, (innerHeight - 32) / 844);
-  H = mob ? innerHeight / S : 844;
-  tel.classList.toggle('mob', mob); tel.style.height = H + 'px'; tel.style.transform = `scale(${S})`;
+  ({ S, H } = telOlcek());
   const dpr = Math.min(devicePixelRatio || 1, 2) * S;
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   if (gl) gl.viewport(0, 0, cv.width, cv.height);
@@ -681,7 +825,7 @@ gsap.ticker.add((time, dt) => {
   }
   if (bugunGorunur) {
     for (const l of L) {
-      const a = ang + (l.i * TAU) / 6 - Math.PI / 2, wob = RM ? 0 : l.k * 2.5 * Math.sin(time * 2.1 + l.i * 1.7);
+      const a = ang + (l.i * TAU) / L.length - Math.PI / 2, wob = RM ? 0 : l.k * 2.5 * Math.sin(time * 2.1 + l.i * 1.7);
       const ry = lerp(lay.ry0, lay.ry1, l.k) + wob;
       const x = cx + Math.cos(a) * lay.rx * l.r, y = lay.cy + Math.sin(a) * ry * l.r;
       l.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-50%) scale(${(lay.ks * (0.5 + 0.5 * l.r)).toFixed(3)})`;
@@ -698,7 +842,7 @@ gsap.ticker.add((time, dt) => {
     $('gOn').setAttribute('transform', `translate(${(cx - st.P * DW).toFixed(2)} 0) ${scl(st.yuk)}`);
     $('gArka').setAttribute('transform', `translate(${(cx - pA * DW).toFixed(2)} 0) ${scl(st.yukA)}`);
     const pc = clamp(st.P, 0, N - 1), ny = tl.alt - (tl.alt - yy(cr(cur.v, pc))) * st.yuk;
-    $('nokta').setAttribute('cy', ny.toFixed(1)); $('nokta').style.opacity = st.yuk;
+    $('nokta').setAttribute('cy', ny.toFixed(1)); $('nokta').style.opacity = T[sonOlcum].v[clamp(Math.round(pc), 0, N - 1)] === null ? 0 : st.yuk;
     ['bantDolgu', 'bantUst', 'bantAlt', 'bantYazi'].forEach((id) => ($(id).style.opacity = st.yuk));
     $('balon').style.transform = `translate(${cx + 16}px,${Math.max(tl.ust - 92, ny - 70).toFixed(1)}px)`;
     const e = clamp(cr(T[sonOlcum].iyi, pc), 0, 1);
@@ -716,11 +860,11 @@ gsap.ticker.add((time, dt) => {
 });
 
 /* ================= Açılış ================= */
-sigdir(); olcumSec(0, false); sec(6, true); st.cy = lay.cy;
+seritKur(); sigdir(); olcumSec(0, false); sec(6, true); st.cy = lay.cy;
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (ekran === 'bugun') { yerlesimB(false); if (!mesgul) st.cy = lay.cy; } else yerlesimT(); });
 if (!RM) {
-  L.forEach((l) => { l.val = 0; l.deg.textContent = '0'; });
   const g = GUNLER[N - 1];
+  L.forEach((l) => { l.val = 0; l.deg.textContent = g.d[l.o.id] === null ? '–' : '0'; });
   gsap.set($('bHukum').querySelectorAll('.h'), { autoAlpha: 0 });
   gsap.set(['#bTarih', '#bGer'], { autoAlpha: 0, y: 12 }); gsap.set('#yor', { autoAlpha: 0 });
   mesgul = true; // açılış bitmeden ekran değiştirilmesin
@@ -730,12 +874,23 @@ if (!RM) {
     .add(() => gsap.fromTo($('bHukum').querySelectorAll('.h'), { yPercent: 85, autoAlpha: 0, rotation: 7 }, { yPercent: 0, autoAlpha: 1, rotation: 0, duration: 0.65, stagger: 0.022, ease: 'back.out(1.8)' }), 0.4)
     .to(['#bTarih', '#bGer'], { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.14, ease: 'power3.out' }, 0.65)
     .to(L, { r: 1, duration: 1.2, stagger: 0.085, ease: 'back.out(1.5)' }, 0.55)
-    .add(() => L.forEach((l, j) => gsap.to(l, { val: g.d[l.o.id], duration: 1.3, delay: j * 0.08, ease: 'power2.out', onUpdate: () => (l.deg.textContent = Math.round(l.val)) })), 0.6)
+    .add(() => L.forEach((l, j) => { if (g.d[l.o.id] !== null) gsap.to(l, { val: g.d[l.o.id], duration: 1.3, delay: j * 0.08, ease: 'power2.out', onUpdate: () => (l.deg.textContent = Math.round(l.val)) }); }), 0.6)
     .to('#yor', { autoAlpha: 1, duration: 1.2 }, 1.2)
     .from('.gun', { y: 22, autoAlpha: 0, duration: 0.7, stagger: 0.045, ease: 'power3.out' }, 1.0)
     .from(['.sekme', '#sesBtn'], { autoAlpha: 0, duration: 0.8 }, 1.3);
 }
-})();
+}
+
+// Başlangıç: bağlantı varsa veri gelene kadar nötr bekleme durumu; açılış animasyonu uydurma veriyle başlamaz.
+const kayit = CANLI.baglantiOku();
+if (!kayit) baslat(window.VERI, { baglanti: false, canli: false });
+else {
+  telOlcek(); addEventListener('resize', telOlcek); $('bekle').hidden = false;
+  CANLI.veriGetir().then((v) => {
+    removeEventListener('resize', telOlcek); $('bekle').hidden = true;
+    baslat(v || window.VERI, { baglanti: true, canli: !!v });
+  });
+}
 </script>
 </body>
 </html>
