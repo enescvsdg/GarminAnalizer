@@ -8,8 +8,12 @@ process.emitWarning = (w, ...a) => {
   if (tip === 'ExperimentalWarning' && /SQLite/i.test(String(w))) return;
   return emitOrijinal.call(process, w, ...a);
 };
-const { DatabaseSync } = await import('node:sqlite');
-process.emitWarning = emitOrijinal;
+let DatabaseSync;
+try {
+  ({ DatabaseSync } = await import('node:sqlite'));
+} finally {
+  process.emitWarning = emitOrijinal;
+}
 
 const SEMA = readFileSync(new URL('../../schema.sql', import.meta.url), 'utf8');
 
@@ -21,15 +25,16 @@ export function testD1() {
   const sqlite = new DatabaseSync(':memory:');
   sqlite.exec(SEMA);
 
-  const hazirla = (sql, args) => {
-    args.forEach((a, i) => {
-      if (a === undefined) throw new TypeError(`D1 bind: undefined değer (parametre ${i + 1})`);
-    });
-    return { stmt: sqlite.prepare(sql), args };
-  };
+  const hazirla = (sql, args) => ({ stmt: sqlite.prepare(sql), args });
 
   const ifade = (sql, args = []) => ({
-    bind: (...yeni) => ifade(sql, yeni),
+    // Gerçek D1 gibi undefined bağlamayı bind anında eşzamanlı reddeder.
+    bind: (...yeni) => {
+      yeni.forEach((a, i) => {
+        if (a === undefined) throw new TypeError(`D1 bind: undefined değer (parametre ${i + 1})`);
+      });
+      return ifade(sql, yeni);
+    },
     async run() {
       const { stmt } = hazirla(sql, args);
       const r = stmt.run(...args);

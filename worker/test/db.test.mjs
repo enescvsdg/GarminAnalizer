@@ -1,7 +1,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { testD1 } from './helpers/d1.mjs';
-import { gunUpsert, gunleriOku, durumOku, durumYaz } from '../src/db.js';
+import { gunUpsert, gunleriOku, durumOku, durumYaz, aktiviteUpsert, aktiviteleriOku } from '../src/db.js';
 
 let db;
 beforeEach(() => { db = testD1(); });
@@ -55,6 +55,91 @@ test('raw_json ve synced_at da null ile ezilmez', async () => {
   assert.equal(r.synced_at, 111);
 });
 
-test('testD1 bind undefined değeri reddeder', async () => {
-  await assert.rejects(db.prepare('SELECT ?').bind(undefined).first(), /undefined/);
+test('testD1 bind undefined değeri eşzamanlı reddeder', () => {
+  assert.throws(() => db.prepare('SELECT ?').bind(undefined), /undefined/);
+});
+
+test('batch içinde başarısız ifade tüm batch\'i geri alır', async () => {
+  const ekle = (d) => db.prepare('INSERT INTO daily (date) VALUES (?)').bind(d);
+  await assert.rejects(db.batch([ekle('2026-11-01'), ekle('2026-11-02'), ekle('2026-11-01')]));
+  const { results } = await db.prepare('SELECT date FROM daily').all();
+  assert.equal(results.length, 0);
+});
+
+test('ek sütunlar yazılır ve okunur', async () => {
+  await gunUpsert(db, {
+    date: '2026-11-12', spo2_avg: 96.5, sleep_deep_s: 4200, hrv_status: 'BALANCED', training_load: 0,
+    hr_max: 171, floors: 12.5, sleep_need_min: 480,
+  });
+  const [s] = await gunleriOku(db, '2026-11-12', '2026-11-12');
+  assert.equal(s.spo2_avg, 96.5);
+  assert.equal(s.sleep_deep_s, 4200);
+  assert.equal(s.hrv_status, 'BALANCED');
+  assert.equal(s.training_load, 0);
+  assert.equal(s.hr_max, 171);
+  assert.equal(s.floors, 12.5);
+  assert.equal(s.sleep_need_min, 480);
+  assert.equal(s.resp_avg, null);
+  assert.equal(s.stress_high_s, null);
+});
+
+test('gerçek sıfır korunur ve sıfır dolu değeri ezer', async () => {
+  await gunUpsert(db, { date: '2026-11-12', steps: 0 });
+  let [s] = await gunleriOku(db, '2026-11-12', '2026-11-12');
+  assert.equal(s.steps, 0);
+  await gunUpsert(db, { date: '2026-11-13', steps: 5, training_load: 80 });
+  await gunUpsert(db, { date: '2026-11-13', steps: 0, training_load: 0 });
+  [s] = await gunleriOku(db, '2026-11-13', '2026-11-13');
+  assert.equal(s.steps, 0);
+  assert.equal(s.training_load, 0);
+});
+
+test('tarihsiz gunUpsert TypeError fırlatır ve satır eklemez', async () => {
+  for (const kotu of [{}, { date: null }, { date: '' }, { date: 20261112 }]) {
+    await assert.rejects(gunUpsert(db, { ...kotu, steps: 1 }), TypeError);
+  }
+  const { results } = await db.prepare('SELECT date FROM daily').all();
+  assert.equal(results.length, 0);
+});
+
+test('aktiviteUpsert aynı id ile tek satır tutar, null ile ezmez', async () => {
+  await aktiviteUpsert(db, { id: 123, date: '2026-11-12', type: 'running', start_ts: 10, avg_hr: 150, raw_json: '{"a":1}', hr_zones_json: '[1]' });
+  await aktiviteUpsert(db, { id: '123', avg_hr: null, distance_m: 5000, training_load: 0, total_sets: 4 });
+  const { results } = await db.prepare('SELECT * FROM activities').all();
+  assert.equal(results.length, 1);
+  const r = results[0];
+  assert.equal(r.id, '123');
+  assert.equal(r.type, 'running');
+  assert.equal(r.avg_hr, 150);
+  assert.equal(r.distance_m, 5000);
+  assert.equal(r.training_load, 0);
+  assert.equal(r.total_sets, 4);
+  assert.equal(r.raw_json, '{"a":1}');
+  assert.equal(r.hr_zones_json, '[1]');
+  assert.equal(r.aerobic_te, null);
+  await aktiviteUpsert(db, { id: 123, training_load: 3 });
+  await aktiviteUpsert(db, { id: 123, training_load: 0 });
+  const g = await db.prepare('SELECT training_load FROM activities WHERE id = ?').bind('123').first();
+  assert.equal(g.training_load, 0);
+});
+
+test('aktiviteleriOku tarih aralığını kapsar, start_ts ile sıralar, raw_json döndürmez', async () => {
+  await aktiviteUpsert(db, { id: 1, date: '2026-11-12', start_ts: 300, raw_json: '{}' });
+  await aktiviteUpsert(db, { id: 2, date: '2026-11-10', start_ts: 100, sets_json: '[]' });
+  await aktiviteUpsert(db, { id: 3, date: '2026-11-11', start_ts: null });
+  await aktiviteUpsert(db, { id: 4, date: '2026-11-11', start_ts: 200 });
+  await aktiviteUpsert(db, { id: 5, date: '2026-11-09', start_ts: 50 });
+  await aktiviteUpsert(db, { id: 6, date: '2026-11-13', start_ts: 400 });
+  const r = await aktiviteleriOku(db, '2026-11-10', '2026-11-12');
+  assert.deepEqual(r.map((a) => a.id), ['2', '4', '1', '3']);
+  assert.equal('raw_json' in r[0], false);
+  assert.equal(r[0].sets_json, '[]');
+});
+
+test('kimliksiz aktiviteUpsert TypeError fırlatır', async () => {
+  for (const kotu of [{}, { id: null }, { id: undefined }, { id: '' }]) {
+    await assert.rejects(aktiviteUpsert(db, { ...kotu, date: '2026-11-12' }), TypeError);
+  }
+  const { results } = await db.prepare('SELECT id FROM activities').all();
+  assert.equal(results.length, 0);
 });
