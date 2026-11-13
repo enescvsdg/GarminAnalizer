@@ -63,7 +63,8 @@ h1{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100,'opsz
 <script src="veri.js"></script>
 <script>
 (() => {
-const { OLCUMLER: O, GUNLER, durum, OK, DURUM_METIN } = VERI;
+const { GUNLER, durum, OK, DURUM_METIN } = VERI;
+const O = VERI.OLCUMLER.filter((o) => o.kart === true); // yalnız ana ekrandaki altı kart
 const G7 = GUNLER.slice(-7);
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const TAU = Math.PI * 2, W = 390;

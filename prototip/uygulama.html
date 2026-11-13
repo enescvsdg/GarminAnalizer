@@ -215,7 +215,7 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
         <label for="bAdres">Worker adresi</label>
         <input id="bAdres" type="text" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="https://…workers.dev">
         <label for="bAnahtar">Cihaz anahtarı <span id="bKayitli" hidden>· kayıtlı</span></label>
-        <input id="bAnahtar" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
+        <input id="bAnahtar" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
         <div class="dgm"><button type="button" class="bagla" id="bBagla">Bağlan</button><button type="button" id="bKaldir">Bağlantıyı kaldır</button></div>
         <p id="bDurum" role="status"></p>
       </div>
@@ -229,7 +229,6 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 <script src="veri.js"></script>
 <script src="ses.js"></script>
 <script type="module">
-import { CANLI } from './veri-canli.js';
 const $ = (id) => document.getElementById(id);
 const telKok = $('tel');
 // Ölçekleme: veri beklenirken de ekran doğru oturur
@@ -239,6 +238,7 @@ function telOlcek() {
   return { S, H };
 }
 
+let CANLI; // veri-canli.js dinamik yüklenir; yüklenemezse küçük bir yedek konur, uygulama uydurma veriyle açılır
 // bag: { baglanti: bağlantı kayıtlı mı, canli: veri Worker'dan mı geldi }
 function baslat(VERI, bag) {
 const { OLCUMLER: O, GUNLER, durum, OK, DURUM_METIN } = VERI;
@@ -376,10 +376,11 @@ function durumHtml(du, uzun) { return du === 'ok' ? TIK + 'normalde' : OK[du] + 
 /* ================= BUGÜN: kartlar ================= */
 const L = O.filter((o) => o.kart).map((o, i) => {
   const el = document.createElement('button'); el.className = 'et'; el.type = 'button';
-  el.innerHTML = `<span class="kart"><span class="ust"><span>${KISA[o.id] || o.ad}</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5L7 5 3 8.5"/></svg></span>
-    <span class="orta"><span class="deger">0</span><span class="br">${o.birim.trim()}</span></span>
+  el.innerHTML = `<span class="kart"><span class="ust"><span class="ad"></span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5L7 5 3 8.5"/></svg></span>
+    <span class="orta"><span class="deger">0</span><span class="br"></span></span>
     <svg class="kiv" viewBox="0 0 84 20" preserveAspectRatio="none" aria-hidden="true"><rect class="bant" x="0" width="84"/><path class="cz"/><circle class="uc" r="2.6"/></svg>
     <span class="dr"></span></span>`;
+  el.querySelector('.ad').textContent = KISA[o.id] || o.ad; el.querySelector('.br').textContent = o.birim.trim(); // API metni: textContent
   $('etiketler').appendChild(el);
   const l = { o, i, el, br: el.querySelector('.br'), deg: el.querySelector('.deger'), dr: el.querySelector('.dr'), bant: el.querySelector('.bant'), cz: el.querySelector('.cz'), uc: el.querySelector('.uc'), k: 0, r: RM ? 1 : 0, val: 0 };
   el.addEventListener('click', () => { titret(10); trendeGec(O.indexOf(o), l); });
@@ -721,21 +722,28 @@ function bagDurum() {
   if (bag.baglanti) return 'Bağlanılamadı. Adresi ve anahtarı kontrol et. Uydurma veri gösteriliyor.';
   return 'Uydurma veri gösteriliyor.';
 }
-$('bDurum').textContent = bagDurum();
+bagBilgi(bagDurum());
 function bagHata(msg) { $('bDurum').textContent = msg; $('bDurum').classList.add('hata'); }
+function bagBilgi(msg) { $('bDurum').textContent = msg; $('bDurum').classList.remove('hata'); }
 $('bBagla').addEventListener('click', () => {
-  const adres = $('bAdres').value, anahtar = $('bAnahtar').value.trim() || (kayitli ? kayitli.anahtar : '');
-  if (!CANLI.adresDuzelt(adres)) return bagHata('Adres https:// ile başlamalı.');
-  if (!anahtar) return bagHata('Cihaz anahtarını gir.');
-  if (!CANLI.baglantiYaz({ adres, anahtar })) return bagHata('Bağlantı kaydedilemedi.');
+  const k = CANLI.baglantiKarar({ adres: $('bAdres').value, anahtar: $('bAnahtar').value, kayitli });
+  if (!k.tamam) return bagHata(k.hata);
+  if (!CANLI.baglantiYaz(k.baglanti)) return bagHata('Bağlantı kaydedilemedi.');
   $('bAnahtar').value = ''; location.reload();
 });
 $('bKaldir').addEventListener('click', () => { CANLI.baglantiSil(); location.reload(); });
 [$('bAdres'), $('bAnahtar')].forEach((e) => e.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') $('bBagla').click(); }));
-function seritKur() { // Bugün başlığının üstünde kalıcı uyarı (yalnız canlı veride)
-  if (!bag.canli) return;
-  const m = VERI.meta || {}, satirlar = [], eski = CANLI.eskilikSaat(m.sonEsitleme, Date.now());
-  if (m.keyDurum === 'gecersiz') satirlar.push("Garmin key'inin süresi dolmuş. Yenileyene kadar veri güncellenmez.");
+function seritKur() { // Bugün başlığının üstünde kalıcı uyarı
+  const m = VERI.meta || {}, satirlar = [];
+  if (!bag.canli) { // bağlantı kayıtlı ama veri alınamadı: uydurma veri uyarısız kalmasın
+    if (!bag.baglanti) return;
+    satirlar.push('Bağlanılamadı. Uydurma veri gösteriliyor.');
+  }
+  const eski = bag.canli ? CANLI.eskilikSaat(m.sonEsitleme, Date.now()) : null;
+  if (bag.canli && m.keyDurum === 'gecersiz') {
+    const son = CANLI.sonEsitlemeMetni(m.sonEsitleme);
+    satirlar.push("Garmin key'inin süresi dolmuş. Yenileyene kadar veri güncellenmez." + (son ? ` Son eşitleme: ${son}.` : ''));
+  }
   if (eski !== null) satirlar.push(`Son eşitleme ${eski} saat önce.`);
   if (!satirlar.length) return;
   satirlar.forEach((t) => { const p = document.createElement('p'); p.textContent = t; $('seritMetin').appendChild(p); });
@@ -882,15 +890,33 @@ if (!RM) {
 }
 
 // Başlangıç: bağlantı varsa veri gelene kadar nötr bekleme durumu; açılış animasyonu uydurma veriyle başlamaz.
-const kayit = CANLI.baglantiOku();
-if (!kayit) baslat(window.VERI, { baglanti: false, canli: false });
-else {
-  telOlcek(); addEventListener('resize', telOlcek); $('bekle').hidden = false;
-  CANLI.veriGetir().then((v) => {
-    removeEventListener('resize', telOlcek); $('bekle').hidden = true;
-    baslat(v || window.VERI, { baglanti: true, canli: !!v });
-  });
+// Her koşulda uygulama açılır: modül yüklenemezse, veri alınamazsa ya da canlı veriyle başlatma patlarsa uydurma veriyle.
+let basladi = false;
+function ac(v, bag) {
+  if (basladi) return; basladi = true;
+  try { baslat(v, bag); } catch (hata) {
+    if (!bag.canli) throw hata; // uydurma veri de patlıyorsa dönülecek yer yok
+    ['etiketler', 'gunler', 'secici', 'seritMetin'].forEach((id) => { $(id).textContent = ''; });
+    $('serit').hidden = true;
+    baslat(window.VERI, { baglanti: true, canli: false });
+  }
 }
+(async () => {
+  try { ({ CANLI } = await import('./veri-canli.js')); } catch (e) {
+    CANLI = { // modül yüklenemedi: yalnız uygulamanın açılması için en küçük yedek
+      baglantiOku() { try { const o = JSON.parse(localStorage.getItem('gk-baglanti')); return o && o.adres && o.anahtar ? o : null; } catch (x) { return null; } },
+      baglantiSil() { try { localStorage.removeItem('gk-baglanti'); } catch (x) {} },
+      baglantiYaz: () => false, baglantiKarar: () => ({ tamam: false, hata: 'Bağlantı modülü yüklenemedi.' }),
+      adresDuzelt: () => null, ekSatiri: () => null, eskilikSaat: () => null, sonEsitlemeMetni: () => null, veriGetir: async () => null,
+    };
+  }
+  if (!CANLI.baglantiOku()) return ac(window.VERI, { baglanti: false, canli: false });
+  telOlcek(); addEventListener('resize', telOlcek); $('bekle').hidden = false;
+  let v = null;
+  try { v = await CANLI.veriGetir(); } catch (e) { v = null; }
+  removeEventListener('resize', telOlcek); $('bekle').hidden = true;
+  ac(v || window.VERI, { baglanti: true, canli: !!v });
+})();
 </script>
 </body>
 </html>

@@ -4,7 +4,7 @@ import { apiYaniti } from '../worker/src/stats/ozet.js';
 import { gunEkle } from '../worker/src/zaman.js';
 import {
   veriCevir, durum, veriGetir, baglantiOku, baglantiYaz, baglantiSil,
-  sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri,
+  sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, baglantiKarar,
 } from './veri-canli.js';
 
 const BUGUN = '2026-11-12';
@@ -357,4 +357,79 @@ test('ekSatiri bb, stres, hrv ve ek satırı olmayan ölçümler', () => {
   assert.equal(ekSatiri('hrv', ek).metin, 'Haftalık ortalama 53 ms');
   assert.equal(ekSatiri('hrv', { hrv: { durum: 'BALANCED', haftalik: null } }), null);
   for (const id of ['nabiz', 'yuk', 'derin', 'spo2', 'solunum', 'bilinmeyen']) assert.equal(ekSatiri(id, ek), null);
+});
+
+test('veriYok günde hüküm ve gerekçe payload ne derse desin sabitlenir', () => {
+  const api = yanit();
+  api.gunler[api.gunler.length - 1].e = null;
+  api.gunler[api.gunler.length - 1].hukum = 'Harika bir gün!';
+  api.gunler[api.gunler.length - 1].gerekce = 'Bütün ölçümlerin normal aralığında.';
+  const son = veriCevir(api).GUNLER[27];
+  assert.equal(son.veriYok, true);
+  assert.equal(son.hukum, 'Bugün için yeterli veri yok.');
+  assert.equal(son.gerekce, '');
+});
+
+test('e [0,1] aralığına kırpılır; sonlu olmayan değer veriYok olur', () => {
+  const api = yanit();
+  const g = api.gunler;
+  g[g.length - 1].e = 1.7;
+  g[g.length - 2].e = -0.4;
+  g[g.length - 3].e = Infinity;
+  g[g.length - 4].e = 'yüksek';
+  const v = veriCevir(api).GUNLER;
+  assert.equal(v[27].e, 1);
+  assert.equal(v[27].veriYok, false);
+  assert.equal(v[26].e, 0);
+  assert.equal(v[26].veriYok, false);
+  assert.equal(v[25].veriYok, true);
+  assert.equal(v[25].e, 0.5);
+  assert.equal(v[24].veriYok, true);
+  assert.equal(v[24].e, 0.5);
+});
+
+test('veriGetir fetch\'e redirect: error geçirir', async () => {
+  const depo = sahteDepo();
+  baglantiYaz({ adres: 'https://w.ornek.dev', anahtar: ANAHTAR }, depo);
+  let init;
+  await veriGetir(async (u, i) => { init = i; return yanitCevir(yanit()); }, depo);
+  assert.equal(init.redirect, 'error');
+});
+
+test('baglantiKarar: aynı adres + boş anahtar kayıtlı anahtarı yeniden kullanır', () => {
+  const kayitli = { adres: 'https://w.ornek.dev', anahtar: ANAHTAR };
+  const k = baglantiKarar({ adres: 'https://w.ornek.dev', anahtar: '  ', kayitli });
+  assert.equal(k.tamam, true);
+  assert.deepEqual(k.baglanti, { adres: 'https://w.ornek.dev', anahtar: ANAHTAR });
+  assert.equal(k.hata, undefined);
+});
+
+test('baglantiKarar: farklı adres + boş anahtar hata verir, bağlantı dönmez', () => {
+  const kayitli = { adres: 'https://w.ornek.dev', anahtar: ANAHTAR };
+  const k = baglantiKarar({ adres: 'https://baska.ornek.dev', anahtar: '', kayitli });
+  assert.equal(k.tamam, false);
+  assert.equal(k.hata, 'Adres değişti. Cihaz anahtarını yeniden gir.');
+  assert.equal(k.baglanti, undefined);
+});
+
+test('baglantiKarar: sondaki / ve şema/ana makine büyük harfi aynı adres sayılır', () => {
+  const kayitli = { adres: 'https://w.ornek.dev', anahtar: ANAHTAR };
+  for (const adres of ['https://w.ornek.dev/', 'HTTPS://W.Ornek.DEV', ' https://w.ornek.dev// ']) {
+    const k = baglantiKarar({ adres, anahtar: '', kayitli });
+    assert.equal(k.tamam, true, adres);
+    assert.equal(k.baglanti.anahtar, ANAHTAR, adres);
+    assert.equal(k.baglanti.adres, 'https://w.ornek.dev', adres);
+  }
+});
+
+test('baglantiKarar: yeni anahtar yazılırsa adres değişse de o kullanılır', () => {
+  const kayitli = { adres: 'https://w.ornek.dev', anahtar: ANAHTAR };
+  const k = baglantiKarar({ adres: 'https://baska.ornek.dev/', anahtar: ' yeni-anahtar ', kayitli });
+  assert.equal(k.tamam, true);
+  assert.deepEqual(k.baglanti, { adres: 'https://baska.ornek.dev', anahtar: 'yeni-anahtar' });
+});
+
+test('baglantiKarar: geçersiz adres ve kayıt yokken boş anahtar', () => {
+  assert.deepEqual(baglantiKarar({ adres: 'http://w.ornek.dev', anahtar: 'x', kayitli: null }), { tamam: false, hata: 'Adres https:// ile başlamalı.' });
+  assert.deepEqual(baglantiKarar({ adres: 'https://w.ornek.dev', anahtar: '', kayitli: null }), { tamam: false, hata: 'Cihaz anahtarını gir.' });
 });

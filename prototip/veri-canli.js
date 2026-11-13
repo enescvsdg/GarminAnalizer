@@ -67,12 +67,13 @@ export function veriCevir(yanit) {
     const d = {};
     for (const o of OLCUMLER) d[o.id] = say(g.d?.[o.id]);
     const veriYok = !sonlu(g.e);
+    const e = veriYok ? 0.5 : Math.min(1, Math.max(0, g.e));
     return {
       tarih, gunKisa: GUN_KISA[tarih.getDay()], gunUzun: GUN_UZUN[tarih.getDay()],
       gun: tarih.getDate(), ay: AY[tarih.getMonth()],
-      e: veriYok ? 0.5 : g.e, d,
-      hukum: metinMi(g.hukum) ? g.hukum : 'Bugün için yeterli veri yok.',
-      gerekce: typeof g.gerekce === 'string' ? g.gerekce : '',
+      e, d,
+      hukum: !veriYok && metinMi(g.hukum) ? g.hukum : 'Bugün için yeterli veri yok.',
+      gerekce: !veriYok && typeof g.gerekce === 'string' ? g.gerekce : '',
       ek: ekKur(g.ek), veriYok,
     };
   });
@@ -109,6 +110,17 @@ export function baglantiOku(depo = varsayilanDepo()) {
   } catch { return null; }
 }
 
+// Ayarlar'da "Bağlan" kararı: adres değiştiyse kayıtlı anahtar yeniden kullanılmaz.
+export function baglantiKarar({ adres, anahtar, kayitli } = {}) {
+  const a = adresDuzelt(adres);
+  if (!a) return { tamam: false, hata: 'Adres https:// ile başlamalı.' };
+  const k = typeof anahtar === 'string' ? anahtar.trim() : '';
+  if (k) return { tamam: true, baglanti: { adres: a, anahtar: k } };
+  if (!kayitli || typeof kayitli.anahtar !== 'string' || !kayitli.anahtar) return { tamam: false, hata: 'Cihaz anahtarını gir.' };
+  if (adresDuzelt(kayitli.adres) !== a) return { tamam: false, hata: 'Adres değişti. Cihaz anahtarını yeniden gir.' };
+  return { tamam: true, baglanti: { adres: a, anahtar: kayitli.anahtar } };
+}
+
 export function baglantiYaz({ adres, anahtar } = {}, depo = varsayilanDepo()) {
   const a = adresDuzelt(adres);
   const k = typeof anahtar === 'string' ? anahtar.trim() : '';
@@ -131,7 +143,7 @@ export async function veriGetir(fetchFn = globalThis.fetch, depo = varsayilanDep
     const istek = (async () => {
       const r = await fetchFn(`${adres}/api/gunler?gun=${GUN_SAYISI}`, {
         method: 'GET', headers: { 'X-Device-Key': b.anahtar, Accept: 'application/json' },
-        cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal: kontrol?.signal,
+        cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: kontrol?.signal,
       });
       if (!r || r.ok !== true || (r.status !== undefined && r.status !== 200)) return null;
       return veriCevir(await r.json());
@@ -200,7 +212,7 @@ export function ekSatiri(olcumId, ek) {
 }
 
 export const CANLI = {
-  veriCevir, durum, veriGetir, baglantiOku, baglantiYaz, baglantiSil, adresDuzelt,
+  veriCevir, durum, veriGetir, baglantiOku, baglantiYaz, baglantiSil, baglantiKarar, adresDuzelt,
   sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, OK, DURUM_METIN,
 };
 globalThis.CANLI = CANLI;
