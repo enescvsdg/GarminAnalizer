@@ -45,6 +45,9 @@ export function garminIstemci({ apiKey, fetch, tokenOku, tokenYaz, simdi }) {
       throw new GarminGeciciHata(`Garmin token alınamadı (HTTP ${r.status})`, r.status);
     }
     const token = (await r.text()).trim();
+    if (!token) {
+      throw new GarminGeciciHata(`Garmin token yanıtı boş (HTTP ${r.status})`, r.status);
+    }
     const bitis = jwtBitis(token) || simdi() + 86400 - YENILEME_ESIGI;
     await tokenYaz({ access_token: token, expires_at: bitis });
     return token;

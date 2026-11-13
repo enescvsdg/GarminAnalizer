@@ -167,3 +167,17 @@ test('jwtBitis 0 ise önbelleğe simdi+82800 yazılır', async () => {
   await istemci.get('/a');
   assert.equal(yazilan[0].expires_at, SIMDI + 86400 - 3600);
 });
+
+test('token uç noktası boş/boşluk gövdeyle 200 dönerse GarminGeciciHata, önbellek yazılmaz, veri isteği atılmaz', async () => {
+  for (const body of ['', '  \n\t ']) {
+    const { istemci, fetch, yazilan } = kur({ yanitlar: [{ durum: 200, body }] });
+    await assert.rejects(istemci.get('/a'), (e) => {
+      assert.ok(e instanceof GarminGeciciHata);
+      assert.equal(e.durum, 200);
+      return true;
+    });
+    assert.equal(yazilan.length, 0);
+    assert.equal(fetch.cagrilar.length, 1);
+    assert.equal(fetch.cagrilar[0].method, 'POST');
+  }
+});
