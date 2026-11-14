@@ -744,9 +744,8 @@ $('aYz').addEventListener('click', async () => {
   if (!bag.canli || !yz.hazir || yz.mesgul) return;
   yz.mesgul = true; yzGoster();
   let r = null; try { r = await CANLI.ayarYaz(!yz.deger); } catch (e) { r = null; }
-  yz.mesgul = false;
-  if (!r) { yzGoster('Kaydedilemedi.'); $('aYz').focus({ preventScroll: true }); return; } // sunucu onaylamadan görünüm değişmez
-  yz.deger = r.yapayZeka; yzGoster(); location.reload(); // yorum kaynağı değişti: veri yeniden yüklenir
+  if (!r) { yz.mesgul = false; yzGoster('Kaydedilemedi.'); $('aYz').focus({ preventScroll: true }); return; } // sunucu onaylamadan görünüm değişmez
+  yz.deger = r.yapayZeka; yzGoster(); location.reload(); // yorum kaynağı değişti: veri yeniden yüklenir; mesgul açık kalır ki ikinci dokunuş ayarı geri çevirmesin
 });
 yzGoster();
 
