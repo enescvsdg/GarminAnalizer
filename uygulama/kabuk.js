@@ -48,7 +48,17 @@
     }).catch(() => {});
   }
 
+  // Yerel geliştirmede (localhost) sürüm yer tutucusu hiç değişmez; önbellek-önce çalışan bir worker
+  // eski dosyaları sonsuza dek sunar. Bu yüzden yerelde kayıt yapılmaz ve varsa eski kayıt kaldırılır.
+  // Yerelde worker'ı denemek için adrese ?sw=1 eklenir.
+  const yerel = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname || '');
+  const yereldeKapali = yerel && !/[?&]sw=1(&|$)/.test(location.search || '');
+
   function kaydet() {
+    if (yereldeKapali) {
+      if (sw.getRegistration) sw.getRegistration('./').then((k) => k && k.unregister()).catch(() => {});
+      return;
+    }
     sw.register('./sw.js', { scope: './', updateViaCache: 'none' }).catch((hata) => {
       console.warn('Service worker kaydı başarısız:', hata);
     });

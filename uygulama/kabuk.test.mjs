@@ -375,12 +375,12 @@ test('surum iletisine SURUM ile yanıt verir', () => {
 });
 
 // ---- kabuk.js ---------------------------------------------------------------
-function kabukOrtami({ controller = null, sw = true, readyState = 'complete', yenilendi = null, depoVar = true, kayitHatasi = false } = {}) {
+function kabukOrtami({ controller = null, sw = true, readyState = 'complete', yenilendi = null, depoVar = true, kayitHatasi = false, hostname = 'ornek.github.io', search = '' } = {}) {
   const depo = new Map(yenilendi ? [['gk-yenilendi', yenilendi]] : []);
   const olaylar = {};
   const swDinleyici = {};
   const zamanlayici = [];
-  const log = { kayit: [], reload: 0, uyari: 0 };
+  const log = { kayit: [], reload: 0, uyari: 0, kaldirildi: 0 };
   const satir = { hidden: true, textContent: '' };
   const aktif = { postMessage(msg, ports) { aktif.son = msg; aktif.port = ports[0]; } };
   const nav = sw ? {
@@ -389,12 +389,13 @@ function kabukOrtami({ controller = null, sw = true, readyState = 'complete', ye
       addEventListener(t, f) { swDinleyici[t] = f; },
       register(url, opt) { log.kayit.push([url, opt]); return kayitHatasi ? Promise.reject(new Error('x')) : Promise.resolve({ active: aktif }); },
       ready: Promise.resolve({ active: aktif }),
+      getRegistration() { return Promise.resolve({ unregister() { log.kaldirildi++; return Promise.resolve(true); } }); },
     },
   } : {};
   const ctx = {
     navigator: nav,
     document: { readyState, getElementById: (id) => (id === 'surum' ? satir : null) },
-    location: { reload() { log.reload++; } },
+    location: { hostname, search, reload() { log.reload++; } },
     addEventListener(t, f) { olaylar[t] = f; },
     setTimeout(f, ms) { zamanlayici.push({ f, ms }); return zamanlayici.length; },
     clearTimeout() {},
@@ -513,4 +514,21 @@ test('kayıt başarısız olursa tek uyarı yazar, hata fırlatmaz', async () =>
   const k = kabukOrtami({ kayitHatasi: true });
   await bekle();
   assert.equal(k.log.uyari, 1);
+});
+
+test('yerelde (localhost) worker kaydedilmez ve eski kayıt kaldırılır; ?sw=1 ile kaydedilir', async () => {
+  for (const hostname of ['localhost', '127.0.0.1']) {
+    const o = kabukOrtami({ hostname });
+    await bekle();
+    assert.equal(o.log.kayit.length, 0, hostname);
+    assert.equal(o.log.kaldirildi, 1, hostname);
+  }
+  const acik = kabukOrtami({ hostname: 'localhost', search: '?sw=1' });
+  await bekle();
+  assert.equal(acik.log.kayit.length, 1);
+  assert.equal(acik.log.kaldirildi, 0);
+  const yayin = kabukOrtami({ hostname: 'ornek.github.io' });
+  await bekle();
+  assert.equal(yayin.log.kayit.length, 1);
+  assert.equal(yayin.log.kaldirildi, 0);
 });
