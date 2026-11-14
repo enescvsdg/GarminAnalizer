@@ -399,7 +399,7 @@ test('OPTIONS /api/ayar yeni başlıkları döner', async () => {
   assert.equal(r.headers.get('Access-Control-Allow-Headers'), 'X-Device-Key, Content-Type');
 });
 
-test('ayar kapatılınca yorumKaynak sablon olur, açılınca eski yorum geri gelmez', async () => {
+test('ayar kapatılınca yorumKaynak sablon olur, açılınca bugünün yorumu hemen geri gelir', async () => {
   const env = ortam();
   await dolu(env);
   await yorumYaz(env);
@@ -409,7 +409,9 @@ test('ayar kapatılınca yorumKaynak sablon olur, açılınca eski yorum geri ge
   assert.equal(g.yorumKaynak, 'sablon');
   assert.notEqual(g.gunler.at(-1).hukum, YORUM.hukum);
   await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde: { yapayZeka: true } }), env, SIMDI);
-  assert.equal((await gunlerAl(env)).yorumKaynak, 'sablon');
+  const g2 = await gunlerAl(env);
+  assert.equal(g2.yorumKaynak, 'gemini');
+  assert.equal(g2.gunler.at(-1).hukum, YORUM.hukum);
 });
 
 // ---- Fix round 1: gövde sınırı akış sırasında uygulanır ----

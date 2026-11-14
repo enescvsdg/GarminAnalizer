@@ -262,13 +262,18 @@ test('yorumOku: eşleşen kayıt döner; karma uyuşmazlığı, başka gün, kap
   assert.equal(await yorumOku(k.db, BUGUN, k.satir), null);
 });
 
-test('yapayZekaYaz(false) kayıtlı yorumu siler', async () => {
+test('kapatınca yorum gösterilmez ama silinmez; açınca istek atmadan geri gelir, veri değiştiyse gelmez', async () => {
   const k = kur();
   await calistir(k);
+  assert.equal(k.cagrilar.length, 1);
   await yapayZekaYaz(k.db, false);
-  assert.equal(await durumOku(k.db, 'yorum'), null);
-  await yapayZekaYaz(k.db, true);
   assert.equal(await yorumOku(k.db, BUGUN, k.satir), null);
+  assert.deepEqual(await calistir(k), { durum: 'kapali' });
+  await yapayZekaYaz(k.db, true);
+  assert.deepEqual(await yorumOku(k.db, BUGUN, k.satir), GECERLI);
+  assert.equal(await yorumOku(k.db, BUGUN, satirlar({ hrv_avg: 58 })), null);
+  assert.deepEqual(await calistir(k), { durum: 'ayni' });
+  assert.equal(k.cagrilar.length, 1);
 });
 
 // ---- Fix round 1: yön ve sayı denetimi, görünmez karakter, ayar yarışı, sayaç hatası ----

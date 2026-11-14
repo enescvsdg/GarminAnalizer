@@ -100,8 +100,9 @@ export async function yapayZekaAcik(db) {
 }
 
 export async function yapayZekaYaz(db, acik) {
+  // Kapatınca kayıtlı yorum SİLİNMEZ: yorumOku kapalıyken null döndürdüğü için gösterilmez,
+  // yeniden açılınca (veri değişmediyse) hemen geri gelir. Kapalıyken Gemini'ye istek gitmez.
   await durumYaz(db, 'ayar_yapay_zeka', acik === true);
-  if (acik !== true) await durumYaz(db, 'yorum', null); // eski yorum gösterilmesin
 }
 
 export async function yorumGuncelle({ db, satirlar, bugun, simdiMs, yaz }) {
