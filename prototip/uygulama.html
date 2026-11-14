@@ -157,6 +157,13 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 #ekSatir .lg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;font-size:11px;line-height:14px;font-variant-numeric:tabular-nums}
 #ekSatir .lg b{display:flex;align-items:center;gap:4px;font-weight:500;color:rgba(255,246,236,.82);white-space:nowrap}
 #ekSatir .lg i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--c)}
+#bugun .bas .yz{font-size:12px;font-weight:500;line-height:1.3;margin-top:6px;color:rgba(255,246,236,.7)}
+.bas .yz[hidden]{display:none}
+#aYz{height:44px;padding:6px 0;background-clip:content-box}
+#aYz::after{top:9px}
+#aYz:disabled{opacity:.45;cursor:default}
+#ayar #yzDurum{font-weight:600;color:var(--isaret)}
+#ayar #yzDurum:empty{display:none}
 #ekSatir .lg span{padding-left:11px;font-weight:600;white-space:nowrap}
 </style>
 </head>
@@ -188,7 +195,7 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
     <section id="bugun" class="tam">
       <div id="bugunUst" class="tam">
         <svg id="yor" class="tam" aria-hidden="true"><ellipse id="yIc"/><ellipse class="dis" id="yDis"/></svg>
-        <header class="bas" id="bBas"><div class="serit" id="serit" role="status" hidden><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.8l5.6 9.8H1.4zM7 5.6v2.8M7 10v.01"/></svg><div id="seritMetin"></div></div><p class="tarih" id="bTarih"></p><h1 id="bHukum"></h1><p class="ger" id="bGer"></p></header>
+        <header class="bas" id="bBas"><div class="serit" id="serit" role="status" hidden><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.8l5.6 9.8H1.4zM7 5.6v2.8M7 10v.01"/></svg><div id="seritMetin"></div></div><p class="tarih" id="bTarih"></p><h1 id="bHukum"></h1><p class="ger" id="bGer"></p><p class="yz" id="bYz" hidden>Yapay zekâ yorumu</p></header>
         <nav class="gunler" id="gunler" aria-label="Son yedi gün"></nav>
       </div>
       <div id="dokun" aria-hidden="true"></div>
@@ -219,6 +226,9 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
         <div class="dgm"><button type="button" class="bagla" id="bBagla">Bağlan</button><button type="button" id="bKaldir">Bağlantıyı kaldır</button></div>
         <p id="bDurum" role="status"></p>
       </div>
+      <div class="satir"><span id="l3">Yapay zekâ yorumu</span><button type="button" class="anah" id="aYz" role="switch" aria-labelledby="l3" aria-describedby="yzAcik" aria-checked="false" aria-disabled="true" disabled></button></div>
+      <p id="yzAcik"></p>
+      <p id="yzDurum" role="status"></p>
       <p>Sesler ekrana ilk dokunuşundan sonra başlar. Telefon sessizdeyse çalmaz.</p>
       <button type="button" class="kapat" id="aKapat">Kapat</button>
     </div>
@@ -429,11 +439,13 @@ function sec(i, sessiz) {
   });
   if (D) {
     yaz($('bHukum'), g.hukum);
-    gsap.timeline().to('#bGer', { autoAlpha: 0, y: -6, duration: 0.18 })
-      .add(() => { $('bGer').textContent = g.gerekce; yerlesimB(true); })
-      .fromTo('#bGer', { y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power3.out' });
-  } else { bol($('bHukum'), g.hukum); $('bGer').textContent = g.gerekce; yerlesimB(false); }
+    gsap.timeline().to(['#bGer', '#bYz'], { autoAlpha: 0, y: -6, duration: 0.18 })
+      .add(() => { $('bGer').textContent = g.gerekce; yzEtiket(g); yerlesimB(true); })
+      .fromTo(['#bGer', '#bYz'], { y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power3.out' });
+  } else { bol($('bHukum'), g.hukum); $('bGer').textContent = g.gerekce; yzEtiket(g); yerlesimB(false); }
 }
+// "Yapay zekâ yorumu" etiketi yalnız bugün ve yorum Gemini'den geldiyse DOM'da yer kaplar
+function yzEtiket(g) { $('bYz').hidden = !(VERI.meta && VERI.meta.yorumKaynak === 'gemini' && g === GUNLER[N - 1] && !g.veriYok); }
 function yerlesimB(yumusak) {
   const ust = telY($('bBas'), 'bottom') + 8, alt = telY($('gunler'), 'top') - 4;
   const a = Math.max(60, (alt - ust) / 2), ks = clamp(a / 196, 0.4, 1); // çok kısa ekranda kartlar küçülür, üst üste binmez
@@ -700,6 +712,7 @@ function ayarAc() {
   gsap.to('#perde', { autoAlpha: 1, duration: RM ? 0 : 0.25 });
   gsap.fromTo('#ayar', { yPercent: 110, autoAlpha: 1 }, { yPercent: 0, duration: RM ? 0 : 0.5, ease: 'power4.out' });
   $('aSes').focus({ preventScroll: true });
+  yzOku();
 }
 function ayarKapat() {
   if (!ayarAcik) return; ayarAcik = false; sekmeGuncelle();
@@ -711,6 +724,31 @@ $('sAyar').addEventListener('click', () => (ayarAcik ? ayarKapat() : ayarAc()));
 $('perde').addEventListener('click', ayarKapat); $('aKapat').addEventListener('click', ayarKapat);
 addEventListener('keydown', (ev) => { if (ev.key === 'Escape') ayarKapat(); });
 sesGoster();
+
+/* ================= Yapay zekâ yorumu anahtarı ================= */
+const yz = { deger: false, hazir: false, mesgul: false, oku: 0 };
+function yzGoster(not) {
+  const kapali = !bag.canli || !yz.hazir || yz.mesgul;
+  $('aYz').disabled = kapali; $('aYz').setAttribute('aria-disabled', kapali); $('aYz').setAttribute('aria-checked', yz.deger);
+  $('yzAcik').textContent = bag.canli ? "Açıkken bugünün özet sayıları yorum için Google Gemini'ye gönderilir. Adın, tarih ve geçmiş günler gönderilmez." : "Worker'a bağlanınca kullanılabilir.";
+  $('yzDurum').textContent = not || '';
+}
+async function yzOku() { // Ayarlar her açıldığında sunucudaki durum okunur; yanıt gelene kadar anahtar kapalı kalır
+  if (!bag.canli || yz.mesgul) return yzGoster();
+  const n = ++yz.oku; yz.hazir = false; yzGoster();
+  let r = null; try { r = await CANLI.ayarGetir(); } catch (e) { r = null; }
+  if (n !== yz.oku || yz.mesgul) return;
+  if (r) { yz.deger = r.yapayZeka; yz.hazir = true; yzGoster(); } else yzGoster('Ayar okunamadı.');
+}
+$('aYz').addEventListener('click', async () => {
+  if (!bag.canli || !yz.hazir || yz.mesgul) return;
+  yz.mesgul = true; yzGoster();
+  let r = null; try { r = await CANLI.ayarYaz(!yz.deger); } catch (e) { r = null; }
+  yz.mesgul = false;
+  if (!r) { yzGoster('Kaydedilemedi.'); $('aYz').focus({ preventScroll: true }); return; } // sunucu onaylamadan görünüm değişmez
+  yz.deger = r.yapayZeka; yzGoster(); location.reload(); // yorum kaynağı değişti: veri yeniden yüklenir
+});
+yzGoster();
 
 /* ================= Bağlantı ve uyarı şeridi ================= */
 const kayitli = CANLI.baglantiOku();
@@ -874,13 +912,13 @@ if (!RM) {
   const g = GUNLER[N - 1];
   L.forEach((l) => { l.val = 0; l.deg.textContent = g.d[l.o.id] === null ? '–' : '0'; });
   gsap.set($('bHukum').querySelectorAll('.h'), { autoAlpha: 0 });
-  gsap.set(['#bTarih', '#bGer'], { autoAlpha: 0, y: 12 }); gsap.set('#yor', { autoAlpha: 0 });
+  gsap.set(['#bTarih', '#bGer', '#bYz'], { autoAlpha: 0, y: 12 }); gsap.set('#yor', { autoAlpha: 0 });
   mesgul = true; // açılış bitmeden ekran değiştirilmesin
   gsap.timeline({ delay: 0.3 })
     .add(() => (mesgul = false), 1.9)
     .to(st, { ign: 1, duration: 2, ease: 'elastic.out(1,0.5)' }, 0)
     .add(() => gsap.fromTo($('bHukum').querySelectorAll('.h'), { yPercent: 85, autoAlpha: 0, rotation: 7 }, { yPercent: 0, autoAlpha: 1, rotation: 0, duration: 0.65, stagger: 0.022, ease: 'back.out(1.8)' }), 0.4)
-    .to(['#bTarih', '#bGer'], { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.14, ease: 'power3.out' }, 0.65)
+    .to(['#bTarih', '#bGer', '#bYz'], { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.14, ease: 'power3.out' }, 0.65)
     .to(L, { r: 1, duration: 1.2, stagger: 0.085, ease: 'back.out(1.5)' }, 0.55)
     .add(() => L.forEach((l, j) => { if (g.d[l.o.id] !== null) gsap.to(l, { val: g.d[l.o.id], duration: 1.3, delay: j * 0.08, ease: 'power2.out', onUpdate: () => (l.deg.textContent = Math.round(l.val)) }); }), 0.6)
     .to('#yor', { autoAlpha: 1, duration: 1.2 }, 1.2)
@@ -908,7 +946,7 @@ function ac(v, bag) {
       baglantiOku() { try { const o = JSON.parse(localStorage.getItem('gk-baglanti')); return o && o.adres && o.anahtar ? o : null; } catch (x) { return null; } },
       baglantiSil() { try { localStorage.removeItem('gk-baglanti'); } catch (x) {} },
       baglantiYaz: () => false, baglantiKarar: () => ({ tamam: false, hata: 'Bağlantı modülü yüklenemedi.' }),
-      adresDuzelt: () => null, ekSatiri: () => null, eskilikSaat: () => null, sonEsitlemeMetni: () => null, veriGetir: async () => null,
+      adresDuzelt: () => null, ekSatiri: () => null, eskilikSaat: () => null, sonEsitlemeMetni: () => null, veriGetir: async () => null, ayarGetir: async () => null, ayarYaz: async () => null,
     };
   }
   if (!CANLI.baglantiOku()) return ac(window.VERI, { baglanti: false, canli: false });

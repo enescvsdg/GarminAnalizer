@@ -79,7 +79,10 @@ export function veriCevir(yanit) {
   });
   return {
     OLCUMLER, GUNLER, durum, OK, DURUM_METIN,
-    meta: { sonEsitleme: say(yanit.sonEsitleme), keyDurum: metinMi(yanit.keyDurum) ? yanit.keyDurum : null },
+    meta: {
+      sonEsitleme: say(yanit.sonEsitleme), keyDurum: metinMi(yanit.keyDurum) ? yanit.keyDurum : null,
+      yorumKaynak: yanit.yorumKaynak === 'gemini' ? 'gemini' : 'sablon',
+    },
   };
 }
 
@@ -132,25 +135,47 @@ export function baglantiSil(depo = varsayilanDepo()) {
   try { depo?.removeItem(BAGLANTI_ANAHTARI); } catch { /* depo yok ya da erişilemiyor */ }
 }
 
-// Bağlantı yoksa, adres geçersizse, ağ/HTTP/JSON hatasında ya da zaman aşımında null. Hiçbir durumda fırlatmaz.
-export async function veriGetir(fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
+// Ortak istek: bağlantı yoksa, adres geçersizse, ağ/HTTP/JSON/biçim hatasında ya da zaman aşımında null. Fırlatmaz.
+// Anahtar yalnızca X-Device-Key başlığına gider. isle(json) geçersiz yanıtta fırlatır -> null.
+async function istekYap(yol, { method = 'GET', govde } = {}, isle, fetchFn, depo, zamanAsimiMs) {
   const b = baglantiOku(depo);
   const adres = b && adresDuzelt(b.adres);
   if (!b || !adres || typeof fetchFn !== 'function') return null;
+  const basliklar = { 'X-Device-Key': b.anahtar, Accept: 'application/json' };
+  if (govde !== undefined) basliklar['Content-Type'] = 'application/json';
   const kontrol = typeof AbortController === 'function' ? new AbortController() : null;
   let sayac;
   try {
     const istek = (async () => {
-      const r = await fetchFn(`${adres}/api/gunler?gun=${GUN_SAYISI}`, {
-        method: 'GET', headers: { 'X-Device-Key': b.anahtar, Accept: 'application/json' },
+      const r = await fetchFn(`${adres}${yol}`, {
+        method, headers: basliklar, ...(govde !== undefined ? { body: govde } : {}),
         cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: kontrol?.signal,
       });
       if (!r || r.ok !== true || (r.status !== undefined && r.status !== 200)) return null;
-      return veriCevir(await r.json());
+      return isle(await r.json());
     })();
     const sure = new Promise((coz) => { sayac = setTimeout(() => { kontrol?.abort(); coz(null); }, zamanAsimiMs); });
     return await Promise.race([istek, sure]);
   } catch { return null; } finally { clearTimeout(sayac); }
+}
+
+export function veriGetir(fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
+  return istekYap(`/api/gunler?gun=${GUN_SAYISI}`, {}, veriCevir, fetchFn, depo, zamanAsimiMs);
+}
+
+function ayarCevir(j) {
+  if (!j || typeof j !== 'object' || Array.isArray(j) || typeof j.yapayZeka !== 'boolean') throw new TypeError('ayar geçersiz');
+  return { yapayZeka: j.yapayZeka };
+}
+
+// {yapayZeka:boolean} ya da null.
+export function ayarGetir(fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
+  return istekYap('/api/ayar', {}, ayarCevir, fetchFn, depo, zamanAsimiMs);
+}
+
+export async function ayarYaz(yapayZeka, fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
+  if (typeof yapayZeka !== 'boolean') return null;
+  return istekYap('/api/ayar', { method: 'PUT', govde: JSON.stringify({ yapayZeka }) }, ayarCevir, fetchFn, depo, zamanAsimiMs);
 }
 
 /* ---------- Biçimleme ---------- */
@@ -212,7 +237,7 @@ export function ekSatiri(olcumId, ek) {
 }
 
 export const CANLI = {
-  veriCevir, durum, veriGetir, baglantiOku, baglantiYaz, baglantiSil, baglantiKarar, adresDuzelt,
+  veriCevir, durum, veriGetir, ayarGetir, ayarYaz, baglantiOku, baglantiYaz, baglantiSil, baglantiKarar, adresDuzelt,
   sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, OK, DURUM_METIN,
 };
 globalThis.CANLI = CANLI;
