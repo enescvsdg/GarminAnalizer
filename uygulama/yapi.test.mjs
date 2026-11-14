@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, statSync } from 'node:fs';
@@ -31,7 +32,7 @@ test('index.html ve sesler.html satır içi betik içermez', () => {
 test('betik kaynakları yalnız göreli yerel dosyalardır ve diskte vardır', () => {
   for (const ad of SAYFALAR) {
     const html = oku(ad);
-    const kaynaklar = [...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)].map((m) => m[1]);
+    const kaynaklar = [...html.matchAll(/<script\b[^>]*\bsrc=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)].map((m) => m[1] ?? m[2] ?? m[3]);
     assert.ok(kaynaklar.length > 0, `${ad}: hiç betik kaynağı yok`);
     for (const k of kaynaklar) {
       assert.doesNotMatch(k, /^[a-z][a-z0-9+.-]*:/i, `${ad}: dış betik ${k}`);
@@ -39,7 +40,7 @@ test('betik kaynakları yalnız göreli yerel dosyalardır ve diskte vardır', (
       assert.ok(existsSync(join(KOK, k)), `${ad}: ${k} diskte yok`);
     }
   }
-  const sira = [...oku('index.html').matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)].map((m) => m[1]);
+  const sira = [...oku('index.html').matchAll(/<script\b[^>]*\bsrc=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)].map((m) => m[1] ?? m[2] ?? m[3]);
   assert.deepEqual(sira, ['vendor/gsap.min.js', 'veri.js', 'ses.js', 'uygulama.js']);
   assert.match(oku('index.html'), /<script type="module" src="uygulama\.js">/);
 });
@@ -91,6 +92,9 @@ test('uygulama adı GarminAnalizer olur', () => {
 
 test('GSAP dosyası 3.12.5 sürümüdür', () => {
   const yol = join(KOK, 'vendor/gsap.min.js');
-  assert.ok(statSync(yol).size > 50 * 1024, 'gsap.min.js 50 KB üstü olmalı');
-  assert.ok(readFileSync(yol, 'utf8').slice(0, 300).includes('3.12.5'));
+  assert.equal(statSync(yol).size, 72214, 'gsap.min.js boyutu indirilen dosyayla aynı olmalı');
+  const icerik = readFileSync(yol);
+  assert.ok(icerik.toString('utf8', 0, 300).includes('3.12.5'));
+  assert.equal(createHash('sha256').update(icerik).digest('hex'), '28033e449a31ebcc396e5be8b13b63152bf03094288fb5867034321927bce087');
+  assert.ok(!/\beval\(|new Function/.test(icerik.toString('utf8')), 'CSP altında eval kullanılamaz');
 });
