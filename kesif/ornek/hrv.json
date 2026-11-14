@@ -1,0 +1,110 @@
+{
+  "hrvSummaries": [
+    {
+      "calendarDate": "2026-11-07",
+      "weeklyAvg": 53,
+      "lastNightAvg": 57,
+      "lastNight5MinHigh": 84,
+      "baseline": {
+        "lowUpper": 46,
+        "balancedLow": 45,
+        "balancedUpper": 67,
+        "markerValue": 0.29353258366064267
+      },
+      "status": "xxxxxxxx",
+      "feedbackPhrase": "xxxxxxxxxxxxxx",
+      "createTimeStamp": "2026-11-07T00:00:00.000"
+    },
+    {
+      "calendarDate": "2026-11-08",
+      "weeklyAvg": 56,
+      "lastNightAvg": 36,
+      "lastNight5MinHigh": 65,
+      "baseline": {
+        "lowUpper": 39,
+        "balancedLow": 47,
+        "balancedUpper": 75,
+        "markerValue": 0.21454075557477348
+      },
+      "status": "xxxxxxxx",
+      "feedbackPhrase": "xxxxxxxxxxxxxx",
+      "createTimeStamp": "2026-11-08T00:00:00.000"
+    },
+    {
+      "calendarDate": "2026-11-09",
+      "weeklyAvg": 56,
+      "lastNightAvg": 41,
+      "lastNight5MinHigh": 61,
+      "baseline": {
+        "lowUpper": 43,
+        "balancedLow": 52,
+        "balancedUpper": 68,
+        "markerValue": 0.2619381988655318
+      },
+      "status": "xxxxxxxx",
+      "feedbackPhrase": "xxxxxxxxxxxxxx",
+      "createTimeStamp": "2026-11-09T00:00:00.00"
+    },
+    {
+      "calendarDate": "2026-11-10",
+      "weeklyAvg": 40,
+      "lastNightAvg": 36,
+      "lastNight5MinHigh": 62,
+      "baseline": {
+        "lowUpper": 44,
+        "balancedLow": 55,
+        "balancedUpper": 59,
+        "markerValue": 0.16198319137770728
+      },
+      "status": "xxxxxxxxxx",
+      "feedbackPhrase": "xxxxxxxxxxxxxxxxx",
+      "createTimeStamp": "2026-11-10T00:00:00.000"
+    },
+    {
+      "calendarDate": "2026-11-11",
+      "weeklyAvg": 41,
+      "lastNightAvg": 49,
+      "lastNight5MinHigh": 88,
+      "baseline": {
+        "lowUpper": 43,
+        "balancedLow": 52,
+        "balancedUpper": 65,
+        "markerValue": 0.1423878010725536
+      },
+      "status": "xxxxxxxxxx",
+      "feedbackPhrase": "xxxxxxxxxxxxxxxxx",
+      "createTimeStamp": "2026-11-11T00:00:00.000"
+    },
+    {
+      "calendarDate": "2026-11-12",
+      "weeklyAvg": 39,
+      "lastNightAvg": 37,
+      "lastNight5MinHigh": 85,
+      "baseline": {
+        "lowUpper": 47,
+        "balancedLow": 54,
+        "balancedUpper": 57,
+        "markerValue": 0.07747757190402117
+      },
+      "status": "xxx",
+      "feedbackPhrase": "xxxxxxxxx",
+      "createTimeStamp": "2026-11-12T00:00:00.000"
+    },
+    {
+      "calendarDate": "2026-11-13",
+      "weeklyAvg": 47,
+      "lastNightAvg": 53,
+      "lastNight5MinHigh": 101,
+      "baseline": {
+        "lowUpper": 41,
+        "balancedLow": 46,
+        "balancedUpper": 59,
+        "markerValue": 0.08415326411605774
+      },
+      "status": "xxx",
+      "feedbackPhrase": "xxxxxxxxx",
+      "createTimeStamp": "2026-11-13T00:00:00.000"
+    }
+  ],
+  "userProfilePk": 0
+}
