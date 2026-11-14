@@ -7,6 +7,9 @@
 <meta name="theme-color" content="#0c0812">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Analizer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="simge/simge-180.png">
 <title>GarminAnalizer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -169,6 +172,8 @@ button.serit svg.ok{width:10px;height:10px;stroke-width:1.6;fill:none;stroke-lin
 #aYz:disabled{opacity:.45;cursor:default}
 #ayar #yzDurum{font-weight:600;color:var(--isaret)}
 #ayar #yzDurum:empty{display:none}
+#ayar #surum{font-size:11px;text-align:center;color:rgba(255,246,236,.45);font-variant-numeric:tabular-nums}
+#ayar #surum[hidden]{display:none}
 #ekSatir .lg span{padding-left:11px;font-weight:600;white-space:nowrap}
 </style>
 </head>
@@ -236,6 +241,7 @@ button.serit svg.ok{width:10px;height:10px;stroke-width:1.6;fill:none;stroke-lin
       <p id="yzDurum" role="status"></p>
       <p>Sesler ekrana ilk dokunuşundan sonra başlar. Telefon sessizdeyse çalmaz.</p>
       <button type="button" class="kapat" id="aKapat">Kapat</button>
+      <p id="surum" hidden></p>
     </div>
   </div>
 </div>
@@ -244,5 +250,6 @@ button.serit svg.ok{width:10px;height:10px;stroke-width:1.6;fill:none;stroke-lin
 <script src="veri.js"></script>
 <script src="ses.js"></script>
 <script type="module" src="uygulama.js"></script>
+<script src="kabuk.js"></script>
 </body>
 </html>
