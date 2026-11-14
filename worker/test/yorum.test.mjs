@@ -205,7 +205,7 @@ test('yorumGuncelle: günde en çok GUNLUK_SINIR (24) istek, sonra sinir ve 0 ç
   sat.push({ ...sat.at(-1), date: yarin });
   const r = await yorumGuncelle({ db: k.db, satirlar: sat, bugun: yarin, simdiMs: SIMDI + 86400000, yaz: k.yaz });
   assert.equal(r.durum, 'yazildi');
-  assert.equal(k.cagrilar.length, 9);
+  assert.equal(k.cagrilar.length, GUNLUK_SINIR + 1);
   assert.deepEqual(await durumOku(k.db, 'yorum_sayac'), { tarih: yarin, n: 1 });
 });
 
