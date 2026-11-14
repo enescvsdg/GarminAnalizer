@@ -3,6 +3,7 @@ import { durumOku, durumYaz } from './db.js';
 
 const DK = 60_000;
 const SAAT = 60 * DK;
+export const ESITLEME_ARALIGI_MS = 1 * SAAT; // kullanıcı kararı (2026-11-14): saatte bir; günde ~24×4 Garmin isteği
 const BEKLEME_DK = [30, 60, 180]; // 3. ve sonrası 180
 
 async function kismiIsle(db, simdiMs) {
@@ -23,7 +24,7 @@ export async function zamanliEsitle({ db, simdiMs, calistir }) {
   } else {
     const sonEsitleme = await durumOku(db, 'son_esitleme');
     const imlec = await durumOku(db, 'gecmis_imlec');
-    const eski = typeof sonEsitleme !== 'number' || simdiMs - sonEsitleme > 3 * SAAT;
+    const eski = typeof sonEsitleme !== 'number' || simdiMs - sonEsitleme > ESITLEME_ARALIGI_MS;
     const gecmisBitmedi = !imlec?.bitti;
     if (!eski && !gecmisBitmedi) return { calisti: false, neden: 'taze' };
   }

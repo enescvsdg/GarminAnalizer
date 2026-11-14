@@ -30,7 +30,7 @@ test('bekle_bitis gelecekte: calistir çağrılmaz', async () => {
 
 test('taze ve geçmiş bitti: çağrılmaz', async () => {
   const db = testD1();
-  await kur(db, { son_esitleme: SIMDI - 1 * SAAT, gecmis_imlec: BITTI, key_durum: 'gecerli' });
+  await kur(db, { son_esitleme: SIMDI - 0.5 * SAAT, gecmis_imlec: BITTI, key_durum: 'gecerli' });
   const c = sahte();
   const s = await zamanliEsitle({ db, simdiMs: SIMDI, calistir: c });
   assert.equal(c.sayi, 0);
@@ -39,7 +39,7 @@ test('taze ve geçmiş bitti: çağrılmaz', async () => {
 
 test('geçmiş bitmemişse taze olsa da çağrılır', async () => {
   const db = testD1();
-  await kur(db, { son_esitleme: SIMDI - 1 * SAAT, gecmis_imlec: BITMEDI });
+  await kur(db, { son_esitleme: SIMDI - 0.5 * SAAT, gecmis_imlec: BITMEDI });
   const c = sahte();
   const s = await zamanliEsitle({ db, simdiMs: SIMDI, calistir: c });
   assert.equal(c.sayi, 1);
@@ -48,7 +48,7 @@ test('geçmiş bitmemişse taze olsa da çağrılır', async () => {
 
 test('gecmis_imlec yoksa çağrılır', async () => {
   const db = testD1();
-  await kur(db, { son_esitleme: SIMDI - 1 * SAAT });
+  await kur(db, { son_esitleme: SIMDI - 0.5 * SAAT });
   const c = sahte();
   await zamanliEsitle({ db, simdiMs: SIMDI, calistir: c });
   assert.equal(c.sayi, 1);
@@ -62,9 +62,9 @@ test('son_esitleme yoksa çağrılır', async () => {
   assert.equal(c.sayi, 1);
 });
 
-test('3 saatten eski son_esitleme: çağrılır', async () => {
+test('1 saatten eski son_esitleme: çağrılır', async () => {
   const db = testD1();
-  await kur(db, { son_esitleme: SIMDI - 3 * SAAT - 1, gecmis_imlec: BITTI });
+  await kur(db, { son_esitleme: SIMDI - 1 * SAAT - 1, gecmis_imlec: BITTI });
   const c = sahte();
   await zamanliEsitle({ db, simdiMs: SIMDI, calistir: c });
   assert.equal(c.sayi, 1);
@@ -205,9 +205,9 @@ test('sınır: geçersiz key ve son_deneme tam 24 saat önce ise çalışır', a
   assert.equal(c.sayi, 1);
 });
 
-test('sınır: son_esitleme tam 3 saat eski ve geçmiş bitmiş ise çalışmaz', async () => {
+test('sınır: son_esitleme tam 1 saat eski ve geçmiş bitmiş ise çalışmaz', async () => {
   const db = testD1();
-  await kur(db, { son_esitleme: SIMDI - 3 * SAAT, gecmis_imlec: BITTI });
+  await kur(db, { son_esitleme: SIMDI - 1 * SAAT, gecmis_imlec: BITTI });
   const c = sahte();
   const s = await zamanliEsitle({ db, simdiMs: SIMDI, calistir: c });
   assert.equal(c.sayi, 0);
