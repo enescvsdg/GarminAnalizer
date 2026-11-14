@@ -4,3 +4,5 @@ node_modules/
 .wrangler/
 worker/.dev.vars
 kesif/ham/
+.env*
+.dev.vars*

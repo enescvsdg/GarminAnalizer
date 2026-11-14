@@ -152,7 +152,7 @@ kala ve key geçersiz çıktığında bildirim gönderilir.
 ## 9. PWA ekranları
 
 Üç ekran, altta sekme çubuğu (Bugün / Trend / Ayarlar). Çalışan tasarım
-prototipi `prototip/uygulama.html` içindedir (uydurma veriyle); bu bölüm onun
+prototipi `uygulama/index.html` içindedir (uydurma veriyle); bu bölüm onun
 tarifidir ve gerçek uygulama aynı görünüm ve davranışı taşır.
 
 - **Bugün:** üstte tarih, günün hükmü (tek cümle, büyük yazı) ve iki cümlelik
@@ -221,7 +221,7 @@ iyi günde sıkı ve çabuk, kötü günde gevşek ve ağır.
 **Ses.** Bütün sesler tarayıcıda üretilir, ses dosyası yoktur: kalp atışı
 (yalnızca Bugün ekranında), buton, ekran geçişi, sayının yerine oturması,
 Trend'de gün başına bir nota (iyi gün tiz, kötü gün pes), şekli çekerken lastik
-sesi. Buton, geçiş ve oturma seslerinin seçenekleri `prototip/sesler.html`
+sesi. Buton, geçiş ve oturma seslerinin seçenekleri `uygulama/sesler.html`
 üzerinden seçilir ve hatırlanır. Ses efektleri ve kalp atışı ayrı ayrı
 kapatılabilir; ikisi de varsayılan olarak açıktır. Seslerin son hali henüz
 kesinleşmedi; gerekirse dış kaynaktan üretilen ses dosyalarıyla değiştirilecek.
@@ -272,7 +272,7 @@ Node test koşucusu (Fittakip gibi).
 - `brief/`: istem içeriği, doğrulama, yedek şablon.
 - `push/` ve `api/`: kimlik doğrulama, CORS, 410 temizliği.
 - Gerçek yanıt örnekleri keşif görevinden sonra test verisi olur (anonimleştirilmiş).
-- Arayüz: prototipteki uydurma veri (`prototip/veri.js`) Worker API'sinin döndüreceği biçime çevrilir;
+- Arayüz: prototipteki uydurma veri (`uygulama/veri.js`) Worker API'sinin döndüreceği biçime çevrilir;
   aynı ekranlar hem uydurma hem gerçek veriyle açılabilmelidir.
 
 ## 13. Açık sorular ve riskler
