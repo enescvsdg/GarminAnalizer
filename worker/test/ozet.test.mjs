@@ -183,3 +183,11 @@ test('apiYanitinda NaN ve undefined yok (ek dahil)', () => {
     tara(y);
   }
 });
+
+test('enerji hesaplanamayan günde gerekçe dünkü yükten cümle kurmaz', () => {
+  const y = apiYaniti([{ date: '2026-11-11', training_load: 0 }], '2026-11-12', 1, {});
+  const g = y.gunler.at(-1);
+  assert.equal(g.e, null);
+  assert.equal(g.d.yuk, 0);
+  assert.equal(g.gerekce, 'Saat verisi gelmemiş.');
+});

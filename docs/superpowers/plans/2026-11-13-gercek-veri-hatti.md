@@ -396,7 +396,7 @@ test('anahtar karşılaştırması uzunluk farkında da 401 verir ve fırlatmaz'
 ```
 
 - [ ] **Step 2:** Run → FAIL.
-- [ ] **Step 3: `router.js` ve `worker.js` yaz.** Anahtar karşılaştırması sabit zamanlı. `scheduled`: `son_esitleme` 3 saatten eskiyse ya da geçmiş doldurma bitmediyse `esitle` çağırır; `key_durum` `gecersiz` ise günde bir kez dener. Eşitleme `kismi` dönerse sonraki deneme 30 dakika, üst üste ikincide 1 saat, sonra 3 saat sonraya ertelenir (`sync_state` anahtarı `bekle_bitis`, ms); başarıda sıfırlanır. `router.test.mjs`'e ekle: `test('bekle_bitis gelecekteyse scheduled eşitleme çağırmaz', …)`. Yakalanmamış hata loga yalnızca ileti ve ad olarak yazılır.
+- [ ] **Step 3: `router.js` ve `worker.js` yaz.** Anahtar karşılaştırması sabit zamanlı. `scheduled`: `son_esitleme` 1 saatten eskiyse (başta 3 saatti; kullanıcı kararıyla 1 saat, 2026-11-14) ya da geçmiş doldurma bitmediyse `esitle` çağırır; `key_durum` `gecersiz` ise günde bir kez dener. Eşitleme `kismi` dönerse sonraki deneme 30 dakika, üst üste ikincide 1 saat, sonra 3 saat sonraya ertelenir (`sync_state` anahtarı `bekle_bitis`, ms); başarıda sıfırlanır. `router.test.mjs`'e ekle: `test('bekle_bitis gelecekteyse scheduled eşitleme çağırmaz', …)`. Yakalanmamış hata loga yalnızca ileti ve ad olarak yazılır.
 - [ ] **Step 4:** Run: `npm test` → hepsi PASS.
 - [ ] **Step 5: `wrangler.toml` yaz** — `name = "garmin-analizer"`, `main = "src/worker.js"`, `compatibility_date = "2026-11-01"`, `[triggers] crons = ["*/15 * * * *"]`, `[[d1_databases]] binding = "DB"`, `database_name = "garmin-analizer"`, `database_id` Step 6'da doldurulur, `[vars] IZINLI_ORIGIN = "https://enescvsdg.github.io"`.
 - [ ] **Step 6 (kullanıcı onayıyla, dışa açık adım): dağıt.** Kullanıcıya her komutu söyle ve onayını al; gizli değerleri kullanıcı girer.
@@ -571,7 +571,7 @@ Bağlayıcı kurallar:
 - Enerji puanı, bantlar ve durumlar Gemini'den **etkilenmez**; Gemini yalnızca iki metni yazar.
 - Kullanıcı Ayarlar'dan kapatabilir; kapalıyken Gemini'ye hiçbir istek gitmez.
 - `GEMINI_API_KEY` yalnızca Worker secret'ıdır. Model adı `GEMINI_MODEL` değişkenidir (varsayılan `gemini-3.5-flash-lite`).
-- Günde en çok 8 Gemini isteği; aynı girdi için ikinci istek atılmaz.
+- Günde en çok 24 Gemini isteği (başta 8'di; saatlik eşitlemeyle 24'e çıkarıldı, 2026-11-14); aynı girdi için ikinci istek atılmaz.
 
 ### Task 12a: Worker — Gemini yorumu ve ayar
 

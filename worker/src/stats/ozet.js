@@ -73,7 +73,8 @@ export function apiYaniti(satirlar, bugun, gunSayisi, meta) {
     const d = gunDegerleri(satirlar, tarih);
     const bantlar = bantlariKur(satirlar, tarih); // o günün kendi bandı
     const e = enerji(d, bantlar);
-    gunler.push({ tarih, e, hukum: hukum(e), gerekce: gerekce(d, bantlar), d, ek: ekKur(satirlar, tarih) });
+    // Enerji hesaplanamıyorsa gerekçe de "veri yok" der; dünkü yük gibi tek bir ölçüm çelişkili cümle kurmasın.
+    gunler.push({ tarih, e, hukum: hukum(e), gerekce: e === null ? gerekce({}, bantlar) : gerekce(d, bantlar), d, ek: ekKur(satirlar, tarih) });
   }
   return {
     bugun,

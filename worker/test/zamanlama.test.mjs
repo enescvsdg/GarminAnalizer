@@ -205,11 +205,13 @@ test('sınır: geçersiz key ve son_deneme tam 24 saat önce ise çalışır', a
   assert.equal(c.sayi, 1);
 });
 
-test('sınır: son_esitleme tam 1 saat eski ve geçmiş bitmiş ise çalışmaz', async () => {
-  const db = testD1();
-  await kur(db, { son_esitleme: SIMDI - 1 * SAAT, gecmis_imlec: BITTI });
-  const c = sahte();
-  const s = await zamanliEsitle({ db, simdiMs: SIMDI, calistir: c });
-  assert.equal(c.sayi, 0);
-  assert.deepEqual(s, { calisti: false, neden: 'taze' });
+test('sınır: tetikleme birkaç ms erken gelse de saatlik eşitleme çalışır (2 dk tolerans)', async () => {
+  for (const [fark, calisir] of [[1 * SAAT, true], [1 * SAAT - 5, true], [58 * 60_000, true], [58 * 60_000 - 1, false], [45 * 60_000, false]]) {
+    const db = testD1();
+    await kur(db, { son_esitleme: SIMDI - fark, gecmis_imlec: BITTI });
+    const c = sahte();
+    const s = await zamanliEsitle({ db, simdiMs: SIMDI, calistir: c });
+    assert.equal(c.sayi, calisir ? 1 : 0, `fark ${fark}`);
+    assert.equal(s.calisti, calisir, `fark ${fark}`);
+  }
 });

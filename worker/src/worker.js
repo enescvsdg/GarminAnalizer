@@ -56,7 +56,8 @@ export default {
       zamanliEsitle({ db: env.DB, simdiMs, calistir })
         .then(async (s) => {
           console.log(s.calisti ? `esitleme: ${s.durum}${neden ? ` (${neden})` : ''}` : `atlandi: ${s.neden}`);
-          if (s.calisti && s.durum === 'tamam' && env.GEMINI_API_KEY) await yorumBolumu(env, simdiMs);
+          // 'kismi': bir uç nokta hata verse de diğerlerinden gelen veriyle yorum yazılır (kalıcı tek uç nokta hatası yorumu kilitlemesin)
+          if (s.calisti && (s.durum === 'tamam' || s.durum === 'kismi') && env.GEMINI_API_KEY) await yorumBolumu(env, simdiMs);
         })
         .catch(hataYaz),
     );
