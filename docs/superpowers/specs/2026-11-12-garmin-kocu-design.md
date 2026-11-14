@@ -69,8 +69,8 @@ Parçalar tek amaçlı ve bağımsız test edilebilir olmalı:
 
 ### Zamanlama
 - Cron her 15 dakikada tetiklenir (Cloudflare ücretsiz plan sınırlarında).
-- Her tetiklemede "bu işin zamanı geldi mi?" bakılır: veri eşitleme (birkaç
-  saatte bir), brifing (ayarlanan saat), key bitiş kontrolü (günde bir).
+- Her tetiklemede "bu işin zamanı geldi mi?" bakılır: veri eşitleme (saatte
+  bir), brifing (ayarlanan saat), key bitiş kontrolü (günde bir).
 - Brifing saatinde dünün/gecenin verisi henüz gelmediyse (saat telefona
   eşitlenmemiş olabilir) 15 dakikada bir tekrar denenir; ayarlanan saatten
   3 saat sonra eldeki veriyle gönderilir.
@@ -94,7 +94,7 @@ Doğrulanmış (Garmin'in resmî Python istemcisi ve SSS):
   - `/weight-service/weight/range/{start}/{end}`
   - Günlük tekil: `/wellness-service/wellness/dailyHeartRate?date`, spo2.
 
-Bilinmeyen (ilk gerçek çağrılarda ölçülüp bu bölüm güncellenecek):
+İlk tasarımda bilinmeyenler (2026-11-14'te ölçüldü; sonuçlar `docs/garmin-alanlar.md` → "Canlıda ölçülenler"):
 - Yanıtların alan adları ve yapısı.
 - Aralık başına en fazla gün sayısı, geçmişe dönük derinlik, hız limitleri.
 - Faz 1'in **ilk görevi** bu keşif: örnek yanıtları kaydetmek ve alanları
@@ -277,7 +277,7 @@ Node test koşucusu (Fittakip gibi).
 
 ## 13. Açık sorular ve riskler
 
-1. Garmin yanıt alanları ve geçmiş derinliği/limitleri bilinmiyor (keşif görevi).
+1. ~~Garmin yanıt alanları ve geçmiş derinliği/limitleri bilinmiyor.~~ Ölçüldü (2026-11-14): alanlar ve sınırlar `docs/garmin-alanlar.md`'de; geçmiş yaklaşık bir yıl geriye gidiyor, istek sınırına takılınmadı.
 2. Gemini veri koşulları ve Garmin şartlarında üçüncü taraf yapay zekâ hükmü doğrulanacak.
 3. Cloudflare ücretsiz plan cron/D1 limitleri 15 dakikalık tetiklemeyle yeterli
    olmalı; kurulumda doğrulanacak.
