@@ -17,8 +17,11 @@ const KABUK = [
   './simge/simge-512.png',
   './simge/simge-maske-512.png',
 ];
-const ONBELLEK = 'kabuk-' + SURUM;
-const KAPSAM = new URL('./', self.location.href).href;
+// Ön ek, paylaşılan <kullanıcı>.github.io kökenindeki başka sitelerin önbelleklerinden ayırır.
+const ONEK = 'garminanalizer-kabuk-';
+const ONBELLEK = ONEK + SURUM;
+// Kapsam kayıttan gelir; kayıt yoksa (test ortamı) betiğin dizinine düşer.
+const KAPSAM = (self.registration && self.registration.scope) || new URL('./', self.location.href).href;
 const SECENEK = { cacheName: ONBELLEK };
 
 // Hepsi indirilip doğrulanmadan önbellek açılmaz: yarım önbellek olmaz.
@@ -40,13 +43,20 @@ async function kur() {
 async function temizle() {
   const adlar = await caches.keys();
   await Promise.all(adlar
-    .filter((ad) => ad.startsWith('kabuk-') && ad !== ONBELLEK)
+    .filter((ad) => ad.startsWith(ONEK) && ad !== ONBELLEK)
     .map((ad) => caches.delete(ad)));
   await self.clients.claim();
 }
 
-async function gezin(istek, url) {
-  const hedef = url.pathname.endsWith('sesler.html') ? './sesler.html' : './index.html';
+// Kabuk belgesi yalnız kapsam kökü, index.html ve sesler.html için sunulur (sorgu dizesi yok sayılır).
+function kabukBelgesi(url) {
+  const yol = url.origin + url.pathname;
+  if (yol === KAPSAM || yol === KAPSAM + 'index.html') return './index.html';
+  if (yol === KAPSAM + 'sesler.html') return './sesler.html';
+  return null;
+}
+
+async function gezin(istek, hedef) {
   const kayitli = await caches.match(hedef, SECENEK);
   if (kayitli) return kayitli;
   try {
@@ -75,7 +85,12 @@ self.addEventListener('fetch', (olay) => {
   const url = new URL(istek.url);
   if (url.origin !== self.location.origin) return; // Worker API, Google Fonts: tarayıcı kendisi halleder
   if (!url.href.startsWith(KAPSAM)) return;
-  olay.respondWith(istek.mode === 'navigate' ? gezin(istek, url) : kaynak(istek));
+  if (istek.mode === 'navigate') {
+    const hedef = kabukBelgesi(url);
+    if (hedef) olay.respondWith(gezin(istek, hedef)); // bilinmeyen yollar ağa gider, 404 normal görünür
+    return;
+  }
+  olay.respondWith(kaynak(istek));
 });
 
 self.addEventListener('message', (olay) => {

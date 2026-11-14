@@ -11,14 +11,18 @@
     sil() { try { sessionStorage.removeItem(BAYRAK); } catch (e) { /* depo yok */ } },
   };
 
-  // Sayfa açılırken zaten bir denetleyici varsa bu bir güncellemedir; ilk kurulumda yenileme olmaz.
-  const guncellemeMi = !!sw.controller;
+  // Bu betik sayfadaki ilk betiktir: denetleyici eşzamanlı yakalanır. Her olayda güncellenir;
+  // önceki denetleyici varsa bu bir güncellemedir, ilk kurulumda (önceki yok) yenileme olmaz
+  // ama aynı sayfadaki sonraki değişim yeniler.
+  let onceki = sw.controller;
   let yenileniyor = false;
   sw.addEventListener('controllerchange', () => {
-    if (!guncellemeMi || yenileniyor || depo.al()) return;
-    yenileniyor = true;
-    depo.koy();
-    location.reload();
+    if (onceki && !yenileniyor && !depo.al()) {
+      yenileniyor = true;
+      depo.koy();
+      location.reload();
+    }
+    onceki = sw.controller;
   });
 
   // Yenilenen sayfa sorunsuz yüklendiyse bayrak silinir: sonraki güncelleme yeniden yenileyebilir.
@@ -45,12 +49,17 @@
   }
 
   function kaydet() {
-    sw.register('./sw.js', { scope: './' }).catch((hata) => {
+    sw.register('./sw.js', { scope: './', updateViaCache: 'none' }).catch((hata) => {
       console.warn('Service worker kaydı başarısız:', hata);
     });
-    surumuYaz();
   }
 
+  // #surum betik çalışırken henüz olmayabilir: DOM hazır olunca yazılır; kayıt sayfa yüklenince.
+  if (document.readyState === 'loading') {
+    addEventListener('DOMContentLoaded', surumuYaz);
+  } else {
+    surumuYaz();
+  }
   if (document.readyState === 'complete') { bayragiTemizle(); kaydet(); } else {
     addEventListener('load', () => { bayragiTemizle(); kaydet(); });
   }

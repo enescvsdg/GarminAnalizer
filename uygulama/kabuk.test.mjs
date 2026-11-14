@@ -9,6 +9,7 @@ const KOK = dirname(fileURLToPath(import.meta.url));
 const oku = (ad) => readFileSync(join(KOK, ad), 'utf8');
 const SAYFALAR = ['index.html', 'sesler.html'];
 const TABAN = 'https://ornek.github.io/GarminAnalizer/';
+const ONEK = 'garminanalizer-kabuk-';
 
 // KABUK dizisini sw.js kaynağından çıkarır (betiği çalıştırmadan).
 function kabukListesi() {
@@ -26,11 +27,11 @@ function yayinDosyalari(dizin = KOK) {
     if (statSync(tam).isDirectory()) cikti.push(...yayinDosyalari(tam));
     else cikti.push(relative(KOK, tam));
   }
-  return cikti.filter((d) => !/\.test\.mjs$/.test(d) && d !== 'sw.js' && !d.startsWith('.'));
+  return cikti.filter((d) => !/\.test\.mjs$/.test(d) && d !== 'sw.js' && !d.split('/').some((p) => p.startsWith('.')));
 }
 
 // ---- Service worker'ı sahte ortamda çalıştırma ----------------------------
-function swOrtami({ eksik = [], onbellekler = new Map(), taban = TABAN } = {}) {
+function swOrtami({ eksik = [], onbellekler = new Map(), taban = TABAN, kapsam = taban, kayitYok = false } = {}) {
   const dinleyici = {};
   const getir = [];
   const cozum = (u) => new URL(typeof u === 'string' ? u : u.url, taban).href;
@@ -65,6 +66,7 @@ function swOrtami({ eksik = [], onbellekler = new Map(), taban = TABAN } = {}) {
     URL, Promise, Response: class { constructor(g, i) { this.govde = g; Object.assign(this, i); this.ok = true; } },
     self: {
       location: { href: taban + 'sw.js', origin: new URL(taban).origin },
+      ...(kayitYok ? {} : { registration: { scope: kapsam } }),
       addEventListener(tur, fn) { dinleyici[tur] = fn; },
       clients: { claimCagrildi: 0, async claim() { this.claimCagrildi++; } },
       skipWaitingCagrildi: 0,
@@ -174,6 +176,7 @@ test('manifest geçerlidir ve simge dosyaları bildirilen boyuttadır', () => {
   assert.equal(man.name, 'GarminAnalizer');
   assert.equal(man.short_name, 'Analizer');
   assert.equal(man.lang, 'tr');
+  assert.equal(man.id, './');
   assert.equal(man.start_url, './');
   assert.equal(man.scope, './');
   assert.equal(man.display, 'standalone');
@@ -199,7 +202,7 @@ test('manifest geçerlidir ve simge dosyaları bildirilen boyuttadır', () => {
 
 test('yerel yollar göreli: kabuk.js ve sw.js içinde mutlak yerel yol yok', () => {
   const kabuk = oku('kabuk.js');
-  assert.match(kabuk, /register\(\s*'\.\/sw\.js'\s*,\s*\{\s*scope:\s*'\.\/'\s*\}\s*\)/);
+  assert.match(kabuk, /register\(\s*'\.\/sw\.js'\s*,\s*\{\s*scope:\s*'\.\/'\s*,\s*updateViaCache:\s*'none'\s*\}\s*\)/);
   for (const ad of readdirSync(KOK).filter((d) => d.endsWith('.js'))) {
     const kaynak = oku(ad);
     const desen = /\b(?:register|fetch|import|match|add|addAll|put|open)\s*\(\s*['"`]\/(?!\/)/;
@@ -235,7 +238,7 @@ test('install bütün KABUK dosyalarını reload ile önbelleğe alır, skipWait
   const o = swOrtami();
   const { bitti } = o.olay('install');
   await bitti();
-  const ad = 'kabuk-' + o.surum;
+  const ad = ONEK + o.surum;
   assert.ok(o.caches.onbellekler.has(ad));
   const depo = o.caches.onbellekler.get(ad);
   assert.equal(depo.size, kabukListesi().length);
@@ -250,25 +253,25 @@ test('install bir dosya eksikse reddeder ve yarım önbellek bırakmaz', async (
   assert.equal(o.caches.onbellekler.size, 0);
 });
 
-test('activate eski kabuk-* önbelleklerini siler, başkalarına dokunmaz; clients.claim çağrılır', async () => {
+test('activate eski garminanalizer-kabuk-* önbelleklerini siler, yabancı kabuk-xyz ve başkalarına dokunmaz; clients.claim çağrılır', async () => {
   const onb = new Map();
   const o0 = swOrtami({ onbellekler: onb });
-  const guncel = 'kabuk-' + o0.surum;
-  for (const ad of ['kabuk-eski1', 'kabuk-eski2', guncel, 'baska-onbellek', 'api-yedek']) onb.set(ad, new Map());
+  const guncel = ONEK + o0.surum;
+  for (const ad of [ONEK + 'eski1', ONEK + 'eski2', guncel, 'kabuk-xyz', 'baska-onbellek', 'api-yedek']) onb.set(ad, new Map());
   const { bitti } = o0.olay('activate');
   await bitti();
-  assert.deepEqual([...onb.keys()].sort(), [guncel, 'api-yedek', 'baska-onbellek'].sort());
+  assert.deepEqual([...onb.keys()].sort(), [guncel, 'api-yedek', 'baska-onbellek', 'kabuk-xyz'].sort());
   assert.equal(o0.ctx.self.clients.claimCagrildi, 1);
 });
 
 test('gezinme isteği: kapsamdaki URL önbellekteki index.html; sesler.html kendi sayfasını alır', async () => {
   const o = swOrtami();
   await o.olay('install').bitti();
-  const depo = o.caches.onbellekler.get('kabuk-' + o.surum);
+  const depo = o.caches.onbellekler.get(ONEK + o.surum);
   const index = depo.get(norm('./index.html'));
   const sesler = depo.get(norm('./sesler.html'));
   assert.notEqual(index, sesler);
-  for (const url of [TABAN, TABAN + '?x=1', TABAN + 'index.html', TABAN + 'bilinmeyen/yol']) {
+  for (const url of [TABAN, TABAN + '?x=1', TABAN + 'index.html', TABAN + 'index.html?a=1']) {
     const i = istek(url, { mode: 'navigate' });
     o.dinleyici.fetch(i.e);
     assert.equal(await i.yanit(), index, url);
@@ -281,6 +284,31 @@ test('gezinme isteği: kapsamdaki URL önbellekteki index.html; sesler.html kend
   assert.equal(await sq.yanit(), sesler);
 });
 
+test('gezinme: kapsamdaki bilinmeyen yollar ve alt dizindeki sesler.html yanıtlanmaz (ağa gider)', async () => {
+  const o = swOrtami();
+  await o.olay('install').bitti();
+  for (const url of [TABAN + 'bilinmeyen/yol', TABAN + 'x/sesler.html', TABAN + 'x/index.html', TABAN + 'baska.html']) {
+    const i = istek(url, { mode: 'navigate' });
+    o.dinleyici.fetch(i.e);
+    assert.equal(i.cagrildi(), false, url);
+  }
+});
+
+test('kapsam self.registration.scope üzerinden gelir; kayıt yoksa betik dizinine düşer', async () => {
+  const o = swOrtami({ kapsam: TABAN + 'alt/' });
+  await o.olay('install').bitti();
+  const disarida = istek(TABAN + 'uygulama.js');
+  o.dinleyici.fetch(disarida.e);
+  assert.equal(disarida.cagrildi(), false, 'kayıt kapsamı dışı');
+  const icinde = istek(TABAN + 'alt/uygulama.js');
+  o.dinleyici.fetch(icinde.e);
+  assert.equal(icinde.cagrildi(), true);
+  const k = swOrtami({ kayitYok: true });
+  const g = istek('./uygulama.js');
+  k.dinleyici.fetch(g.e);
+  assert.equal(g.cagrildi(), true, 'yedek: betik dizini');
+});
+
 test('gezinme isteği kapsam dışındaysa yanıtlanmaz', () => {
   const o = swOrtami();
   const i = istek('https://ornek.github.io/BaskaDepo/', { mode: 'navigate' });
@@ -291,7 +319,7 @@ test('gezinme isteği kapsam dışındaysa yanıtlanmaz', () => {
 test('önbellek ıskalarsa ağa düşer; gezinmede ağ da yoksa önbellekteki index.html döner', async () => {
   const o = swOrtami();
   await o.olay('install').bitti();
-  const depo = o.caches.onbellekler.get('kabuk-' + o.surum);
+  const depo = o.caches.onbellekler.get(ONEK + o.surum);
   // alt kaynak ıskası -> ağ
   const k = istek('./bilinmeyen.png');
   o.dinleyici.fetch(k.e);
@@ -312,13 +340,27 @@ test('önbellek ıskalarsa ağa düşer; gezinmede ağ da yoksa önbellekteki in
 test('yalnız güncel sürümün önbelleği kullanılır (eski sürüm yanıtı karışmaz)', async () => {
   const onb = new Map();
   const eskiDepo = new Map([[norm('./index.html'), { eski: true }], [norm('./uygulama.js'), { eski: true }]]);
-  onb.set('kabuk-eski', eskiDepo);
+  onb.set(ONEK + 'eski', eskiDepo);
   const o = swOrtami({ onbellekler: onb });
   // Yeni sürüm kurulmadan (install yok) gezinme: güncel önbellek boş, eski yanıt dönmemeli.
   const i = istek(TABAN, { mode: 'navigate' });
   o.dinleyici.fetch(i.e);
   const y = await i.yanit();
   assert.ok(!y || !y.eski, 'eski önbellek yanıtı sızdı');
+});
+
+test('alt kaynak: eski sürüm önbelleği uygulama.js tutsa da güncel önbellekte yoksa ağa gider', async () => {
+  const onb = new Map();
+  const eski = { eski: true };
+  onb.set(ONEK + 'eski', new Map([[norm('./uygulama.js'), eski]]));
+  const o = swOrtami({ onbellekler: onb });
+  onb.set(ONEK + o.surum, new Map()); // güncel önbellek var ama boş
+  const i = istek('./uygulama.js');
+  o.dinleyici.fetch(i.e);
+  const y = await i.yanit();
+  assert.notEqual(y, eski, 'eski önbellek yanıtı sızdı');
+  assert.equal(y.ag, true, 'ağa gitmeli');
+  assert.equal(o.getir.length, 1);
 });
 
 test('surum iletisine SURUM ile yanıt verir', () => {
@@ -382,7 +424,8 @@ const bekle = () => new Promise((r) => setImmediate(r));
 test('kabuk.js göreli URL ve göreli kapsamla kaydeder', async () => {
   const k = kabukOrtami();
   await bekle();
-  assert.equal(JSON.stringify(k.log.kayit), JSON.stringify([['./sw.js', { scope: './' }]]));
+  assert.equal(JSON.stringify(k.log.kayit), JSON.stringify([['./sw.js', { scope: './', updateViaCache: 'none' }]]));
+  assert.ok(!k.log.kayit[0][0].startsWith('/') && !k.log.kayit[0][1].scope.startsWith('/'));
 });
 
 test('kabuk.js sayfa yüklenirken kayıt için load olayını bekler', async () => {
@@ -402,6 +445,26 @@ test('ilk kurulumda (denetleyici yok) controllerchange sayfayı yenilemez', () =
   const k = kabukOrtami({ controller: null });
   k.swDinleyici.controllerchange();
   assert.equal(k.log.reload, 0);
+});
+
+test('ilk kurulum sonrası aynı sayfada ikinci controllerchange tam bir kez yeniler', () => {
+  const k = kabukOrtami({ controller: null });
+  const s = k.ctx.navigator.serviceWorker;
+  s.controller = {}; // ilk worker kontrolü aldı
+  k.swDinleyici.controllerchange();
+  assert.equal(k.log.reload, 0, 'ilk kurulum yenilemez');
+  s.controller = {}; // güncelleme geldi
+  k.swDinleyici.controllerchange();
+  assert.equal(k.log.reload, 1);
+  k.swDinleyici.controllerchange();
+  assert.equal(k.log.reload, 1, 'ardışık olay yeniden yenilemez');
+});
+
+test('kabuk.js betik başında denetleyiciyi eşzamanlı yakalar (DOM bitmeden)', () => {
+  const k = kabukOrtami({ controller: {}, readyState: 'loading' });
+  k.swDinleyici.controllerchange();
+  assert.equal(k.log.reload, 1);
+  assert.equal(k.log.kayit.length, 0, 'kayıt load olayını bekler');
 });
 
 test('güncellemede (denetleyici vardı) controllerchange sayfayı bir kez yeniler', () => {

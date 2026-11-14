@@ -2,6 +2,7 @@
   "name": "GarminAnalizer",
   "short_name": "Analizer",
   "lang": "tr",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

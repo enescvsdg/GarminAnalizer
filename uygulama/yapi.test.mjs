@@ -41,7 +41,7 @@ test('betik kaynakları yalnız göreli yerel dosyalardır ve diskte vardır', (
     }
   }
   const sira = [...oku('index.html').matchAll(/<script\b[^>]*\bsrc=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)].map((m) => m[1] ?? m[2] ?? m[3]);
-  assert.deepEqual(sira, ['vendor/gsap.min.js', 'veri.js', 'ses.js', 'uygulama.js', 'kabuk.js']);
+  assert.deepEqual(sira, ['kabuk.js', 'vendor/gsap.min.js', 'veri.js', 'ses.js', 'uygulama.js']);
   assert.match(oku('index.html'), /<script type="module" src="uygulama\.js">/);
 });
 
