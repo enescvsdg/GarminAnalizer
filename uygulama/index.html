@@ -138,6 +138,10 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 /* uyarı şeridi (Bugün başlığının üstünde, akış içinde: başlık aşağı itilir) */
 .serit{display:flex;gap:8px;align-items:flex-start;margin:0 44px 10px 0;padding:8px 12px;border-radius:14px;background:rgba(255,201,166,.14);border:1px solid rgba(255,201,166,.5);font-size:12.5px;line-height:1.4;color:var(--metin);text-wrap:pretty}
 .serit[hidden]{display:none}
+button.serit{width:calc(100% - 44px);min-height:44px;margin-right:0;align-items:center;text-align:left;pointer-events:auto}
+button.serit svg{margin-top:0}
+button.serit span{flex:1}
+button.serit svg.ok{width:10px;height:10px;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .serit svg{width:14px;height:14px;flex:none;margin-top:2px;stroke:var(--isaret);stroke-width:1.8}
 
 /* bekleme durumu: bağlantı varken veri gelene kadar nötr şekil */
@@ -196,7 +200,7 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
     <section id="bugun" class="tam">
       <div id="bugunUst" class="tam">
         <svg id="yor" class="tam" aria-hidden="true"><ellipse id="yIc"/><ellipse class="dis" id="yDis"/></svg>
-        <header class="bas" id="bBas"><div class="serit" id="serit" role="status" hidden><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.8l5.6 9.8H1.4zM7 5.6v2.8M7 10v.01"/></svg><div id="seritMetin"></div></div><p class="tarih" id="bTarih"></p><h1 id="bHukum"></h1><p class="ger" id="bGer"></p><p class="yz" id="bYz" hidden>Yapay zekâ yorumu</p></header>
+        <header class="bas" id="bBas"><div class="serit" id="serit" role="status" hidden><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.8l5.6 9.8H1.4zM7 5.6v2.8M7 10v.01"/></svg><div id="seritMetin"></div></div><button type="button" class="serit" id="seritDugme" hidden><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.8l5.6 9.8H1.4zM7 5.6v2.8M7 10v.01"/></svg><span id="seritDugmeMetin"></span><svg class="ok" viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5L7 5 3 8.5"/></svg></button><p class="tarih" id="bTarih"></p><h1 id="bHukum"></h1><p class="ger" id="bGer"></p><p class="yz" id="bYz" hidden>Yapay zekâ yorumu</p></header>
         <nav class="gunler" id="gunler" aria-label="Son yedi gün"></nav>
       </div>
       <div id="dokun" aria-hidden="true"></div>

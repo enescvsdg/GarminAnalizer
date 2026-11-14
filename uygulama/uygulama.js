@@ -7,8 +7,8 @@ function telOlcek() {
   return { S, H };
 }
 
-let CANLI; // veri-canli.js dinamik yüklenir; yüklenemezse küçük bir yedek konur, uygulama uydurma veriyle açılır
-// bag: { baglanti: bağlantı kayıtlı mı, canli: veri Worker'dan mı geldi }
+let CANLI; // veri-canli.js dinamik yüklenir; yüklenemezse küçük bir yedek konur, uygulama örnek veriyle açılır
+// bag: { baglanti: bağlantı kayıtlı mı, canli: veri şimdi Worker'dan mı geldi, kaynak: 'canli'|'onbellek'|'yok', neden: 'ag'|'yetki'|'sunucu'|null, zaman: önbellek verisinin alındığı an }
 function baslat(VERI, bag) {
 const { OLCUMLER: O, GUNLER, durum, OK, DURUM_METIN } = VERI;
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -515,10 +515,12 @@ $('bKayitli').hidden = !kayitli; $('bKaldir').disabled = !kayitli;
 function bagDurum() {
   const m = VERI.meta || {};
   if (bag.canli) return m.sonEsitleme ? `Son eşitleme: ${CANLI.sonEsitlemeMetni(m.sonEsitleme)}` : 'Bağlı. Henüz eşitleme yapılmadı.';
-  if (bag.baglanti) return 'Bağlanılamadı. Adresi ve anahtarı kontrol et. Uydurma veri gösteriliyor.';
-  return 'Uydurma veri gösteriliyor.';
+  const sorun = bag.neden === 'yetki' ? 'Cihaz anahtarı kabul edilmedi. Anahtarı yeniden gir.' : 'Adres ya da ağ: bağlanılamadı.';
+  if (bag.kaynak === 'onbellek') { const t = CANLI.sonEsitlemeMetni(bag.zaman); return `${sorun} ${t ? `Son veri (${t}) gösteriliyor.` : 'Son veri gösteriliyor.'}`; }
+  if (bag.baglanti) return bag.neden ? `${sorun} Örnek veri gösteriliyor.` : 'Bağlanılamadı. Adresi ve anahtarı kontrol et. Örnek veri gösteriliyor.';
+  return 'Örnek veri gösteriliyor.';
 }
-bagBilgi(bagDurum());
+if (bag.baglanti && !bag.canli) bagHata(bagDurum()); else bagBilgi(bagDurum());
 function bagHata(msg) { $('bDurum').textContent = msg; $('bDurum').classList.add('hata'); }
 function bagBilgi(msg) { $('bDurum').textContent = msg; $('bDurum').classList.remove('hata'); }
 $('bBagla').addEventListener('click', () => {
@@ -529,14 +531,22 @@ $('bBagla').addEventListener('click', () => {
 });
 $('bKaldir').addEventListener('click', () => { CANLI.baglantiSil(); location.reload(); });
 [$('bAdres'), $('bAnahtar')].forEach((e) => e.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') $('bBagla').click(); }));
+$('seritDugme').addEventListener('click', ayarAc); // Ayarlar sekmesiyle aynı açılış yolu
 function seritKur() { // Bugün başlığının üstünde kalıcı uyarı
-  const m = VERI.meta || {}, satirlar = [];
-  if (!bag.canli) { // bağlantı kayıtlı ama veri alınamadı: uydurma veri uyarısız kalmasın
-    if (!bag.baglanti) return;
-    satirlar.push('Bağlanılamadı. Uydurma veri gösteriliyor.');
+  if (!bag.baglanti) { // hiç bağlantı yok: ekrandaki sayılar örnek veridir; dokununca Ayarlar açılır
+    $('seritDugmeMetin').textContent = "Örnek veri. Kendi verin için Ayarlar'dan bağlan.";
+    $('seritDugme').hidden = false;
+    return;
   }
-  const eski = bag.canli ? CANLI.eskilikSaat(m.sonEsitleme, Date.now()) : null;
-  if (bag.canli && m.keyDurum === 'gecersiz') {
+  const m = VERI.meta || {}, satirlar = [], gercek = bag.kaynak === 'canli' || bag.kaynak === 'onbellek'; // gerçek veri: şimdi ya da en son alınan
+  if (bag.kaynak === 'onbellek') {
+    const t = CANLI.sonEsitlemeMetni(bag.zaman), son = t ? ` Son veri: ${t}.` : '';
+    satirlar.push(bag.neden === 'yetki' ? `Cihaz anahtarı kabul edilmedi.${son}` : `Çevrimdışı.${son}`);
+  } else if (!gercek) { // bağlantı kayıtlı ama hiç veri alınamadı: örnek veri uyarısız kalmasın
+    satirlar.push(bag.neden === 'yetki' ? "Cihaz anahtarı kabul edilmedi. Ayarlar'dan yeniden gir." : 'Bağlanılamadı. Örnek veri gösteriliyor.');
+  }
+  const eski = gercek ? CANLI.eskilikSaat(m.sonEsitleme, Date.now()) : null;
+  if (gercek && m.keyDurum === 'gecersiz') {
     const son = CANLI.sonEsitlemeMetni(m.sonEsitleme);
     satirlar.push("Garmin key'inin süresi dolmuş. Yenileyene kadar veri güncellenmez." + (son ? ` Son eşitleme: ${son}.` : ''));
   }
@@ -685,15 +695,15 @@ if (!RM) {
 }
 }
 
-// Başlangıç: bağlantı varsa veri gelene kadar nötr bekleme durumu; açılış animasyonu uydurma veriyle başlamaz.
-// Her koşulda uygulama açılır: modül yüklenemezse, veri alınamazsa ya da canlı veriyle başlatma patlarsa uydurma veriyle.
+// Başlangıç: bağlantı varsa veri gelene kadar nötr bekleme durumu; açılış animasyonu örnek veriyle başlamaz.
+// Her koşulda uygulama bir kez açılır: modül yüklenemezse, veri alınamazsa ya da gerçek veriyle başlatma patlarsa örnek veriyle.
 let basladi = false;
 function ac(v, bag) {
   if (basladi) return; basladi = true;
   try { baslat(v, bag); } catch (hata) {
-    if (!bag.canli) throw hata; // uydurma veri de patlıyorsa dönülecek yer yok
+    if (bag.kaynak === 'yok') throw hata; // örnek veri de patlıyorsa dönülecek yer yok
     // Yarım kalan ilk başlatmanın dinleyicileri ve çizim döngüsü yaşamasın: sayfa temiz yeniden açılır,
-    // bu kez canlı veri denenmeden uydurma veriyle (bir kereliğine; sonraki elle yenileme yine canlıyı dener).
+    // bu kez gerçek veri denenmeden örnek veriyle (bir kereliğine; sonraki elle yenileme yine gerçeği dener).
     try { sessionStorage.setItem('gk-canli-hata', '1'); } catch (x) { throw hata; }
     location.reload();
   }
@@ -702,18 +712,24 @@ function ac(v, bag) {
   try { ({ CANLI } = await import('./veri-canli.js')); } catch (e) {
     CANLI = { // modül yüklenemedi: yalnız uygulamanın açılması için en küçük yedek
       baglantiOku() { try { const o = JSON.parse(localStorage.getItem('gk-baglanti')); return o && o.adres && o.anahtar ? o : null; } catch (x) { return null; } },
-      baglantiSil() { try { localStorage.removeItem('gk-baglanti'); } catch (x) {} },
+      baglantiSil() { try { localStorage.removeItem('gk-baglanti'); localStorage.removeItem('gk-son-veri'); } catch (x) {} },
       baglantiYaz: () => false, baglantiKarar: () => ({ tamam: false, hata: 'Bağlantı modülü yüklenemedi.' }),
-      adresDuzelt: () => null, ekSatiri: () => null, eskilikSaat: () => null, sonEsitlemeMetni: () => null, veriGetir: async () => null, ayarGetir: async () => null, ayarYaz: async () => null,
+      adresDuzelt: () => null, ekSatiri: () => null, eskilikSaat: () => null, sonEsitlemeMetni: () => null,
+      veriGetir: async () => null, veriYukle: async () => ({ veri: null, kaynak: 'yok', zaman: null, neden: null }), ayarGetir: async () => null, ayarYaz: async () => null,
     };
   }
-  if (!CANLI.baglantiOku()) return ac(window.VERI, { baglanti: false, canli: false });
+  const ORNEK = { baglanti: false, canli: false, kaynak: 'yok', neden: null, zaman: null };
+  if (!CANLI.baglantiOku()) return ac(window.VERI, ORNEK);
   let canliHata = false;
   try { canliHata = sessionStorage.getItem('gk-canli-hata') === '1'; sessionStorage.removeItem('gk-canli-hata'); } catch (x) {}
-  if (canliHata) return ac(window.VERI, { baglanti: true, canli: false });
+  if (canliHata) return ac(window.VERI, { ...ORNEK, baglanti: true });
   telOlcek(); addEventListener('resize', telOlcek); $('bekle').hidden = false;
-  let v = null;
-  try { v = await CANLI.veriGetir(); } catch (e) { v = null; }
+  let r = null;
+  try { r = await CANLI.veriYukle(); } catch (e) { r = null; }
   removeEventListener('resize', telOlcek); $('bekle').hidden = true;
-  ac(v || window.VERI, { baglanti: true, canli: !!v });
+  if (r && r.veri && (r.kaynak === 'canli' || r.kaynak === 'onbellek')) {
+    ac(r.veri, { baglanti: true, canli: r.kaynak === 'canli', kaynak: r.kaynak, neden: r.neden || null, zaman: typeof r.zaman === 'number' ? r.zaman : null });
+  } else {
+    ac(window.VERI, { ...ORNEK, baglanti: true, neden: r && r.neden ? r.neden : null });
+  }
 })();

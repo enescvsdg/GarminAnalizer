@@ -5,6 +5,7 @@ import { gunEkle } from '../worker/src/zaman.js';
 import {
   veriCevir, durum, veriGetir, ayarGetir, ayarYaz, baglantiOku, baglantiYaz, baglantiSil,
   sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, baglantiKarar,
+  veriYukle, sonVeriYaz, sonVeriOku, sonVeriSil,
 } from './veri-canli.js';
 
 const BUGUN = '2026-11-12';
@@ -520,4 +521,169 @@ test('ayarYaz boolean olmayan girdiyi istek atmadan reddeder', async () => {
   const f = async () => { cagri += 1; return yanitCevir({ yapayZeka: true }); };
   for (const girdi of ['evet', 1, 0, null, undefined, {}, []]) assert.equal(await ayarYaz(girdi, f, bagli()), null);
   assert.equal(cagri, 0);
+});
+
+/* ---------- Son veri önbelleği ve veriYukle ---------- */
+
+const SON_VERI = 'gk-son-veri';
+const T0 = 1763000000000;
+const baglantiliDepo = (ek = {}) => {
+  const d = sahteDepo(ek);
+  baglantiYaz({ adres: 'https://w.ornek.dev', anahtar: ANAHTAR }, d);
+  return d;
+};
+
+test('veriYukle başarıda canli döner ve son veriyi yazar', async () => {
+  const depo = baglantiliDepo();
+  const api = yanit();
+  const r = await veriYukle(async () => yanitCevir(api), depo, T0);
+  assert.equal(r.kaynak, 'canli');
+  assert.equal(r.neden, null);
+  assert.equal(r.zaman, T0);
+  assert.equal(r.veri.GUNLER.length, 28);
+  const o = sonVeriOku(depo);
+  assert.equal(o.zaman, T0);
+  assert.deepEqual(o.yanit, JSON.parse(JSON.stringify(api))); // ham API yanıtı saklanır, VERI değil
+});
+
+test('veriYukle ağ hatasında önbellekten döner: kaynak onbellek, neden ag, zaman yazılan an', async () => {
+  const depo = baglantiliDepo();
+  await veriYukle(async () => yanitCevir(yanit()), depo, T0);
+  const r = await veriYukle(async () => { throw new TypeError('Failed to fetch'); }, depo, T0 + 3600e3);
+  assert.equal(r.kaynak, 'onbellek');
+  assert.equal(r.neden, 'ag');
+  assert.equal(r.zaman, T0);
+  assert.equal(r.veri.GUNLER.length, 28);
+  assert.equal(typeof r.veri.durum, 'function');
+});
+
+test('veriYukle 401de neden yetki; önbellek varsa onbellek, yoksa yok', async () => {
+  const f401 = async () => yanitCevir({ hata: 'yetkisiz' }, 401);
+  const bos = await veriYukle(f401, baglantiliDepo(), T0);
+  assert.deepEqual({ ...bos }, { veri: null, kaynak: 'yok', zaman: null, neden: 'yetki' });
+  const depo = baglantiliDepo();
+  await veriYukle(async () => yanitCevir(yanit()), depo, T0);
+  const r = await veriYukle(f401, depo, T0 + 1000);
+  assert.equal(r.kaynak, 'onbellek');
+  assert.equal(r.neden, 'yetki');
+  assert.equal(r.zaman, T0);
+});
+
+test('veriYukle 500de neden sunucu; zaman aşımı ve ağ hatası ag', async () => {
+  const r = await veriYukle(async () => yanitCevir({}, 500), baglantiliDepo(), T0);
+  assert.equal(r.kaynak, 'yok');
+  assert.equal(r.neden, 'sunucu');
+  const depo = baglantiliDepo();
+  await veriYukle(async () => yanitCevir(yanit()), depo, T0);
+  assert.equal((await veriYukle(async () => yanitCevir({}, 503), depo, T0 + 1)).neden, 'sunucu');
+  const askida = (u, init) => new Promise((_, red) => { init.signal?.addEventListener('abort', () => red(new Error('abort'))); });
+  const z = await veriYukle(askida, baglantiliDepo(), T0, { zamanAsimiMs: 20 });
+  assert.equal(z.neden, 'ag');
+  assert.equal(z.kaynak, 'yok');
+});
+
+test('veriYukle bağlantı yokken fetch çağırmaz ve kaynak yok, neden null', async () => {
+  let cagri = 0;
+  const f = async () => { cagri += 1; return yanitCevir(yanit()); };
+  const r = await veriYukle(f, sahteDepo(), T0);
+  assert.deepEqual({ ...r }, { veri: null, kaynak: 'yok', zaman: null, neden: null });
+  assert.equal(cagri, 0);
+});
+
+test('bozuk önbellek silinir ve kaynak yok döner', async () => {
+  const fHata = async () => { throw new TypeError('Failed to fetch'); };
+  const d1 = baglantiliDepo({ [SON_VERI]: '{' });
+  const r1 = await veriYukle(fHata, d1, T0);
+  assert.equal(r1.kaynak, 'yok');
+  assert.equal(r1.neden, 'ag');
+  assert.equal(d1.getItem(SON_VERI), null);
+  // Biçimi yanlış nesne ve veriCevir'de patlayan yanıt
+  const d2 = baglantiliDepo({ [SON_VERI]: JSON.stringify({ zaman: 'x', yanit: 5 }) });
+  assert.equal((await veriYukle(fHata, d2, T0)).kaynak, 'yok');
+  assert.equal(d2.getItem(SON_VERI), null);
+  const d3 = baglantiliDepo({ [SON_VERI]: JSON.stringify({ zaman: T0, yanit: { olcumler: [], gunler: [] } }) });
+  const r3 = await veriYukle(fHata, d3, T0);
+  assert.equal(r3.kaynak, 'yok');
+  assert.equal(r3.veri, null);
+  assert.equal(d3.getItem(SON_VERI), null);
+});
+
+test('sonVeriYaz 400 KB üstünü yazmaz, depo dolu hatasında fırlatmaz', () => {
+  const depo = sahteDepo();
+  assert.equal(sonVeriYaz({ x: 'a'.repeat(401 * 1024) }, T0, depo), false);
+  assert.equal(depo.getItem(SON_VERI), null);
+  assert.equal(sonVeriYaz(yanit(), T0, depo), true);
+  assert.notEqual(depo.getItem(SON_VERI), null);
+  const dolu = { getItem: () => null, setItem: () => { throw new Error('QuotaExceededError'); }, removeItem: () => {} };
+  assert.doesNotThrow(() => sonVeriYaz(yanit(), T0, dolu));
+  assert.equal(sonVeriYaz(yanit(), T0, dolu), false);
+  assert.equal(sonVeriYaz(yanit(), T0, undefined), false);
+  assert.equal(sonVeriYaz(null, T0, depo), false);
+  assert.equal(sonVeriYaz(yanit(), NaN, depo), false);
+});
+
+test('sonVeriOku gidiş-dönüş; sonVeriSil siler', () => {
+  const depo = sahteDepo();
+  assert.equal(sonVeriOku(depo), null);
+  sonVeriYaz({ olcumler: [1], gunler: [2] }, T0, depo);
+  assert.deepEqual(sonVeriOku(depo), { zaman: T0, yanit: { olcumler: [1], gunler: [2] } });
+  sonVeriSil(depo);
+  assert.equal(sonVeriOku(depo), null);
+  assert.doesNotThrow(() => sonVeriSil(undefined));
+});
+
+test('baglantiSil son veriyi de siler', () => {
+  const depo = baglantiliDepo();
+  sonVeriYaz(yanit(), T0, depo);
+  baglantiSil(depo);
+  assert.equal(depo.getItem(SON_VERI), null);
+  assert.equal(baglantiOku(depo), null);
+});
+
+test('adres değişince son veri silinir, aynı adreste ve yeni anahtarla kalır', () => {
+  const depo = baglantiliDepo();
+  sonVeriYaz(yanit(), T0, depo);
+  assert.equal(baglantiYaz({ adres: 'https://w.ornek.dev/', anahtar: 'baska-anahtar' }, depo), true);
+  assert.notEqual(depo.getItem(SON_VERI), null);
+  assert.equal(baglantiYaz({ adres: 'https://baska.ornek.dev', anahtar: ANAHTAR }, depo), true);
+  assert.equal(depo.getItem(SON_VERI), null);
+  // geçersiz adres yazılmaz ve veriyi silmez
+  sonVeriYaz(yanit(), T0, depo);
+  assert.equal(baglantiYaz({ adres: 'http://x.ornek.dev', anahtar: ANAHTAR }, depo), false);
+  assert.notEqual(depo.getItem(SON_VERI), null);
+});
+
+test('önbellekteki yanıt cihaz anahtarını içermez', async () => {
+  const depo = baglantiliDepo();
+  await veriYukle(async () => yanitCevir(yanit()), depo, T0);
+  assert.ok(depo.getItem(SON_VERI).length > 1000);
+  assert.equal(depo.getItem(SON_VERI).includes(ANAHTAR), false);
+});
+
+test('veriYukle başarıda fetch\'e anahtarı yalnız başlıkta verir ve veriGetir ile aynı sonucu üretir', async () => {
+  const depo = baglantiliDepo();
+  const cagrilar = [];
+  const f = async (url, init) => { cagrilar.push({ url: String(url), init }); return yanitCevir(yanit()); };
+  const r = await veriYukle(f, depo, T0);
+  const g = await veriGetir(f, depo);
+  assert.equal(cagrilar[0].url, 'https://w.ornek.dev/api/gunler?gun=28');
+  assert.equal(cagrilar[0].init.headers['X-Device-Key'], ANAHTAR);
+  assert.ok(!cagrilar[0].url.includes(ANAHTAR));
+  assert.equal(JSON.stringify(r.veri.GUNLER), JSON.stringify(g.GUNLER));
+});
+
+test('veriYukle bozuk canlı yanıtta (200 ama biçim yanlış) sunucu der ve önbelleğe düşer', async () => {
+  const depo = baglantiliDepo();
+  await veriYukle(async () => yanitCevir(yanit()), depo, T0);
+  const r = await veriYukle(async () => yanitCevir({ olcumler: 'x' }), depo, T0 + 1);
+  assert.equal(r.kaynak, 'onbellek');
+  assert.equal(r.neden, 'sunucu');
+  const bozuk = async () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('x'); } });
+  assert.equal((await veriYukle(bozuk, depo, T0 + 2)).neden, 'sunucu');
+});
+
+test('veriYukle fetch yoksa ve bağlantı varsa ag der, fırlatmaz', async () => {
+  const r = await veriYukle(undefined, baglantiliDepo(), T0);
+  assert.equal(r.kaynak, 'yok');
+  assert.equal(r.neden, 'ag');
 });
