@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test \"worker/test/**/*.test.mjs\" \"tools/**/*.test.mjs\" \"uygulama/**/*.test.mjs\"",
     "kesif": "node tools/kesif.mjs",
-    "simge": "node tools/simge-uret.mjs"
+    "simge": "node tools/simge-uret.mjs",
+    "yayin-hazirla": "node tools/yayin-hazirla.mjs"
   },
   "devDependencies": {
     "wrangler": "^4"
