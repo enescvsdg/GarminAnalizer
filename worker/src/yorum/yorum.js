@@ -4,7 +4,7 @@ import { OLCUMLER, gunDegerleri, bant, durum } from '../stats/baseline.js';
 import { enerji, hukum } from '../stats/ozet.js';
 import { durumOku, durumYaz } from '../db.js';
 
-const GUNLUK_SINIR = 8;
+export const GUNLUK_SINIR = 24; // kullanıcı kararı (2026-11-14): saatlik eşitlemeyle uyumlu
 const HATA_SINIRI = 2;
 
 export const SISTEM = [

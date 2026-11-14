@@ -4,7 +4,7 @@ import { testD1 } from './helpers/d1.mjs';
 import { durumOku, durumYaz } from '../src/db.js';
 import { gunEkle } from '../src/zaman.js';
 import {
-  SISTEM, SEMA, ozetGirdisi, yorumGecerli, yorumGuncelle, yorumOku, yapayZekaAcik, yapayZekaYaz,
+  SISTEM, SEMA, ozetGirdisi, yorumGecerli, yorumGuncelle, yorumOku, yapayZekaAcik, yapayZekaYaz, GUNLUK_SINIR,
   yonUyumlu, sayilarGirdiden,
 } from '../src/yorum/yorum.js';
 
@@ -189,15 +189,16 @@ test('yorumGuncelle: veri-yok (enerji null), 0 çağrı', async () => {
   assert.equal(await durumOku(k.db, 'yorum'), null);
 });
 
-test('yorumGuncelle: günde en çok 8 istek, sonra sinir ve 0 çağrı', async () => {
+test('yorumGuncelle: günde en çok GUNLUK_SINIR (24) istek, sonra sinir ve 0 çağrı', async () => {
+  assert.equal(GUNLUK_SINIR, 24);
   const k = kur();
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < GUNLUK_SINIR; i += 1) {
     const r = await calistir(k, { satirlar: satirlar({ hrv_avg: 40 + i }) });
     assert.equal(r.durum, 'yazildi', `istek ${i + 1}`);
   }
-  assert.equal(k.cagrilar.length, 8);
+  assert.equal(k.cagrilar.length, GUNLUK_SINIR);
   assert.deepEqual(await calistir(k, { satirlar: satirlar({ hrv_avg: 99 }) }), { durum: 'sinir' });
-  assert.equal(k.cagrilar.length, 8);
+  assert.equal(k.cagrilar.length, GUNLUK_SINIR);
   // ertesi gün sayaç sıfırlanır
   const yarin = gunEkle(BUGUN, 1);
   const sat = satirlar().map((s) => s);
