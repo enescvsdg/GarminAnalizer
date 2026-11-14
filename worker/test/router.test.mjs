@@ -411,3 +411,65 @@ test('ayar kapatılınca yorumKaynak sablon olur, açılınca eski yorum geri ge
   await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde: { yapayZeka: true } }), env, SIMDI);
   assert.equal((await gunlerAl(env)).yorumKaynak, 'sablon');
 });
+
+// ---- Fix round 1: gövde sınırı akış sırasında uygulanır ----
+
+function akisIstek(parcalar, { anahtar = 'gizli' } = {}) {
+  const enc = new TextEncoder();
+  let iptal = false;
+  let i = 0;
+  const govde = new ReadableStream({
+    pull(c) {
+      if (i < parcalar.length) c.enqueue(enc.encode(parcalar[i++]));
+      else c.close();
+    },
+    cancel() { iptal = true; },
+  }, { highWaterMark: 0 });
+  const basliklar = { 'Content-Type': 'application/json' };
+  if (anahtar !== null) basliklar['X-Device-Key'] = anahtar;
+  const r = new Request('https://w.test/api/ayar', { method: 'PUT', headers: basliklar, body: govde, duplex: 'half' });
+  return { r, iptalEdildi: () => iptal, okunan: () => i };
+}
+
+test('/api/ayar PUT: Content-Length olmadan akan 1 KB üstü gövde 400, akış iptal, ayar değişmez', async () => {
+  const env = ortam();
+  const parcalar = ['{"yapayZeka":false,"ek":"', ...Array(20).fill('x'.repeat(200)), '"}'];
+  const { r, iptalEdildi, okunan } = akisIstek(parcalar);
+  assert.equal(r.headers.get('Content-Length'), null);
+  const y = await istekIsle(r, env, SIMDI);
+  assert.equal(y.status, 400);
+  assert.deepEqual(await json(y), { hata: 'gecersiz' });
+  assert.equal(iptalEdildi(), true);
+  assert.ok(okunan() < parcalar.length, 'gövdenin tamamı okunmamalı');
+  assert.deepEqual(await json(await istekIsle(istek('/api/ayar'), env, SIMDI)), { yapayZeka: true });
+});
+
+test('/api/ayar PUT: küçük akan gövde çalışır', async () => {
+  const env = ortam();
+  const { r } = akisIstek(['{"yapayZeka":', 'false}']);
+  const y = await istekIsle(r, env, SIMDI);
+  assert.equal(y.status, 200);
+  assert.deepEqual(await json(y), { yapayZeka: false });
+  assert.deepEqual(await json(await istekIsle(istek('/api/ayar'), env, SIMDI)), { yapayZeka: false });
+});
+
+test('/api/ayar PUT: tam 1024 bayt kabul, 1025 bayt red; gövdesiz istek 400', async () => {
+  const env = ortam();
+  const doldur = (n) => { const bas = '{"yapayZeka":true,"ek":"'; const son = '"}'; return bas + 'x'.repeat(n - bas.length - son.length) + son; };
+  const tam = akisIstek([doldur(1024)]);
+  assert.equal((await istekIsle(tam.r, env, SIMDI)).status, 200);
+  const fazla = akisIstek([doldur(1025)]);
+  assert.equal((await istekIsle(fazla.r, env, SIMDI)).status, 400);
+  const yok = new Request('https://w.test/api/ayar', { method: 'PUT', headers: { 'X-Device-Key': 'gizli' } });
+  assert.equal(yok.body, null);
+  const g = await istekIsle(yok, env, SIMDI);
+  assert.equal(g.status, 400);
+  assert.deepEqual(await json(g), { hata: 'gecersiz' });
+});
+
+test('/api/ayar PUT: akışlı istekte de kimlik gövde okunmadan önce denetlenir', async () => {
+  const env = ortam();
+  const { r, okunan } = akisIstek(['{"yapayZeka":false}'], { anahtar: null });
+  assert.equal((await istekIsle(r, env, SIMDI)).status, 401);
+  assert.equal(okunan(), 0);
+});

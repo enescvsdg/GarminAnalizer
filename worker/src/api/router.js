@@ -68,12 +68,37 @@ async function gunler(url, env, simdiMs, cors) {
 
 const AYAR_ENFAZLA_BAYT = 1024;
 
+// Gövdeyi akıştan okur; sınırı aşar aşmaz akışı iptal eder. Gövde yoksa ya da sınır aşılırsa null.
+async function sinirliOku(request, enFazlaBayt) {
+  if (!request.body) return null;
+  const okuyucu = request.body.getReader();
+  const parcalar = [];
+  let toplam = 0;
+  for (;;) {
+    const { done, value } = await okuyucu.read();
+    if (done) break;
+    toplam += value.byteLength;
+    if (toplam > enFazlaBayt) {
+      await okuyucu.cancel();
+      return null;
+    }
+    parcalar.push(value);
+  }
+  const hepsi = new Uint8Array(toplam);
+  let konum = 0;
+  for (const p of parcalar) {
+    hepsi.set(p, konum);
+    konum += p.byteLength;
+  }
+  return new TextDecoder().decode(hepsi);
+}
+
 async function ayar(request, env, cors) {
   if (request.method === 'GET') return yanit({ yapayZeka: await yapayZekaAcik(env.DB) }, 200, cors);
   const bildirilen = Number(request.headers.get('Content-Length'));
   if (Number.isFinite(bildirilen) && bildirilen > AYAR_ENFAZLA_BAYT) return yanit({ hata: 'gecersiz' }, 400, cors);
-  const metin = await request.text();
-  if (enc.encode(metin).length > AYAR_ENFAZLA_BAYT) return yanit({ hata: 'gecersiz' }, 400, cors);
+  const metin = await sinirliOku(request, AYAR_ENFAZLA_BAYT);
+  if (metin === null) return yanit({ hata: 'gecersiz' }, 400, cors);
   let govde;
   try {
     govde = JSON.parse(metin);

@@ -5,6 +5,7 @@ import { durumOku, durumYaz } from '../src/db.js';
 import { gunEkle } from '../src/zaman.js';
 import {
   SISTEM, SEMA, ozetGirdisi, yorumGecerli, yorumGuncelle, yorumOku, yapayZekaAcik, yapayZekaYaz,
+  yonUyumlu, sayilarGirdiden,
 } from '../src/yorum/yorum.js';
 
 const BUGUN = '2026-11-12';
@@ -268,4 +269,134 @@ test('yapayZekaYaz(false) kayıtlı yorumu siler', async () => {
   assert.equal(await durumOku(k.db, 'yorum'), null);
   await yapayZekaYaz(k.db, true);
   assert.equal(await yorumOku(k.db, BUGUN, k.satir), null);
+});
+
+// ---- Fix round 1: yön ve sayı denetimi, görünmez karakter, ayar yarışı, sayaç hatası ----
+
+const DUSUK = { sleep_score: 40, bb_high: 30, hrv_avg: 35, resting_hr: 60, stress_avg: 50 }; // enerji 0.026
+const HAFIF = { hukum: 'Bugün hafif tut', gerekce: 'Uykun ve toparlanman düşük, rahat bir gün geçir.' };
+
+test('yonUyumlu: düşük enerji (< 0.48) hızlı/yüklenen metni reddeder, sınır 0.47/0.48', () => {
+  const tamGaz = { hukum: 'Tam gaz', gerekce: 'Rahat bir gün.' };
+  assert.equal(yonUyumlu(tamGaz, 0.47), false);
+  assert.equal(yonUyumlu(tamGaz, 0.48), true);
+  for (const k of ['tam gaz', 'hızlan', 'bastır', 'zorla', 'yüklen', 'sert antrenman', 'sınırlarını zorla', 'patlat', 'yoğun antrenman', 'rekor']) {
+    assert.equal(yonUyumlu({ hukum: 'Bugün', gerekce: `Biraz ${k} bugün.` }, 0.1), false, k);
+    assert.equal(yonUyumlu({ hukum: k, gerekce: 'Rahat.' }, 0.1), false, `hukum ${k}`);
+  }
+  assert.equal(yonUyumlu({ hukum: 'Hafif tut', gerekce: 'Dinlenmen iyi olur.' }, 0.1), true);
+});
+
+test('yonUyumlu: Türkçe büyük/küçük harf ve gerekçe de taranır', () => {
+  assert.equal(yonUyumlu({ hukum: 'HIZLAN', gerekce: 'x' }, 0.3), false);
+  assert.equal(yonUyumlu({ hukum: 'x', gerekce: 'SINIRLARINI ZORLA' }, 0.3), false);
+  assert.equal(yonUyumlu({ hukum: 'x', gerekce: 'YÜKLEN bugün' }, 0.3), false);
+});
+
+test('yonUyumlu: olumsuzlama özel işlenmez, "zorlama" yine reddedilir (kasıtlı, muhafazakâr)', () => {
+  assert.equal(yonUyumlu({ hukum: 'Rahat', gerekce: 'Bugün zorlama.' }, 0.2), false);
+});
+
+test('yonUyumlu: yüksek enerji (>= 0.62) yalnız hükümde dinlenme ifadesini reddeder, sınır 0.61/0.62', () => {
+  const dinlen = { hukum: 'Dinlen', gerekce: 'Değerlerin iyi.' };
+  assert.equal(yonUyumlu(dinlen, 0.62), false);
+  assert.equal(yonUyumlu(dinlen, 0.61), true);
+  for (const k of ['dinlen', 'hafif tut', 'yavaşla', 'ara ver', 'mola', 'bırak']) {
+    assert.equal(yonUyumlu({ hukum: `Bugün ${k}`, gerekce: 'Değerlerin iyi.' }, 0.9), false, k);
+  }
+  // gerekçedeki dinlenme sözü yüksek enerjide hükmü bozmaz
+  assert.equal(yonUyumlu({ hukum: 'İyi gidiyorsun', gerekce: 'Dün dinlendin, bugün mola vermeye gerek yok.' }, 0.9), true);
+  assert.equal(yonUyumlu({ hukum: 'DİNLEN', gerekce: 'x' }, 0.9), false);
+});
+
+test('yonUyumlu: orta enerji (0.48-0.62) serbest', () => {
+  assert.equal(yonUyumlu({ hukum: 'Tam gaz', gerekce: 'Dinlen' }, 0.55), true);
+  assert.equal(yonUyumlu({ hukum: 'Dinlen', gerekce: 'Tam gaz' }, 0.55), true);
+});
+
+test('sayilarGirdiden: virgül/nokta, girdide olmayan sayı reddedilir, sayısız metin kabul', () => {
+  const girdi = 'HRV: 55 ms; normal aralık 48–60. Solunum: 14.5 /dk. Enerji: 0.67 (0.00–1.00 ölçeği)';
+  assert.equal(sayilarGirdiden('HRV değerin 55 ms, normal aralığın içinde.', girdi), true);
+  assert.equal(sayilarGirdiden('Solunum 14,5, aralık 48-60.', girdi), true);
+  assert.equal(sayilarGirdiden('Solunum 14.5 ve enerji 0,67.', girdi), true);
+  assert.equal(sayilarGirdiden('HRV 56 ms.', girdi), false);
+  assert.equal(sayilarGirdiden('Solunum 14,6.', girdi), false);
+  assert.equal(sayilarGirdiden('Değerler dengeli, rahat bir gün.', girdi), true);
+  assert.equal(sayilarGirdiden('HRV 55 ve uyku 80.', girdi), false);
+  assert.equal(sayilarGirdiden('', girdi), true);
+});
+
+test('yorumGuncelle: yöne ters metin hata, kayıt yok; uyumlu metin yazılır', async () => {
+  const k = kur(satirlar(DUSUK));
+  assert.deepEqual(await calistir(k, { yaz: async () => ({ hukum: 'Tam gaz', gerekce: 'Rahat bir gün.' }) }), { durum: 'hata' });
+  assert.equal(await durumOku(k.db, 'yorum'), null);
+  assert.equal((await durumOku(k.db, 'yorum_hata')).n, 1);
+  assert.deepEqual(await calistir(k, { yaz: async () => ({ ...HAFIF }) }), { durum: 'yazildi' });
+  assert.deepEqual(await yorumOku(k.db, BUGUN, k.satir), HAFIF);
+  // yüksek enerji, dinlenme hükmü
+  const y = kur();
+  assert.deepEqual(await calistir(y, { yaz: async () => ({ hukum: 'Dinlen', gerekce: 'Rahat bir gün.' }) }), { durum: 'hata' });
+  assert.equal(await durumOku(y.db, 'yorum'), null);
+});
+
+test('yorumGuncelle: girdide olmayan sayı hata, kayıt yok', async () => {
+  const k = kur();
+  assert.deepEqual(await calistir(k, { yaz: async () => ({ hukum: 'İyi gidiyorsun', gerekce: 'HRV değerin 99 ms.' }) }), { durum: 'hata' });
+  assert.equal(await durumOku(k.db, 'yorum'), null);
+  assert.deepEqual(await calistir(k, { yaz: async () => ({ hukum: 'İyi gidiyorsun', gerekce: 'HRV değerin 55 ms.' }) }), { durum: 'yazildi' });
+});
+
+test('yorumOku: kayıtlı yön veya sayı uyumsuz kayıt döndürülmez', async () => {
+  const k = kur();
+  await calistir(k);
+  const kayit = await durumOku(k.db, 'yorum');
+  assert.deepEqual(await yorumOku(k.db, BUGUN, k.satir), GECERLI);
+  await durumYaz(k.db, 'yorum', { ...kayit, hukum: 'Dinlen' });
+  assert.equal(await yorumOku(k.db, BUGUN, k.satir), null);
+  await durumYaz(k.db, 'yorum', { ...kayit, gerekce: 'HRV değerin 99 ms.' });
+  assert.equal(await yorumOku(k.db, BUGUN, k.satir), null);
+  await durumYaz(k.db, 'yorum', { ...kayit, gerekce: 'HRV değerin 55 ms.' });
+  assert.deepEqual(await yorumOku(k.db, BUGUN, k.satir), { hukum: GECERLI.hukum, gerekce: 'HRV değerin 55 ms.' });
+});
+
+test('yorumGecerli: sıfır genişlikli/çift yönlü kontrol karakterleri ve emoji reddedilir', () => {
+  const g = (gerekce) => yorumGecerli({ hukum: 'İyi', gerekce });
+  for (const k of ['a\u200Bb', 'a\u200Fb', 'a\u202Ab', 'a\u202Eb', 'a\u2060b', 'a\u2069b', 'a\uFEFFb', 'a\u00ADb']) {
+    assert.equal(g(k), null, JSON.stringify(k));
+  }
+  assert.equal(yorumGecerli({ hukum: 'İyi\u200B', gerekce: 'x' }), null);
+  for (const k of ['iyi \u{1F600}', 'koş \u{1F3C3}', 'ok \u2705', 'güneş \u2600']) {
+    assert.equal(g(k), null, JSON.stringify(k));
+  }
+  assert.equal(yorumGecerli({ hukum: '\u{1F525} İyi', gerekce: 'x' }), null);
+  assert.deepEqual(g('Uykun iyi, HRV 55 (normal).'), { hukum: 'İyi', gerekce: 'Uykun iyi, HRV 55 (normal).' });
+});
+
+test('yorumGuncelle: istek sürerken ayar kapatılırsa hiçbir şey yazılmaz, kapali döner', async () => {
+  const k = kur();
+  const yaz = async (girdi) => { k.cagrilar.push(girdi); await yapayZekaYaz(k.db, false); return { ...GECERLI }; };
+  assert.deepEqual(await calistir(k, { yaz }), { durum: 'kapali' });
+  assert.equal(k.cagrilar.length, 1);
+  assert.equal(await durumOku(k.db, 'yorum'), null);
+  assert.equal(await yapayZekaAcik(k.db), false);
+});
+
+test('yorumGuncelle: sayaç yazımı başarısızsa yaz hiç çağrılmaz ve hata yayılır', async () => {
+  const k = kur();
+  const gercek = k.db.prepare.bind(k.db);
+  const db = {
+    ...k.db,
+    prepare: (sql) => {
+      const s = gercek(sql);
+      return {
+        bind: (...a) => {
+          const b = s.bind(...a);
+          return a[0] === 'yorum_sayac' && /INSERT/.test(sql) ? { ...b, run: async () => { throw new Error('d1 yazma hatası'); } } : b;
+        },
+      };
+    },
+  };
+  await assert.rejects(() => calistir(k, { db }), /d1 yazma hatası/);
+  assert.equal(k.cagrilar.length, 0);
+  assert.equal(await durumOku(k.db, 'yorum'), null);
 });

@@ -54,7 +54,7 @@ export async function ozetGirdisi(satirlar, bugun) {
   return { metin, karma: await karmaHesapla(metin), kademe, enerji: e };
 }
 
-const YASAK = new RegExp('[<>{}]|http|[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]', 'i');
+const YASAK = new RegExp('[<>{}]|http|[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2069\\ufeff\\u00ad]|\\p{Extended_Pictographic}', 'iu');
 
 function temizle(s, enFazlaKarakter, enFazlaKelime) {
   if (typeof s !== 'string' || YASAK.test(s)) return null;
@@ -70,6 +70,29 @@ export function yorumGecerli(y) {
   const g = temizle(y.gerekce, 260, 0);
   return h && g ? { hukum: h, gerekce: g } : null;
 }
+
+// Yön denetimi: metin günün enerjisine ters düşmemeli. Olumsuzlama ÖZEL İŞLENMEZ:
+// "zorlama" da "zorla" ile eşleşip reddedilir; bilerek muhafazakâr (yanlış red zararsız, yanlış kabul değil).
+const HIZLI = ['tam gaz', 'hızlan', 'bastır', 'zorla', 'yüklen', 'sert antrenman', 'sınırlarını zorla', 'patlat', 'yoğun antrenman', 'rekor'];
+const DINLENME = ['dinlen', 'hafif tut', 'yavaşla', 'ara ver', 'mola', 'bırak'];
+
+export function yonUyumlu({ hukum, gerekce }, enerji) {
+  const h = String(hukum).toLocaleLowerCase('tr');
+  const g = String(gerekce).toLocaleLowerCase('tr');
+  if (enerji < 0.48) return !HIZLI.some((k) => `${h} ${g}`.includes(k));
+  if (enerji >= 0.62) return !DINLENME.some((k) => h.includes(k));
+  return true;
+}
+
+const sayilar = (m) => (String(m).match(/\d+(?:[.,]\d+)?/g) ?? []).map((x) => String(Number(x.replace(',', '.'))));
+
+// Gerekçedeki her sayı girdi metninde geçmeli (hüküm denetlenmez).
+export function sayilarGirdiden(gerekce, girdiMetni) {
+  const izinli = new Set(sayilar(girdiMetni));
+  return sayilar(gerekce).every((n) => izinli.has(n));
+}
+
+const metinUygun = (y, girdi) => yonUyumlu(y, girdi.enerji) && sayilarGirdiden(y.gerekce, girdi.metin);
 
 // Ayar tek yerde: sync_state['ayar_yapay_zeka'] (boolean). Kayıt yoksa AÇIK sayılır.
 export async function yapayZekaAcik(db) {
@@ -104,11 +127,13 @@ export async function yorumGuncelle({ db, satirlar, bugun, simdiMs, yaz }) {
   } catch {
     ham = null;
   }
-  const y = yorumGecerli(ham);
+  const gecerli = yorumGecerli(ham);
+  const y = gecerli && metinUygun(gecerli, girdi) ? gecerli : null;
   if (!y) {
     await durumYaz(db, 'yorum_hata', { tarih: bugun, karma: girdi.karma, n: hataSayisi + 1 });
     return { durum: 'hata' };
   }
+  if (!(await yapayZekaAcik(db))) return { durum: 'kapali' }; // istek sürerken kapatıldı
   await durumYaz(db, 'yorum', { tarih: bugun, karma: girdi.karma, hukum: y.hukum, gerekce: y.gerekce, uretildi: simdiMs });
   return { durum: 'yazildi' };
 }
@@ -120,5 +145,6 @@ export async function yorumOku(db, bugun, satirlar) {
   if (!kayit || kayit.tarih !== bugun) return null;
   const girdi = await ozetGirdisi(satirlar, bugun);
   if (!girdi || girdi.karma !== kayit.karma) return null;
-  return yorumGecerli(kayit);
+  const y = yorumGecerli(kayit);
+  return y && metinUygun(y, girdi) ? y : null;
 }
