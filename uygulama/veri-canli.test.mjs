@@ -683,7 +683,7 @@ test('veriYukle bozuk canlı yanıtta (200 ama biçim yanlış) sunucu der ve ö
 });
 
 test('veriYukle fetch yoksa ve bağlantı varsa ag der, fırlatmaz', async () => {
-  const r = await veriYukle(undefined, baglantiliDepo(), T0);
+  const r = await veriYukle(null, baglantiliDepo(), T0) /* null: varsayılan gerçek fetch devreye girmesin, test ağa çıkmasın */;
   assert.equal(r.kaynak, 'yok');
   assert.equal(r.neden, 'ag');
 });

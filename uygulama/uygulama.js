@@ -541,7 +541,7 @@ function seritKur() { // Bugün başlığının üstünde kalıcı uyarı
   const m = VERI.meta || {}, satirlar = [], gercek = bag.kaynak === 'canli' || bag.kaynak === 'onbellek'; // gerçek veri: şimdi ya da en son alınan
   if (bag.kaynak === 'onbellek') {
     const t = CANLI.sonEsitlemeMetni(bag.zaman), son = t ? ` Son veri: ${t}.` : '';
-    satirlar.push(bag.neden === 'yetki' ? `Cihaz anahtarı kabul edilmedi.${son}` : `Çevrimdışı.${son}`);
+    satirlar.push(bag.neden === 'yetki' ? `Cihaz anahtarı kabul edilmedi.${son}` : bag.neden === 'sunucu' ? `Sunucudan veri alınamadı.${son}` : `Çevrimdışı.${son}`);
   } else if (!gercek) { // bağlantı kayıtlı ama hiç veri alınamadı: örnek veri uyarısız kalmasın
     satirlar.push(bag.neden === 'yetki' ? "Cihaz anahtarı kabul edilmedi. Ayarlar'dan yeniden gir." : 'Bağlanılamadı. Örnek veri gösteriliyor.');
   }
@@ -705,6 +705,7 @@ function ac(v, bag) {
     // Yarım kalan ilk başlatmanın dinleyicileri ve çizim döngüsü yaşamasın: sayfa temiz yeniden açılır,
     // bu kez gerçek veri denenmeden örnek veriyle (bir kereliğine; sonraki elle yenileme yine gerçeği dener).
     try { sessionStorage.setItem('gk-canli-hata', '1'); } catch (x) { throw hata; }
+    try { CANLI.sonVeriSil?.(); } catch (x) {} // ekranı çökerten veri önbellekte kalıp her açılışı çift yüklemeye çevirmesin
     location.reload();
   }
 }
