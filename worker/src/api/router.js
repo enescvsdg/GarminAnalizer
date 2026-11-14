@@ -2,6 +2,7 @@
 import { apiYaniti } from '../stats/ozet.js';
 import { gunleriOku, durumOku } from '../db.js';
 import { yerelTarih, gunEkle } from '../zaman.js';
+import { yorumOku, yapayZekaAcik, yapayZekaYaz } from '../yorum/yorum.js';
 
 const enc = new TextEncoder();
 
@@ -48,7 +49,42 @@ async function gunler(url, env, simdiMs, cors) {
     sonEsitleme: (await durumOku(env.DB, 'son_esitleme')) ?? null,
     keyDurum: (await durumOku(env.DB, 'key_durum')) ?? null,
   };
-  return yanit(apiYaniti(satirlar, bugun, n, meta), 200, cors);
+  const govde = apiYaniti(satirlar, bugun, n, meta);
+  let yorum = null;
+  try {
+    yorum = await yorumOku(env.DB, bugun, satirlar); // Gemini süs katmanıdır; hata API'yi bozmaz
+  } catch {
+    yorum = null;
+  }
+  govde.yorumKaynak = 'sablon';
+  if (yorum) {
+    const son = govde.gunler[govde.gunler.length - 1];
+    son.hukum = yorum.hukum;
+    son.gerekce = yorum.gerekce;
+    govde.yorumKaynak = 'gemini';
+  }
+  return yanit(govde, 200, cors);
+}
+
+const AYAR_ENFAZLA_BAYT = 1024;
+
+async function ayar(request, env, cors) {
+  if (request.method === 'GET') return yanit({ yapayZeka: await yapayZekaAcik(env.DB) }, 200, cors);
+  const bildirilen = Number(request.headers.get('Content-Length'));
+  if (Number.isFinite(bildirilen) && bildirilen > AYAR_ENFAZLA_BAYT) return yanit({ hata: 'gecersiz' }, 400, cors);
+  const metin = await request.text();
+  if (enc.encode(metin).length > AYAR_ENFAZLA_BAYT) return yanit({ hata: 'gecersiz' }, 400, cors);
+  let govde;
+  try {
+    govde = JSON.parse(metin);
+  } catch {
+    return yanit({ hata: 'gecersiz' }, 400, cors);
+  }
+  if (!govde || typeof govde !== 'object' || Array.isArray(govde) || typeof govde.yapayZeka !== 'boolean') {
+    return yanit({ hata: 'gecersiz' }, 400, cors);
+  }
+  await yapayZekaYaz(env.DB, govde.yapayZeka);
+  return yanit({ yapayZeka: govde.yapayZeka }, 200, cors);
 }
 
 async function durum(env, cors) {
@@ -68,17 +104,19 @@ export async function istekIsle(request, env, simdiMs) {
         status: 204,
         headers: {
           ...cors,
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'X-Device-Key',
+          'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+          'Access-Control-Allow-Headers': 'X-Device-Key, Content-Type',
           'Access-Control-Max-Age': '86400',
         },
       });
     }
-    if (request.method !== 'GET') return yanit({ hata: 'yontem' }, 405, cors);
+    const url = new URL(request.url);
+    const izinli = request.method === 'GET' || (request.method === 'PUT' && url.pathname === '/api/ayar');
+    if (!izinli) return yanit({ hata: 'yontem' }, 405, cors);
     if (!(await anahtarGecerli(request.headers.get('X-Device-Key'), env.DEVICE_KEY))) {
       return yanit({ hata: 'yetkisiz' }, 401, cors);
     }
-    const url = new URL(request.url);
+    if (url.pathname === '/api/ayar') return await ayar(request, env, cors);
     if (url.pathname === '/api/gunler') return await gunler(url, env, simdiMs, cors);
     if (url.pathname === '/api/durum') return await durum(env, cors);
     return yanit({ hata: 'bulunamadi' }, 404, cors);

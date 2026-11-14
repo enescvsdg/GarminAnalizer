@@ -6,6 +6,7 @@ import { durumYaz, gunUpsert } from '../src/db.js';
 import { gunEkle } from '../src/zaman.js';
 import { apiYaniti } from '../src/stats/ozet.js';
 import { bant, OLCUMLER } from '../src/stats/baseline.js';
+import { yorumGuncelle } from '../src/yorum/yorum.js';
 
 const SIMDI = Date.UTC(2026, 10, 12, 9, 0); // 12 Kas 2026 12:00 İstanbul
 const ORIGIN = 'https://ornek.github.io';
@@ -13,10 +14,12 @@ const ORIGIN = 'https://ornek.github.io';
 function ortam(ek = {}) {
   return { DB: testD1(), DEVICE_KEY: 'gizli', IZINLI_ORIGIN: ORIGIN, ...ek };
 }
-function istek(yol, { yontem = 'GET', basliklar = {}, anahtar = 'gizli' } = {}) {
+function istek(yol, { yontem = 'GET', basliklar = {}, anahtar = 'gizli', govde } = {}) {
   const b = { ...basliklar };
   if (anahtar !== null) b['X-Device-Key'] = anahtar;
-  return new Request(`https://w.test${yol}`, { method: yontem, headers: b });
+  const init = { method: yontem, headers: b };
+  if (govde !== undefined) init.body = typeof govde === 'string' ? govde : JSON.stringify(govde);
+  return new Request(`https://w.test${yol}`, init);
 }
 const json = (r) => r.json();
 
@@ -76,8 +79,8 @@ test('OPTIONS 204, Allow-Headers X-Device-Key içerir, kimlik istemez', async ()
   const r = await istekIsle(
     istek('/api/gunler', { yontem: 'OPTIONS', anahtar: null, basliklar: { Origin: ORIGIN } }), ortam(), SIMDI);
   assert.equal(r.status, 204);
-  assert.equal(r.headers.get('Access-Control-Allow-Headers'), 'X-Device-Key');
-  assert.equal(r.headers.get('Access-Control-Allow-Methods'), 'GET, OPTIONS');
+  assert.equal(r.headers.get('Access-Control-Allow-Headers'), 'X-Device-Key, Content-Type');
+  assert.equal(r.headers.get('Access-Control-Allow-Methods'), 'GET, PUT, OPTIONS');
   assert.equal(r.headers.get('Access-Control-Max-Age'), '86400');
   assert.equal(r.headers.get('Access-Control-Allow-Origin'), ORIGIN);
   assert.equal(r.headers.get('Vary'), 'Origin');
@@ -264,4 +267,147 @@ test('kimliksiz POST ve HEAD 405', async () => {
   assert.deepEqual(await json(p), { hata: 'yontem' });
   const h = await istekIsle(istek('/api/gunler', { yontem: 'HEAD' }), env, SIMDI);
   assert.equal(h.status, 405);
+});
+
+// ---- Gemini yorumu ve ayar ----
+const BUGUN = '2026-11-12';
+async function dolu(env) {
+  for (let k = 30; k >= 1; k -= 1) {
+    await gunUpsert(env.DB, {
+      date: gunEkle(BUGUN, -k), sleep_score: 75 + (k % 5), bb_high: 70 + (k % 4), hrv_avg: 50 + (k % 3),
+      resting_hr: 52 + (k % 2), stress_avg: 30 + (k % 4), training_load: 80 + (k % 6),
+    });
+  }
+  await gunUpsert(env.DB, {
+    date: BUGUN, sleep_score: 82, bb_high: 78, hrv_avg: 55, resting_hr: 52, stress_avg: 28, training_load: 90,
+  });
+}
+const YORUM = { hukum: 'Rahat bir gün', gerekce: 'Uykun ve HRV değerin normalin içinde, rahat tempo uygun.' };
+async function yorumYaz(env) {
+  const { gunleriOku } = await import('../src/db.js');
+  const satirlar = await gunleriOku(env.DB, gunEkle(BUGUN, -60), BUGUN);
+  const r = await yorumGuncelle({ db: env.DB, satirlar, bugun: BUGUN, simdiMs: SIMDI, yaz: async () => ({ ...YORUM }) });
+  assert.equal(r.durum, 'yazildi');
+}
+const gunlerAl = async (env, q = '?gun=5') => json(await istekIsle(istek(`/api/gunler${q}`), env, SIMDI));
+
+test('yorumKaynak: kayıt yokken sablon ve yanıt değişmez', async () => {
+  const env = ortam();
+  await dolu(env);
+  const g = await gunlerAl(env);
+  assert.equal(g.yorumKaynak, 'sablon');
+  const { yorumKaynak, ...gerisi } = g;
+  assert.deepEqual(gerisi, apiYaniti(await (await import('../src/db.js')).gunleriOku(env.DB, gunEkle(BUGUN, -34), BUGUN), BUGUN, 5, { sonEsitleme: null, keyDurum: null }));
+});
+
+test('yorumKaynak gemini: yalnız son günün hukum ve gerekce alanları değişir', async () => {
+  const env = ortam();
+  await dolu(env);
+  const once = await gunlerAl(env);
+  await yorumYaz(env);
+  const sonra = await gunlerAl(env);
+  assert.equal(sonra.yorumKaynak, 'gemini');
+  const son = sonra.gunler.at(-1);
+  assert.equal(son.hukum, YORUM.hukum);
+  assert.equal(son.gerekce, YORUM.gerekce);
+  assert.deepEqual({ ...son, hukum: null, gerekce: null }, { ...once.gunler.at(-1), hukum: null, gerekce: null });
+  assert.deepEqual(sonra.gunler.slice(0, -1), once.gunler.slice(0, -1));
+  assert.deepEqual(sonra.olcumler, once.olcumler);
+  const { yorumKaynak: a, gunler: ga, ...digerSonra } = sonra;
+  const { yorumKaynak: b, gunler: gb, ...digerOnce } = once;
+  assert.deepEqual(digerSonra, digerOnce);
+});
+
+test('veri değişince eski Gemini yorumu gösterilmez', async () => {
+  const env = ortam();
+  await dolu(env);
+  await yorumYaz(env);
+  await gunUpsert(env.DB, { date: BUGUN, hrv_avg: 57 });
+  const g = await gunlerAl(env);
+  assert.equal(g.yorumKaynak, 'sablon');
+  assert.notEqual(g.gunler.at(-1).hukum, YORUM.hukum);
+});
+
+test('/api/ayar: varsayılan açık, PUT gidiş-dönüş', async () => {
+  const env = ortam();
+  const al = async () => json(await istekIsle(istek('/api/ayar'), env, SIMDI));
+  assert.deepEqual(await al(), { yapayZeka: true });
+  const k = await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde: { yapayZeka: false } }), env, SIMDI);
+  assert.equal(k.status, 200);
+  assert.deepEqual(await json(k), { yapayZeka: false });
+  assert.deepEqual(await al(), { yapayZeka: false });
+  const a = await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde: { yapayZeka: true } }), env, SIMDI);
+  assert.deepEqual(await json(a), { yapayZeka: true });
+  assert.deepEqual(await al(), { yapayZeka: true });
+});
+
+test('/api/ayar PUT anahtarsız 401 ve ayar değişmez', async () => {
+  const env = ortam();
+  const r = await istekIsle(istek('/api/ayar', { yontem: 'PUT', anahtar: null, govde: { yapayZeka: false } }), env, SIMDI);
+  assert.equal(r.status, 401);
+  assert.deepEqual(await json(r), { hata: 'yetkisiz' });
+  const y = await istekIsle(istek('/api/ayar', { yontem: 'PUT', anahtar: 'yanlis', govde: { yapayZeka: false } }), env, SIMDI);
+  assert.equal(y.status, 401);
+  assert.deepEqual(await json(await istekIsle(istek('/api/ayar'), env, SIMDI)), { yapayZeka: true });
+});
+
+test('/api/ayar PUT kimlik gövde okunmadan önce denetlenir', async () => {
+  const env = ortam();
+  let okundu = false;
+  const r = istek('/api/ayar', { yontem: 'PUT', anahtar: null, govde: { yapayZeka: false } });
+  for (const ad of ['text', 'json', 'arrayBuffer']) {
+    const orijinal = r[ad].bind(r);
+    Object.defineProperty(r, ad, { value: () => { okundu = true; return orijinal(); } });
+  }
+  assert.equal((await istekIsle(r, env, SIMDI)).status, 401);
+  assert.equal(okundu, false);
+});
+
+test('/api/ayar PUT geçersiz gövde 400 ve ayar değişmez', async () => {
+  const env = ortam();
+  const dene = async (govde, ek) => {
+    const r = await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde, ...ek }), env, SIMDI);
+    assert.equal(r.status, 400, JSON.stringify(govde)?.slice(0, 40));
+    return json(r);
+  };
+  assert.deepEqual(await dene('{bozuk'), { hata: 'gecersiz' });
+  assert.deepEqual(await dene(''), { hata: 'gecersiz' });
+  assert.deepEqual(await dene({ yapayZeka: 'false' }), { hata: 'gecersiz' });
+  assert.deepEqual(await dene({ yapayZeka: 0 }), { hata: 'gecersiz' });
+  assert.deepEqual(await dene({ yapayZeka: null }), { hata: 'gecersiz' });
+  assert.deepEqual(await dene({}), { hata: 'gecersiz' });
+  assert.deepEqual(await dene('[true]'), { hata: 'gecersiz' });
+  assert.deepEqual(await dene('null'), { hata: 'gecersiz' });
+  assert.deepEqual(await dene({ yapayZeka: false, ek: 'x'.repeat(2000) }), { hata: 'gecersiz' });
+  assert.deepEqual(await json(await istekIsle(istek('/api/ayar'), env, SIMDI)), { yapayZeka: true });
+});
+
+test('PUT /api/gunler, PUT /api/yok, POST /api/ayar, DELETE /api/ayar 405', async () => {
+  const env = ortam();
+  for (const [yol, yontem] of [['/api/gunler', 'PUT'], ['/api/durum', 'PUT'], ['/api/yok', 'PUT'], ['/api/ayar', 'POST'], ['/api/ayar', 'DELETE']]) {
+    const r = await istekIsle(istek(yol, { yontem, govde: yontem === 'DELETE' ? undefined : { yapayZeka: false } }), env, SIMDI);
+    assert.equal(r.status, 405, `${yontem} ${yol}`);
+    assert.deepEqual(await json(r), { hata: 'yontem' });
+  }
+});
+
+test('OPTIONS /api/ayar yeni başlıkları döner', async () => {
+  const r = await istekIsle(
+    istek('/api/ayar', { yontem: 'OPTIONS', anahtar: null, basliklar: { Origin: ORIGIN } }), ortam(), SIMDI);
+  assert.equal(r.status, 204);
+  assert.equal(r.headers.get('Access-Control-Allow-Methods'), 'GET, PUT, OPTIONS');
+  assert.equal(r.headers.get('Access-Control-Allow-Headers'), 'X-Device-Key, Content-Type');
+});
+
+test('ayar kapatılınca yorumKaynak sablon olur, açılınca eski yorum geri gelmez', async () => {
+  const env = ortam();
+  await dolu(env);
+  await yorumYaz(env);
+  assert.equal((await gunlerAl(env)).yorumKaynak, 'gemini');
+  await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde: { yapayZeka: false } }), env, SIMDI);
+  const g = await gunlerAl(env);
+  assert.equal(g.yorumKaynak, 'sablon');
+  assert.notEqual(g.gunler.at(-1).hukum, YORUM.hukum);
+  await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde: { yapayZeka: true } }), env, SIMDI);
+  assert.equal((await gunlerAl(env)).yorumKaynak, 'sablon');
 });

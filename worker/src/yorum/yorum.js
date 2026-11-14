@@ -1,0 +1,124 @@
+// Bugünün hüküm ve gerekçesini Gemini'ye yazdırma kararı. Gemini yalnız iki metni yazar;
+// enerji, bant ve durumlar şablondan gelir ve Gemini'den etkilenmez.
+import { OLCUMLER, gunDegerleri, bant, durum } from '../stats/baseline.js';
+import { enerji, hukum } from '../stats/ozet.js';
+import { durumOku, durumYaz } from '../db.js';
+
+const GUNLUK_SINIR = 8;
+const HATA_SINIRI = 2;
+
+export const SISTEM = [
+  'Bir koşucu için günlük toparlanma özeti yazıyorsun. Okuyana "sen" diye hitap et, Türkçe yaz.',
+  'Yalnız şu iki alanı üret: "hukum" ve "gerekce".',
+  '"hukum" en çok 4 kelime olsun ve verilen şablon hüküm kademesiyle aynı yönde olsun; kademe hafif ya da dinlenme yönündeyse "tam gaz" gibi tam tersi bir hüküm yazma.',
+  '"gerekce" 1-2 cümle olsun, en çok 220 karakter, yalnız verilen sayılara dayansın; sayı uydurma, verilmeyen bir ölçümden söz etme.',
+  'Tıbbi teşhis, ilaç, hastalık adı yazma. Emoji kullanma. Ölçümleri verilen Türkçe adlarıyla an.',
+].join(' ');
+
+export const SEMA = {
+  type: 'object',
+  properties: { hukum: { type: 'string' }, gerekce: { type: 'string' } },
+  required: ['hukum', 'gerekce'],
+};
+
+const sayiMetni = (x) => String(Math.round(x * 10) / 10);
+const DURUM_METNI = { lo: 'altında', ok: 'normalde', hi: 'üstünde' };
+const enc = new TextEncoder();
+
+async function karmaHesapla(metin) {
+  const ozet = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(metin)));
+  return Array.from(ozet, (b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+}
+
+// Gemini'ye gidecek düz metin: yalnız bugünün özet sayıları. Tarih, ad, aktivite, ham alan yok.
+export async function ozetGirdisi(satirlar, bugun) {
+  const d = gunDegerleri(satirlar, bugun);
+  const bantlar = Object.fromEntries(OLCUMLER.map((o) => [o.id, bant(satirlar, o, bugun)]));
+  const e = enerji(d, bantlar);
+  if (e === null) return null;
+  const kademe = hukum(e);
+  const satir = OLCUMLER.map((o) => {
+    const b = bantlar[o.id];
+    const v = d[o.id];
+    const aralik = `${b.kisisel ? 'normal' : 'genel'} aralık ${sayiMetni(b.min)}–${sayiMetni(b.max)}`;
+    const yon = o.iyi > 0 ? 'yüksek değer iyi' : 'düşük değer iyi';
+    if (v === null || v === undefined) return `${o.ad}: veri yok; ${aralik}; ${yon}.`;
+    return `${o.ad}: ${sayiMetni(v)}${o.birim}; ${aralik}; ${DURUM_METNI[durum(b, v)]}; ${yon}.`;
+  });
+  const metin = [
+    'Bugünün ölçümleri:',
+    ...satir,
+    `Enerji: ${e.toFixed(2)} (0.00–1.00 ölçeği)`,
+    `Şablon hüküm kademesi: ${kademe}`,
+  ].join('\n');
+  return { metin, karma: await karmaHesapla(metin), kademe, enerji: e };
+}
+
+const YASAK = new RegExp('[<>{}]|http|[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]', 'i');
+
+function temizle(s, enFazlaKarakter, enFazlaKelime) {
+  if (typeof s !== 'string' || YASAK.test(s)) return null;
+  const t = s.trim().replace(/\s+/g, ' ');
+  if (t === '' || t.length > enFazlaKarakter) return null;
+  if (enFazlaKelime && t.split(' ').length > enFazlaKelime) return null;
+  return t;
+}
+
+export function yorumGecerli(y) {
+  if (!y || typeof y !== 'object') return null;
+  const h = temizle(y.hukum, 40, 5);
+  const g = temizle(y.gerekce, 260, 0);
+  return h && g ? { hukum: h, gerekce: g } : null;
+}
+
+// Ayar tek yerde: sync_state['ayar_yapay_zeka'] (boolean). Kayıt yoksa AÇIK sayılır.
+export async function yapayZekaAcik(db) {
+  return (await durumOku(db, 'ayar_yapay_zeka')) !== false;
+}
+
+export async function yapayZekaYaz(db, acik) {
+  await durumYaz(db, 'ayar_yapay_zeka', acik === true);
+  if (acik !== true) await durumYaz(db, 'yorum', null); // eski yorum gösterilmesin
+}
+
+export async function yorumGuncelle({ db, satirlar, bugun, simdiMs, yaz }) {
+  if (!(await yapayZekaAcik(db))) return { durum: 'kapali' };
+  const girdi = await ozetGirdisi(satirlar, bugun);
+  if (!girdi) return { durum: 'veri-yok' };
+
+  const kayit = await durumOku(db, 'yorum');
+  if (kayit?.tarih === bugun && kayit.karma === girdi.karma) return { durum: 'ayni' };
+
+  const hata = await durumOku(db, 'yorum_hata');
+  const hataSayisi = hata?.tarih === bugun && hata.karma === girdi.karma ? hata.n : 0;
+  if (hataSayisi >= HATA_SINIRI) return { durum: 'hata' };
+
+  const sayac = await durumOku(db, 'yorum_sayac');
+  const n = sayac?.tarih === bugun ? sayac.n : 0;
+  if (n >= GUNLUK_SINIR) return { durum: 'sinir' };
+  await durumYaz(db, 'yorum_sayac', { tarih: bugun, n: n + 1 }); // istekten ÖNCE
+
+  let ham = null;
+  try {
+    ham = await yaz(girdi.metin);
+  } catch {
+    ham = null;
+  }
+  const y = yorumGecerli(ham);
+  if (!y) {
+    await durumYaz(db, 'yorum_hata', { tarih: bugun, karma: girdi.karma, n: hataSayisi + 1 });
+    return { durum: 'hata' };
+  }
+  await durumYaz(db, 'yorum', { tarih: bugun, karma: girdi.karma, hukum: y.hukum, gerekce: y.gerekce, uretildi: simdiMs });
+  return { durum: 'yazildi' };
+}
+
+// Kayıt bugüne ve güncel girdiye aitse yorum, değilse null (veri değiştiyse eski yorum gösterilmez).
+export async function yorumOku(db, bugun, satirlar) {
+  if (!(await yapayZekaAcik(db))) return null;
+  const kayit = await durumOku(db, 'yorum');
+  if (!kayit || kayit.tarih !== bugun) return null;
+  const girdi = await ozetGirdisi(satirlar, bugun);
+  if (!girdi || girdi.karma !== kayit.karma) return null;
+  return yorumGecerli(kayit);
+}
