@@ -229,6 +229,18 @@ kesinleşmedi; gerekirse dış kaynaktan üretilen ses dosyalarıyla değiştiri
 **Dış kütüphaneler.** GSAP (CDN), Google Fonts (Fraunces, Onest). Service
 worker ikisini de önbelleğe alır.
 
+### 9.2 Masaüstü (geniş ekran) düzeni (2026-11-15)
+
+Kullanıcı kararı: ayrı bir uygulama değil, aynı sitenin geniş ekranda açılan ikinci düzeni. Soruları atladı; aşağıdakiler tasarımcının kararlarıdır.
+
+- **Ne zaman:** pencere en az 1000 px genişlik ve 620 px yükseklikteyse. Daha dar pencerede bugünkü davranış aynen sürer (≤520 px tam ekran telefon düzeni, arası ortada telefon çerçevesi).
+- **Düzen:** telefon çerçevesi yok, sahne pencereyi doldurur. Solda Bugün (hüküm, gerekçe, şekil, altı kart, yedi gün; telefondakiyle aynı), sağda her zaman açık Trend. Alt sekme çubuğu yoktur; sağ üstte ses ve Ayarlar düğmeleri. Ayarlar ortada bir pencere olarak açılır.
+- **Trend geniş ekranda:** 28 günün tamamı tek grafikte görünür (kaydırma yok). İmleç fareyi izler; tıklayınca o günde kalır. ← / → bir gün, ↑ / ↓ ya da 1–9 ölçüm değiştirir. Ölçüm seçici, başlık, özet, normal bandı, 7 günlük ortalama sırtı ve gün ayrıntısı satırı telefondakiyle aynı içeriği taşır.
+- **Bağ:** soldaki bir ölçüm kartına tıklamak sağdaki Trend'i o ölçüme geçirir (ekran değişmez). Soldaki yedi günden birini seçmek Trend imlecini o güne taşır.
+- **Değişmeyenler:** veri katmanı, şeritler, sesler, şeklin dokunma tepkisi, renk dışında ok ve metinle durum, tabular rakamlar, `prefers-reduced-motion`.
+- **Pencere eşiği aşılırsa** (geniş ↔ dar) sayfa yeniden yüklenir.
+- **Yaklaşımlar:** (1) iki telefon ekranını yan yana ölçekleyerek göstermek — en ucuz, ama grafik dar kalır ve masaüstüne özgü hiçbir şey kazandırmaz; (2) seçilen: Bugün aynı koordinat sisteminde kalır, Trend geniş ekran için ayrı yerleşim ve etkileşim (28 gün, fare/klavye) alır; (3) baştan ayrı bir masaüstü sayfası — iki ayrı arayüzün bakımı. (2) seçildi: en çok değer grafikte, en az risk Bugün'de.
+
 ## 10. Hata durumları
 
 | Durum | Davranış |
