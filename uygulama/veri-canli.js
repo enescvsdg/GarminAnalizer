@@ -3,6 +3,8 @@
 // Cihaz anahtarı yalnızca X-Device-Key başlığına gider; URL'ye, loga ve hata iletisine girmez.
 
 const BAGLANTI_ANAHTARI = 'gk-baglanti';
+const SON_VERI_ANAHTARI = 'gk-son-veri';
+const SON_VERI_SINIR = 400 * 1024;
 const GUN_SAYISI = 28;
 const EN_AZ_GUN = 7;
 const ZAMAN_ASIMI_MS = 6000;
@@ -128,19 +130,55 @@ export function baglantiYaz({ adres, anahtar } = {}, depo = varsayilanDepo()) {
   const a = adresDuzelt(adres);
   const k = typeof anahtar === 'string' ? anahtar.trim() : '';
   if (!a || !k || !depo) return false;
-  try { depo.setItem(BAGLANTI_ANAHTARI, JSON.stringify({ adres: a, anahtar: k })); return true; } catch { return false; }
+  const onceki = baglantiOku(depo);
+  try { depo.setItem(BAGLANTI_ANAHTARI, JSON.stringify({ adres: a, anahtar: k })); } catch { return false; }
+  // Başka bir Worker başka veridir: adres değiştiyse eski adresin son verisi kalmaz.
+  if (!onceki || adresDuzelt(onceki.adres) !== a) sonVeriSil(depo);
+  return true;
 }
 
+// Bağlantıyı kaldırınca cihazda sağlık verisi de kalmaz.
 export function baglantiSil(depo = varsayilanDepo()) {
   try { depo?.removeItem(BAGLANTI_ANAHTARI); } catch { /* depo yok ya da erişilemiyor */ }
+  sonVeriSil(depo);
 }
 
-// Ortak istek: bağlantı yoksa, adres geçersizse, ağ/HTTP/JSON/biçim hatasında ya da zaman aşımında null. Fırlatmaz.
-// Anahtar yalnızca X-Device-Key başlığına gider. isle(json) geçersiz yanıtta fırlatır -> null.
-async function istekYap(yol, { method = 'GET', govde } = {}, isle, fetchFn, depo, zamanAsimiMs) {
+/* ---------- Son veri önbelleği (localStorage['gk-son-veri'] = {zaman, yanit}) ---------- */
+// yanit Worker'ın HAM yanıtıdır (veriCevir yükleme anında çalışır); cihaz anahtarı içermez, çünkü yanıtta anahtar yoktur.
+
+export function sonVeriYaz(yanit, simdiMs, depo = varsayilanDepo()) {
+  if (!depo || !yanit || typeof yanit !== 'object' || !sonlu(simdiMs)) return false;
+  try {
+    const dizgi = JSON.stringify({ zaman: simdiMs, yanit });
+    const bayt = typeof TextEncoder === 'function' ? new TextEncoder().encode(dizgi).length : dizgi.length;
+    if (bayt > SON_VERI_SINIR) return false;
+    depo.setItem(SON_VERI_ANAHTARI, dizgi);
+    return true;
+  } catch { return false; }
+}
+
+export function sonVeriOku(depo = varsayilanDepo()) {
+  try {
+    const s = depo?.getItem(SON_VERI_ANAHTARI);
+    if (!s) return null;
+    const o = JSON.parse(s);
+    if (!o || !sonlu(o.zaman) || !o.yanit || typeof o.yanit !== 'object' || Array.isArray(o.yanit)) return null;
+    return { zaman: o.zaman, yanit: o.yanit };
+  } catch { return null; }
+}
+
+export function sonVeriSil(depo = varsayilanDepo()) {
+  try { depo?.removeItem(SON_VERI_ANAHTARI); } catch { /* depo yok ya da erişilemiyor */ }
+}
+
+// Ortak istek. Sonuç {sonuc, neden}: sonuc isle(json) çıktısı ya da null; neden başarısızlığın türü:
+// null (başarı ya da bağlantı hiç yok), 'yetki' (HTTP 401), 'sunucu' (başka HTTP durumu, bozuk JSON/biçim), 'ag' (ağ, zaman aşımı, adres).
+// Fırlatmaz. Anahtar yalnızca X-Device-Key başlığına gider. isle(json) geçersiz yanıtta fırlatır.
+async function istekCoz(yol, { method = 'GET', govde } = {}, isle, fetchFn, depo, zamanAsimiMs) {
   const b = baglantiOku(depo);
-  const adres = b && adresDuzelt(b.adres);
-  if (!b || !adres || typeof fetchFn !== 'function') return null;
+  if (!b) return { sonuc: null, neden: null };
+  const adres = adresDuzelt(b.adres);
+  if (!adres || typeof fetchFn !== 'function') return { sonuc: null, neden: 'ag' };
   const basliklar = { 'X-Device-Key': b.anahtar, Accept: 'application/json' };
   if (govde !== undefined) basliklar['Content-Type'] = 'application/json';
   const kontrol = typeof AbortController === 'function' ? new AbortController() : null;
@@ -151,17 +189,48 @@ async function istekYap(yol, { method = 'GET', govde } = {}, isle, fetchFn, depo
         method, headers: basliklar, ...(govde !== undefined ? { body: govde } : {}),
         cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: kontrol?.signal,
       });
-      if (!r || r.ok !== true || (r.status !== undefined && r.status !== 200)) return null;
-      return isle(await r.json());
+      if (!r) return { sonuc: null, neden: 'ag' };
+      if (r.status === 401) return { sonuc: null, neden: 'yetki' };
+      if (r.ok !== true || (r.status !== undefined && r.status !== 200)) return { sonuc: null, neden: 'sunucu' };
+      try { return { sonuc: isle(await r.json()), neden: null }; } catch { return { sonuc: null, neden: 'sunucu' }; }
     })();
-    const sure = new Promise((coz) => { sayac = setTimeout(() => { kontrol?.abort(); coz(null); }, zamanAsimiMs); });
+    const sure = new Promise((coz) => { sayac = setTimeout(() => { kontrol?.abort(); coz({ sonuc: null, neden: 'ag' }); }, zamanAsimiMs); });
     return await Promise.race([istek, sure]);
-  } catch { return null; } finally { clearTimeout(sayac); }
+  } catch { return { sonuc: null, neden: 'ag' }; } finally { clearTimeout(sayac); }
+}
+
+// Eski sözleşme: başarıda isle çıktısı, her başarısızlıkta null.
+async function istekYap(yol, secenek, isle, fetchFn, depo, zamanAsimiMs) {
+  return (await istekCoz(yol, secenek, isle, fetchFn, depo, zamanAsimiMs)).sonuc;
 }
 
 export function veriGetir(fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
   return istekYap(`/api/gunler?gun=${GUN_SAYISI}`, {}, veriCevir, fetchFn, depo, zamanAsimiMs);
 }
+
+// Açılış verisi: canlı denenir; olmazsa son görülen gerçek veri; o da yoksa örnek veri için 'yok'.
+// {veri: VERI|null, kaynak: 'canli'|'onbellek'|'yok', zaman: ms|null, neden: 'ag'|'yetki'|'sunucu'|null}. Asla fırlatmaz.
+// zaman: canlıda şimdi, önbellekte verinin alındığı an.
+export async function veriYukle(fetchFn = globalThis.fetch, depo = varsayilanDepo(), simdiMs = Date.now(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
+  const yok = (neden) => ({ veri: null, kaynak: 'yok', zaman: null, neden });
+  try {
+    const { sonuc, neden } = await istekCoz(
+      `/api/gunler?gun=${GUN_SAYISI}`, {}, (j) => ({ ham: j, veri: veriCevir(j) }), fetchFn, depo, zamanAsimiMs,
+    );
+    if (sonuc) {
+      sonVeriYaz(sonuc.ham, simdiMs, depo);
+      return { veri: sonuc.veri, kaynak: 'canli', zaman: simdiMs, neden: null };
+    }
+    if (neden === null) return yok(null); // bağlantı hiç yok: örnek veri
+    const o = sonVeriOku(depo);
+    if (o) {
+      try { return { veri: veriCevir(o.yanit), kaynak: 'onbellek', zaman: o.zaman, neden }; } catch { /* bozuk önbellek aşağıda silinir */ }
+    }
+    sonVeriSil(depo);
+    return yok(neden);
+  } catch { return yok('ag'); }
+}
+
 
 function ayarCevir(j) {
   if (!j || typeof j !== 'object' || Array.isArray(j) || typeof j.yapayZeka !== 'boolean') throw new TypeError('ayar geçersiz');
@@ -237,7 +306,7 @@ export function ekSatiri(olcumId, ek) {
 }
 
 export const CANLI = {
-  veriCevir, durum, veriGetir, ayarGetir, ayarYaz, baglantiOku, baglantiYaz, baglantiSil, baglantiKarar, adresDuzelt,
+  veriCevir, durum, veriGetir, veriYukle, sonVeriYaz, sonVeriOku, sonVeriSil, ayarGetir, ayarYaz, baglantiOku, baglantiYaz, baglantiSil, baglantiKarar, adresDuzelt,
   sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, OK, DURUM_METIN,
 };
 globalThis.CANLI = CANLI;
