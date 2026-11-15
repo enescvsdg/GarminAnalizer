@@ -98,3 +98,11 @@ test('GSAP dosyası 3.12.5 sürümüdür', () => {
   assert.equal(createHash('sha256').update(icerik).digest('hex'), '28033e449a31ebcc396e5be8b13b63152bf03094288fb5867034321927bce087');
   assert.ok(!/\beval\(|new Function/.test(icerik.toString('utf8')), 'CSP altında eval kullanılamaz');
 });
+
+test('kabuk.js her iki sayfada da ilk betiktir (denetleyici eşzamanlı yakalanmalı)', () => {
+  for (const ad of ['index.html', 'sesler.html']) {
+    const ilk = /<script\b[^>]*\bsrc=(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(oku(ad));
+    assert.ok(ilk, `${ad}: betik bulunamadı`);
+    assert.equal(ilk[1] ?? ilk[2] ?? ilk[3], 'kabuk.js', ad);
+  }
+});

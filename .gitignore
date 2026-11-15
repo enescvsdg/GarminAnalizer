@@ -6,3 +6,4 @@ worker/.dev.vars
 kesif/ham/
 .env*
 .dev.vars*
+_site/

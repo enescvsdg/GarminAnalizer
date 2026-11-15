@@ -28,9 +28,11 @@ iPhone'da: Safari'de aç, Paylaş, Ana Ekrana Ekle. Ana ekrandaki uygulamanın d
 
 ## Gizlilik
 
-- Garmin verisi yalnız kendi Cloudflare D1 veritabanında durur. Depoda ham sağlık verisi, anahtar ya da Worker adresi yoktur.
+- Garmin verisi yalnız kendi Cloudflare D1 veritabanında durur. Depoda ham sağlık verisi, anahtar ya da Worker adresi yoktur; `kesif/ornek/` altındaki dosyalar test için anonimleştirilmiş örneklerdir.
 - Cihaz anahtarı, Worker adresi ve son görülen veri tarayıcının `localStorage` alanında tutulur. Ayarlar'daki "Bağlantıyı kaldır" üçünü de siler.
-- Gemini'ye yalnız bugünün özet sayıları ve ölçüm adları gider: tarih, ad, aktivite ya da ham kayıt gönderilmez. `GEMINI_API_KEY` tanımlı değilse hiçbir şey gönderilmez. Uygulamada Ayarlar'daki "Yapay zekâ yorumu" anahtarı yorumu kapatır; kalıcı kapatmak için secret'ı silmen yeter.
+- Gemini'ye yalnız bugünün özet sayıları ve ölçüm adları gider: tarih, kişi adı, aktivite ya da ham kayıt gönderilmez. `GEMINI_API_KEY` tanımlı değilse hiçbir şey gönderilmez. Uygulamada Ayarlar'daki "Yapay zekâ yorumu" anahtarı yorumu kapatır; kalıcı kapatmak için secret'ı silmen yeter.
+
+- Yazı tipleri Google Fonts'tan yüklenir; sayfa açılırken cihazın IP adresi Google'a görünür. Başka üçüncü taraf betiği ya da izleyici yoktur.
 
 ## Güvenlik notları
 
