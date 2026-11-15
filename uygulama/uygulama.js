@@ -2,7 +2,10 @@ const $ = (id) => document.getElementById(id);
 const telKok = $('tel');
 // Ölçekleme: veri beklenirken de ekran doğru oturur
 function telOlcek() {
-  const mob = innerWidth <= 520, S = mob ? innerWidth / 390 : Math.min(1, (innerHeight - 32) / 844), H = mob ? innerHeight / S : 844;
+  // Sayfa gizli/sıfır boyutlu açılırsa (arka planda başlatma) ölçek 0 olur ve bütün ölçümler NaN'a döner:
+  // boyut yokken tasarım ölçüsü varsayılır; gerçek boyut gelince resize ile yeniden hesaplanır.
+  const iw = innerWidth || 390, ih = innerHeight || 844;
+  const mob = iw <= 520, S = mob ? iw / 390 : Math.max(0.1, Math.min(1, (ih - 32) / 844)), H = mob ? ih / S : 844;
   telKok.classList.toggle('mob', mob); telKok.style.height = H + 'px'; telKok.style.transform = `scale(${S})`;
   return { S, H };
 }
