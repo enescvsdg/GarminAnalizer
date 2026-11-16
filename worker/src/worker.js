@@ -47,7 +47,7 @@ async function egilimBolumu(env, simdiMs) {
       girdi,
       sema: EGILIM_SEMA,
       gunluk,
-      zamanAsimiMs: 20000,
+      zamanAsimiMs: 60_000, // Dokuz ölçümlük ilk canlı istekte 20 saniye yetmedi.
       maksCikti: 2400, // dokuz kısa yorum
     });
     const { durum } = await egilimGuncelle({ db: env.DB, satirlar, bugun, simdiMs, yaz });

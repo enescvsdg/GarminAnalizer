@@ -67,13 +67,13 @@ Bunlar pazarlık konusu değil; her biri bir kez yaşanmış bir sorundan çıkt
 
 ### 16 Kasım 2026'da yayınlananlar
 
-Kullanıcının isteğiyle `masaustu` dalı `main`'e birleştirilip yayınlandı (`npm test`: 365 geçiyor). Aşağıdaki tablodaki her şey artık `main`'de; arayüzle ilgili olanlar canlı sitede. **Worker güncellenmedi:** eğilim yorumu kodu depoda duruyor ama canlı Worker'da yok. Yayın öncesi telefon görünümü (Trend'de kaydırma, Bugün'e dönüş) ve masaüstü çarkı (fare gezdirince gün değişmiyor, bir çentik bir gün, dokunmatik yüzey, sayfa kaymıyor) tarayıcıda yapay olaylarla doğrulandı.
+Kullanıcının isteğiyle `masaustu` dalı `main`'e birleştirilip yayınlandı (`npm test`: 365 geçiyor). Aşağıdaki tablodaki her şey artık `main`'de; arayüzle ilgili olanlar canlı sitede. Bu ilk yayında yalnızca arayüz güncellendi. Eğilim yorumlarını içeren Worker aynı gün daha sonra dağıtıldı (bölüm 4). Yayın öncesi telefon görünümü (Trend'de kaydırma, Bugün'e dönüş) ve masaüstü çarkı (fare gezdirince gün değişmiyor, bir çentik bir gün, dokunmatik yüzey, sayfa kaymıyor) tarayıcıda yapay olaylarla doğrulandı.
 
 | Commit | Ne | Durum |
 | --- | --- | --- |
 | `de8dccc`, `1332f9e` | Masaüstü (geniş ekran) düzeni: pencere ≥ 1000×620 iken solda Bugün, sağda 28 günlük Trend | Yayında; denetlendi, bulgular düzeltildi |
 | `23e0771` | Çark gezinmesi: tekerlek, tıklama, ok tuşları; fareyi gezdirmek günü değiştirmez | Yayında; tarayıcıda doğrulandı, **bağımsız denetimden geçmedi** |
-| `2d8f1a3` | Worker: Gemini ile ölçüm eğilim yorumları (`worker/src/yorum/egilim.js`), `/api/gunler` yanıtında `egilim` alanı | Kod `main`'de; **denetlenmedi**, canlı Worker'a yüklenmedi, gerçek Gemini ile denenmedi |
+| `2d8f1a3` | Worker: Gemini ile ölçüm eğilim yorumları (`worker/src/yorum/egilim.js`), `/api/gunler` yanıtında `egilim` alanı | İlk sürüm; denetim ve sonraki Worker yayını bölüm 4'te |
 | `fbf1f80` | Dokuz canlı ölçüm simgesi ve önizleme sayfası (`prototip-eski/simge/`) | Yazıldı, kullanıcı onayladı, **uygulamaya henüz yerleştirilmedi** |
 | `3962ddd` | "Faz" uygulama simgesi ve marka rehberi | Yayında |
 
@@ -97,7 +97,9 @@ Ayrıntılı plan `docs/superpowers/plans/2026-11-16-trend-cark-aciklama-simge-y
 
 Worker denetiminde ortak günlük 24 istek hakkı ve iki başarılı eğilim yazımı eşzamanlı çağrılara karşı korundu. Önceki güne ait gecikmiş işlemler yeni günün sayacını veya eğilim kaydını ezemiyor. Bir ölçümün yorumundaki sayılar o ölçümün kendi girdi satırına göre denetleniyor. Veritabanı yazımındaki koşullar yerel D1 ile sınandı.
 
-**Doğrulama ve kalan iş.** Dalda 383 test geçiyor. Yerel Chrome'da 390×664 ve 1440×900 boyutlarında uzun yorum, yapay zekâ etiketi, eksik gün, ölçüm değiştirme, eski Worker yanıtı ve çevrimdışı önbellek denendi. Gerçek fare ve dokunmatik yüzeyle elle deneme açık. Sıradaki yayın adımı, kullanıcı onayıyla Worker'ı güncellemek ve ilk gerçek Gemini yanıtını kontrol etmek (İş 4, adım 3). Ardından arayüz yayını ve fiziksel iPhone denemesi geliyor.
+**Doğrulama ve kalan iş.** Dalda 383 test geçiyor. Yerel Chrome'da 390×664 ve 1440×900 boyutlarında uzun yorum, yapay zekâ etiketi, eksik gün, ölçüm değiştirme, eski Worker yanıtı ve çevrimdışı önbellek denendi. Gerçek fare ve dokunmatik yüzeyle elle deneme açık. `784b12d` sürümündeki Worker Cloudflare'a dağıtıldı. Zamanlayıcı her 15 dakikada bir tetikleniyor, eşitleme saatte bir çalışıyor. 21.15 eşitlemesi tamamlandı. Mevcut günlük yorum geçerliydi. İlk Trend isteği 20 saniyede zaman aşımına uğradı (`gemini: zaman`, `egilim: hata`).
+
+**Sıradaki adım.** Trend için 60 saniyelik süre yerel dalda hazır, 383 test geçiyor. Bu düzeltmenin Worker'a yeniden dağıtılması için açık onay gerekiyor. Yayından sonra sonraki saatlik eşitlemede `egilim: yazildi` ve D1'de kaydedilen yorum sayısı doğrulanmalı. Ardından arayüz yayını ve fiziksel iPhone denemesi geliyor.
 
 ### İş 1 — Yazılmış üç işin denetimi
 
@@ -136,7 +138,7 @@ Sıra önemli, her adım kullanıcı onayı ister:
 
 1. Bütün dalın son denetimi: telefon görünümünde gerileme yok, herkese açık depoya uygun (gizli değer, adres, kişisel bilgi yok), CSP ve `KABUK` tam.
 2. `README.md` ve spec bölüm 11'e Gemini'ye giden eğilim özetini ekle.
-3. Worker'ı güncelle: `cd worker && npx wrangler deploy`. Sonraki eşitlemeden sonra logda `egilim: yazildi` görülmeli (`npx wrangler tail`). Gemini'nin dokuz yorumluk yanıtı hiç denenmedi; çıktı sınırı (2400 belirteç) ve zaman aşımı (20 sn) tahmindir. Logda `gemini: bicim` ya da `gemini: zaman` görürsen bunları ayarla.
+3. Worker'ı güncelle: `cd worker && npx wrangler deploy`. Sonraki eşitlemeden sonra logda `egilim: yazildi` görülmeli (`npx wrangler tail`). İlk dokuz ölçümlük canlı deneme 20 saniyede zaman aşımına uğradı. Çıktı sınırı 2400 belirteç. Logda `gemini: bicim` ya da `gemini: zaman` görürsen bunları ayarla.
 4. Çalıştığın dalı `main`'e birleştir ve gönder. İş akışı bitince canlı sitede sürüm satırını (Ayarlar'ın altı), telefon görünümünü ve masaüstü düzenini kontrol et.
 5. iPhone'da: uygulamayı iki kez aç (ilkinde eski sürüm görünüp bir kez kendiliğinden yenilenir), Trend'de kaydırmayı, yeni simgeleri ve yorumu dene. Ana ekran simgesinin "Faz" olarak değişmesi için uygulamayı ana ekrandan silip yeniden eklemek gerekebilir.
 

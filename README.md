@@ -10,7 +10,7 @@ Bu proje Garmin ile bağlantılı değildir ve Garmin tarafından onaylanmamış
 - **Uygulama:** `uygulama/` altındaki statik PWA (çerçeve ve derleme adımı yok) GitHub Pages'ten yayınlanır. Veriyi Worker'dan alır; son gerçek veriyi cihazda saklar, bağlantı yokken onu "çevrimdışı" etiketiyle gösterir.
 - **Yapay zekâ yorumu (isteğe bağlı):** Gemini bugünün hüküm ve gerekçe metnini, ayrıca Trend için ölçüm başına kısa eğilim yorumlarını yazar. Anahtar tanımlı değilse bu kısım hiç çalışmaz.
 
-Canlı Worker günlük veriyi ve bugünün hükmünü sunuyor; yeni Trend yorumlarını içeren Worker sürümü henüz dağıtılmadı.
+Ölçüm başına Trend yorumlarını üreten Worker sürümü 16 Kasım 2026'da Cloudflare'a dağıtıldı.
 
 ## Kendi kopyanı kurmak
 

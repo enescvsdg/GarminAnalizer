@@ -302,8 +302,7 @@ ve gün adları gönderilmez. Dokuz ölçümün yorumları bir Gemini isteğinde
 bugünün hüküm yorumu ve Trend yorumu istekleri Worker'daki ortak günlük 24
 istek sayacını kullanır. Yapay zekâ ayarı kapalıysa Gemini isteği yapılmaz.
 
-Canlı Worker günlük veriyi ve bugünün hükmünü sunuyor; yeni Trend yorumlarını
-içeren Worker sürümü henüz dağıtılmadı.
+Trend yorumlarını üreten Worker sürümü 16 Kasım 2026'da Cloudflare'a dağıtıldı.
 
 ## 12. Test
 
