@@ -87,5 +87,33 @@ export function klavyeEylem(tus, { gun, olcum, gunSayisi, olcumSayisi }, kosul =
   return null;
 }
 
-export const DUZEN = { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
+// Çark: tekerlek/dokunmatik yüzey olaylarını gün adımına çevirir. Çentik (satır) ve dokunmatik yüzeyin
+// küçük piksel olayları aynı yolda birikir: 50 piksel ya da 1 satır = 1 gün, 1 sayfa = 3 gün.
+// Pozitif adım ileri (sonraki gün). Tek olayda en çok ±3; fazlası atılır (28 günü birden atlamaz).
+const CARK_PIKSEL = 50, CARK_ENCOK = 3;
+export function carkBirikim(olay, birikim) {
+  const o = olay || {}, dx = o.deltaX === undefined ? 0 : o.deltaX, dy = o.deltaY === undefined ? 0 : o.deltaY;
+  if (!sonlu(dx) || !sonlu(dy) || (o.deltaX === undefined && o.deltaY === undefined)) return { adim: 0, birikim: 0 };
+  const d = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+  const k = o.deltaMode === 1 ? CARK_PIKSEL : o.deltaMode === 2 ? CARK_PIKSEL * 3 : 1;
+  const toplam = (sonlu(birikim) ? birikim : 0) + d * k;
+  const ham = Math.trunc(toplam / CARK_PIKSEL);
+  if (Math.abs(ham) > CARK_ENCOK) return { adim: Math.sign(ham) * CARK_ENCOK, birikim: 0 };
+  return { adim: ham === 0 ? 0 : ham, birikim: toplam - ham * CARK_PIKSEL };
+}
+
+// Hedef güne kayma süresi (sn): 1 gün 0.32, her ek gün +0.09, en çok 0.9.
+export function carkSure(uzaklik) {
+  if (!sonlu(uzaklik)) return 0;
+  const u = Math.abs(uzaklik);
+  return u <= 0 ? 0 : Math.min(0.9, 0.32 + (u - 1) * 0.09);
+}
+
+// Çark hedefi: günü adım kadar kaydırır, 0..gunSayisi-1 arasında tutar.
+export function carkHedef(gun, adim, gunSayisi) {
+  const son = Math.max(0, Math.floor(gunSayisi) - 1);
+  return clamp(Math.round((sonlu(gun) ? gun : 0) + (sonlu(adim) ? adim : 0)), 0, son);
+}
+
+export const DUZEN = { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
 globalThis.DUZEN = DUZEN;

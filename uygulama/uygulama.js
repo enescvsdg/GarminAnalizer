@@ -1,4 +1,4 @@
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef } from './duzen.js';
 const $ = (id) => document.getElementById(id);
 const telKok = $('tel');
 // Düzen açılışta bir kez seçilir: geniş ekran (≥1000×620) ayrı yerleşim alır, altı bugünkü telefon/çerçeve davranışıdır.
@@ -18,8 +18,7 @@ function genisKur() {
   ab.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 7h8M15 7h4M3 15h4M11 15h8"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="15" r="2"/></svg><span>Ayarlar</span>';
   const arac = document.createElement('div'); arac.id = 'arac'; $('sesBtn').title = 'Ses efektleri';
   arac.append($('sesBtn'), ab); telKok.insertBefore(arac, $('bekle'));
-  const sabit = document.createElementNS('http://www.w3.org/2000/svg', 'line'); sabit.id = 'sabit'; $('ust').prepend(sabit);
-  $('ipucu').textContent = 'Fareyle gez, tıklayınca o günde kalır · ← → gün · ↑ ↓ ya da 1–9 ölçüm';
+  $('ipucu').textContent = matchMedia('(hover: none)').matches ? 'Bir güne dokun · ← → gün · ↑ ↓ ya da 1–9 ölçüm' : 'Tekerlekle gez, bir güne tıkla · ← → gün · ↑ ↓ ya da 1–9 ölçüm';
   $('trend').setAttribute('aria-label', 'Trend: gün seçmek için sol ve sağ ok tuşları');
 }
 function genisOlcek() {
@@ -228,7 +227,7 @@ const gunBtn = GUNLER.slice(G0).map((g, i) => {
   b.style.setProperty('--e', g.e); b.style.setProperty('--c', g.veriYok ? 'rgba(255,246,236,.4)' : renk(g.e));
   b.setAttribute('aria-label', `${g.gunUzun} ${g.gun} ${g.ay}: ${g.hukum}`);
   b.innerHTML = `<span class="yuva"><i></i></span>${g.gunKisa}`;
-  b.addEventListener('click', () => { if (i !== sel7) { titret(8); sec(i); if (!g.veriYok) SES.akor(g.e); } if (GENIS) { ustGun = -1; git(G0 + i, 0.6); } });
+  b.addEventListener('click', () => { if (i !== sel7) { titret(8); sec(i); if (!g.veriYok) SES.akor(g.e); } if (GENIS) git(G0 + i, carkSure(Math.abs(G0 + i - st.P))); });
   $('gunler').appendChild(b); return b;
 });
 function sec(i, sessiz) {
@@ -348,7 +347,7 @@ const secBtn = O.map((o, i) => {
 });
 $('secici').addEventListener('pointerdown', (ev) => ev.stopPropagation());
 let selT = -1, ekDestek = false;
-let ustGun = -1, balonW = 0; // geniş ekran: farenin üstünde durduğu gün (-1: grafik dışında), balonun genişliği
+let balonW = 0; // geniş ekran: balonun genişliği
 const EK_RENK = { derin: '#8f9bff', hafif: '#bfeedd', rem: '#ffc9a6', uyanik: 'rgba(255,246,236,.55)', dinlenme: '#bfeedd', dusuk: '#9ad6ff', orta: '#ffc9a6', yuksek: '#ff8a6b' };
 function ekYaz(g) { // seçili günün ek ayrıntısı; gösterilecek veri yoksa satır gizlenir (yer kaplamaz)
   const el = $('ekSatir'), s = CANLI.ekSatiri(T[sonOlcum].o.id, g.ek);
@@ -439,7 +438,10 @@ addEventListener('pointermove', (ev) => {
   if (p < 0) p *= 0.35; if (p > N - 1) p = N - 1 + (p - N + 1) * 0.35;
   st.P = p;
 });
-const birak = () => { if (!suruk) return; suruk = false; if (surukledi) git(st.P - (hiz * 1000 * 0.16) / S / DW, 0.8); };
+const birak = () => {
+  if (!suruk) return; suruk = false;
+  if (surukledi) { const h = clamp(Math.round(st.P - (hiz * 1000 * 0.16) / S / DW), 0, N - 1); git(h, carkSure(Math.abs(h - st.P))); }
+};
 addEventListener('pointerup', birak); addEventListener('pointercancel', birak);
 trend.addEventListener('keydown', (ev) => {
   if (ev.target !== trend || GENIS) return; // geniş ekranda klavye sayfa düzeyinde dinlenir
@@ -447,10 +449,23 @@ trend.addEventListener('keydown', (ev) => {
   else if (ev.key === 'Home') git(0); else if (ev.key === 'End') git(N - 1); else return;
   ev.preventDefault(); gsap.to('#ipucu', { autoAlpha: 0, duration: 0.4 });
 });
-trend.addEventListener('wheel', (ev) => { if (GENIS) return; ev.preventDefault(); if (!mesgul) git(hedef + Math.sign(ev.deltaX || ev.deltaY), 0.45); }, { passive: false });
+// Çark: tekerlek çentiği ya da dokunmatik yüzey kaydırması gün adımına çevrilir (carkBirikim); üst üste gelen
+// adımlar hedefi biriktirir, kayma carkSure ile yavaşlayarak durur. Telefonda trend alanının her yerinde, geniş
+// ekranda yalnız grafik bölgesinde dinlenir (Ayarlar, ölçüm seçici ve ctrl+tekerlek/yakınlaştırma serbest).
+let carkB = 0, carkT = 0;
+function carkGit(h) { if (h !== hedef) git(h, carkSure(Math.abs(h - st.P))); }
+function carkOlay(ev, bolge) {
+  if (ev.ctrlKey || ayarAcik || mesgul || (ev.target.closest && ev.target.closest('#secici'))) return;
+  if (bolge && !bolge(ev)) return;
+  ev.preventDefault();
+  const t = performance.now(); if (t - carkT > 400) carkB = 0; carkT = t; // duran tekerleğin artığı sonraki harekete taşınmaz
+  const r = carkBirikim(ev, carkB); carkB = r.birikim;
+  if (r.adim) { ipucuGizle(); carkGit(carkHedef(hedef, r.adim, N)); }
+}
+if (!GENIS) trend.addEventListener('wheel', (ev) => carkOlay(ev), { passive: false });
 
 /* ================= Geniş ekran: fare, klavye ve Bugün ↔ Trend bağı ================= */
-// İmleç fareyi gün gün izler; tıklayınca o gün sabitlenir; grafikten çıkınca sabit güne döner.
+// Fare gezdirmek günü değiştirmez: tekerlek (çark), tıklama ve klavye gezinir.
 let ipucuAcik = true;
 function ipucuGizle() { if (ipucuAcik) { ipucuAcik = false; gsap.to('#ipucu', { autoAlpha: 0, duration: RM ? 0 : 0.4 }); } }
 function vurgula(oi) { // kart ya da tuşla seçilen ölçümün düğmesi kısa bir halka ile yanıp söner
@@ -461,21 +476,12 @@ function kartBag(oi) { SES.tik(); if (oi !== sonOlcum) olcumSec(oi, true); vurgu
 if (GENIS) {
   const konum = (ev) => { const r = trend.getBoundingClientRect(); return { x: (ev.clientX - r.left) / S, y: (ev.clientY - r.top) / S }; };
   const grafikte = (p) => p.y > tl.ust - 96 && p.y < tl.alt + 84 && p.x >= 0 && p.x <= GD.twu; // başlığın altı, gün etiketlerinin üstü
-  const birak = () => { if (ustGun < 0) return; ustGun = -1; git(hedef, 0.45); };
-  trend.addEventListener('pointermove', (ev) => {
-    const p = konum(ev);
-    if (!grafikte(p)) return birak();
-    const i = gunIndeksi(p.x, GD.solPay, DW, N);
-    if (i === ustGun) return;
-    ustGun = i; ipucuGizle();
-    gsap.to(st, { P: i, duration: RM ? 0 : 0.22, ease: 'power2.out', overwrite: 'auto' });
-  });
-  trend.addEventListener('pointerleave', birak);
+  trend.addEventListener('wheel', (ev) => carkOlay(ev, (e) => grafikte(konum(e))), { passive: false });
   trend.addEventListener('click', (ev) => {
     const p = konum(ev); if (!grafikte(p)) return;
-    const i = gunIndeksi(p.x, GD.solPay, DW, N); ustGun = i;
+    const i = gunIndeksi(p.x, GD.solPay, DW, N);
     if (i !== hedef) { titret(8); if (T[sonOlcum].v[i] !== null) SES.can(T[sonOlcum].iyi[i]); }
-    git(i, 0.3);
+    ipucuGizle(); carkGit(i);
   });
   addEventListener('keydown', (ev) => {
     const h = ev.target;
@@ -484,7 +490,7 @@ if (GENIS) {
       { alt: ev.altKey, ctrl: ev.ctrlKey, meta: ev.metaKey, inputOdak, ayarAcik });
     if (!e) return;
     ev.preventDefault(); ipucuGizle();
-    if (e.tur === 'gun') { ustGun = -1; if (e.deger !== hedef || Math.abs(st.P - hedef) > 0.01) git(e.deger, 0.45); }
+    if (e.tur === 'gun') { if (e.deger !== hedef || Math.abs(st.P - hedef) > 0.01) git(e.deger, carkSure(Math.abs(e.deger - st.P))); }
     else if (e.deger !== sonOlcum) { SES.tik(); olcumSec(e.deger, true); vurgula(e.deger); } // klavyede titreşim yok
   });
 }
@@ -785,9 +791,6 @@ gsap.ticker.add((time, dt) => {
     const ix = GENIS ? GD.solPay + pc * DW : cx; // imlecin x'i
     if (GENIS) {
       $('imlec').setAttribute('x1', ix.toFixed(1)); $('imlec').setAttribute('x2', ix.toFixed(1)); $('nokta').setAttribute('cx', ix.toFixed(1));
-      const sx = (GD.solPay + hedef * DW).toFixed(1), sb = $('sabit'); // fare başka gündeyken sabit günün izi
-      sb.setAttribute('x1', sx); sb.setAttribute('x2', sx); sb.setAttribute('y1', tl.ust - 30); sb.setAttribute('y2', tl.alt + 40);
-      sb.style.opacity = ustGun >= 0 && Math.abs(pc - hedef) > 0.5 ? st.yuk : 0;
     }
     $('nokta').setAttribute('cy', ny.toFixed(1)); $('nokta').style.opacity = T[sonOlcum].v[clamp(Math.round(pc), 0, N - 1)] === null ? 0 : st.yuk;
     ['bantDolgu', 'bantUst', 'bantAlt', 'bantYazi'].forEach((id) => ($(id).style.opacity = st.yuk));

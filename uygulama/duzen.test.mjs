@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, DUZEN } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, DUZEN } from './duzen.js';
 
 const hepsiSonlu = (o) => Object.entries(o).every(([, v]) => typeof v === 'number' && Number.isFinite(v));
 
@@ -159,4 +159,54 @@ test('klavyeEylem: değiştirici tuş, giriş alanı odağı ve açık Ayarlar e
       assert.equal(klavyeEylem(tus, d, kosul), null, `${tus} ${JSON.stringify(kosul)}`);
     }
   }
+});
+
+test('carkBirikim: 50 piksel ya da bir satır = bir gün', () => {
+  assert.deepEqual(carkBirikim({ deltaY: 50, deltaMode: 0 }, 0), { adim: 1, birikim: 0 });
+  assert.deepEqual(carkBirikim({ deltaY: 100, deltaMode: 0 }, 0), { adim: 2, birikim: 0 });
+  assert.deepEqual(carkBirikim({ deltaY: 1, deltaMode: 1 }, 0), { adim: 1, birikim: 0 });
+  assert.deepEqual(carkBirikim({ deltaY: -1, deltaMode: 1 }, 0), { adim: -1, birikim: 0 });
+  assert.deepEqual(carkBirikim({ deltaY: 1, deltaMode: 2 }, 0), { adim: 3, birikim: 0 });
+});
+
+test('carkBirikim: dokunmatik yüzeyin küçük olayları birikir', () => {
+  let b = 0, toplam = 0;
+  for (let i = 0; i < 10; i++) { const r = carkBirikim({ deltaY: 6, deltaMode: 0 }, b); b = r.birikim; toplam += r.adim; }
+  assert.equal(toplam, 1);
+  assert.ok(Math.abs(b - 10) < 1e-9);
+});
+
+test('carkBirikim: yatay kaydırma baskınsa o kullanılır; tek olayda en çok ±3', () => {
+  assert.equal(carkBirikim({ deltaX: 400, deltaY: 5, deltaMode: 0 }, 0).adim, 3);
+  assert.equal(carkBirikim({ deltaX: 60, deltaY: 5, deltaMode: 0 }, 0).adim, 1);
+  assert.equal(carkBirikim({ deltaY: -9999, deltaMode: 0 }, 0).adim, -3);
+});
+
+test('carkBirikim: sonlu olmayan girdi sıfırlar', () => {
+  for (const o of [{ deltaY: NaN }, { deltaY: Infinity }, { deltaX: -Infinity, deltaY: 1 }, {}, null, undefined]) {
+    assert.deepEqual(carkBirikim(o, 12), { adim: 0, birikim: 0 });
+  }
+  assert.deepEqual(carkBirikim({ deltaY: 10, deltaMode: 0 }, NaN), { adim: 0, birikim: 10 });
+});
+
+test('carkBirikim: yön değişince birikim işareti doğru taşınır', () => {
+  const a = carkBirikim({ deltaY: 30, deltaMode: 0 }, 0);
+  const b = carkBirikim({ deltaY: -40, deltaMode: 0 }, a.birikim);
+  assert.equal(a.adim, 0); assert.equal(b.adim, 0); assert.ok(Math.abs(b.birikim + 10) < 1e-9);
+});
+
+test('carkSure: 1 gün 0.32, 2 gün 0.41, 27 gün 0.9 (üst sınır), 0 gün 0', () => {
+  assert.equal(carkSure(0), 0);
+  assert.ok(Math.abs(carkSure(1) - 0.32) < 1e-9);
+  assert.ok(Math.abs(carkSure(2) - 0.41) < 1e-9);
+  assert.equal(carkSure(27), 0.9);
+  assert.equal(carkSure(-3), carkSure(3));
+  assert.equal(carkSure(NaN), 0);
+});
+
+test('carkHedef: sınırlar', () => {
+  assert.equal(carkHedef(0, -1, 28), 0);
+  assert.equal(carkHedef(27, 3, 28), 27);
+  assert.equal(carkHedef(5, 2, 28), 7);
+  assert.ok(Number.isFinite(carkHedef(NaN, 2, 28)));
 });
