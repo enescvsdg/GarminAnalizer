@@ -99,7 +99,7 @@ Worker denetiminde ortak günlük 24 istek hakkı ve iki başarılı eğilim yaz
 
 **Doğrulama ve kalan iş.** Dalda 383 test geçiyor. Yerel Chrome'da 390×664 ve 1440×900 boyutlarında uzun yorum, yapay zekâ etiketi, eksik gün, ölçüm değiştirme, eski Worker yanıtı ve çevrimdışı önbellek denendi. Gerçek fare ve dokunmatik yüzeyle elle deneme açık. `784b12d` sürümündeki Worker Cloudflare'a dağıtıldı. Zamanlayıcı her 15 dakikada bir tetikleniyor, eşitleme saatte bir çalışıyor. 21.15 eşitlemesi tamamlandı. Mevcut günlük yorum geçerliydi. İlk Trend isteği 20 saniyede zaman aşımına uğradı (`gemini: zaman`, `egilim: hata`).
 
-**Sıradaki adım.** Trend için 60 saniyelik süre yerel dalda hazır, 383 test geçiyor. Bu düzeltmenin Worker'a yeniden dağıtılması için açık onay gerekiyor. Yayından sonra sonraki saatlik eşitlemede `egilim: yazildi` ve D1'de kaydedilen yorum sayısı doğrulanmalı. Ardından arayüz yayını ve fiziksel iPhone denemesi geliyor.
+**Worker yayını.** Trend isteğine 60 saniye tanıyan `409545a` sürümü 16 Kasım'da kullanıcı onayıyla Cloudflare'a dağıtıldı. Yayından önce 383 test geçti. 22.15 eşitlemesinden sonra canlı D1'de o güne ait bir başarılı yazım ve dokuz ölçüm için dokuz yorum doğrulandı. Kullanıcı arayüz yayınını onayladı. Bu sürümün `main` dalına gönderimi GitHub Pages yayınını tetikler. Yayından sonra fiziksel iPhone’da Trend simgesi, gün değiştirme ve yorum görünümü kontrol edilmeli.
 
 ### İş 1 — Yazılmış üç işin denetimi
 
