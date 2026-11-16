@@ -24,6 +24,7 @@ function duzSatir(r) {
 export function testD1() {
   const sqlite = new DatabaseSync(':memory:');
   sqlite.exec(SEMA);
+  let oncekiBatch = Promise.resolve();
 
   const hazirla = (sql, args) => ({ stmt: sqlite.prepare(sql), args });
 
@@ -53,6 +54,10 @@ export function testD1() {
   return {
     prepare: (sql) => ifade(sql),
     async batch(stmts) {
+      const onceki = oncekiBatch;
+      let bitir;
+      oncekiBatch = new Promise((resolve) => { bitir = resolve; });
+      await onceki;
       sqlite.exec('BEGIN');
       try {
         const sonuc = [];
@@ -62,6 +67,8 @@ export function testD1() {
       } catch (e) {
         sqlite.exec('ROLLBACK');
         throw e;
+      } finally {
+        bitir();
       }
     },
     async exec(sql) {

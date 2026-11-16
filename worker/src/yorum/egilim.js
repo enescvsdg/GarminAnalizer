@@ -5,7 +5,7 @@ import { OLCUMLER, gunDegerleri, bant, durum, dolu } from '../stats/baseline.js'
 import { gunEkle } from '../zaman.js';
 import { durumOku, durumYaz } from '../db.js';
 import {
-  GUNLUK_SINIR, temizle, karmaHesapla, sayilarGirdiden, yapayZekaAcik, gunlukSayacOku, gunlukSayacYaz,
+  temizle, karmaHesapla, sayilarGirdiden, yapayZekaAcik, gunlukHakAl,
 } from './yorum.js';
 
 const PENCERE = 28;
@@ -99,7 +99,8 @@ export function egilimGecerli(ham, ozet) {
     if (!y || typeof y !== 'object' || typeof y.id !== 'string') continue;
     if (!ozet.olcumler.includes(y.id) || Object.hasOwn(sonuc, y.id)) continue;
     const t = temizle(y.metin, EN_FAZLA_KARAKTER, 0);
-    if (!t || YASAK_KELIME.test(t.toLocaleLowerCase('tr')) || !sayilarGirdiden(t, ozet.metin)) continue;
+    const satir = ozet.metin.split('\n').find((s) => s.startsWith(`[${y.id}] `));
+    if (!t || !satir || YASAK_KELIME.test(t.toLocaleLowerCase('tr')) || !sayilarGirdiden(t, satir)) continue;
     sonuc[y.id] = t;
   }
   return sonuc;
@@ -123,9 +124,7 @@ export async function egilimGuncelle({ db, satirlar, bugun, simdiMs, yaz }) {
   const yazim = gun?.tarih === bugun ? gun.n : 0;
   if (yazim >= GUNLUK_YAZIM) return { durum: 'sinir' };
 
-  const n = await gunlukSayacOku(db, bugun);
-  if (n >= GUNLUK_SINIR) return { durum: 'sinir' };
-  await gunlukSayacYaz(db, bugun, n + 1); // istekten ÖNCE; sayaç hüküm yorumuyla ortak
+  if (!(await gunlukHakAl(db, bugun))) return { durum: 'sinir' }; // istekten ÖNCE; sayaç hüküm yorumuyla ortak
 
   let ham = null;
   try {
@@ -140,8 +139,18 @@ export async function egilimGuncelle({ db, satirlar, bugun, simdiMs, yaz }) {
   }
   if (!(await yapayZekaAcik(db))) return { durum: 'kapali' }; // istek sürerken kapatıldı
   // metin: gün içinde karma kayarsa kayıt, GÖNDERİLEN metne karşı yeniden doğrulanabilsin diye saklanır.
-  await durumYaz(db, 'egilim', { tarih: bugun, karma: ozet.karma, yorumlar, uretildi: simdiMs, metin: ozet.metin });
-  await durumYaz(db, 'egilim_gun', { tarih: bugun, n: yazim + 1 });
+  const kayitJson = JSON.stringify({ tarih: bugun, karma: ozet.karma, yorumlar, uretildi: simdiMs, metin: ozet.metin });
+  const [sayac] = await db.batch([
+    db.prepare(`INSERT INTO sync_state (key, value) VALUES ('egilim_gun', json_object('tarih', ?, 'n', 1))
+      ON CONFLICT(key) DO UPDATE SET value = json_object('tarih', ?, 'n',
+        CASE WHEN json_extract(value, '$.tarih') = ? THEN json_extract(value, '$.n') + 1 ELSE 1 END)
+      WHERE COALESCE(json_extract(value, '$.tarih'), '') < ?
+        OR (json_extract(value, '$.tarih') = ? AND json_extract(value, '$.n') < ?)`)
+      .bind(bugun, bugun, bugun, bugun, bugun, GUNLUK_YAZIM),
+    db.prepare(`INSERT INTO sync_state (key, value) SELECT 'egilim', ? WHERE changes() = 1
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(kayitJson),
+  ]);
+  if (sayac.meta.changes === 0) return { durum: 'sinir' };
   return { durum: 'yazildi' };
 }
 
@@ -152,6 +161,8 @@ export async function egilimOku(db, bugun, satirlar) {
   if (!kayit || typeof kayit !== 'object' || kayit.tarih !== bugun) return null;
   const ozet = await egilimOzeti(satirlar, bugun);
   if (!ozet) return null;
+  if (ozet.karma !== kayit.karma && typeof kayit.metin === 'string'
+      && await karmaHesapla(kayit.metin) !== kayit.karma) return null;
   const girdi = ozet.karma === kayit.karma || typeof kayit.metin !== 'string' ? ozet : { olcumler: ozet.olcumler, metin: kayit.metin };
   const yorumlar = egilimGecerli({ yorumlar: Object.entries(kayit.yorumlar ?? {}).map(([id, metin]) => ({ id, metin })) }, girdi);
   return bos(yorumlar) ? null : yorumlar;

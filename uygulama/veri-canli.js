@@ -63,6 +63,15 @@ export function veriCevir(yanit) {
     }
     return { id: o.id, ad: o.ad, birim: o.birim, min: o.min, max: o.max, iyi: o.iyi, kisisel: o.kisisel === true, kart: o.kart === true };
   });
+  // Eski Worker'lar bu alanı vermeyebilir. Yalnızca bu yanıttaki ölçümlerin
+  // bilinen dokuz kimliğini ve metin yorumlarını aktar; başka şekiller boş kalır.
+  const EGILIM_IDLERI = new Set(['uyku', 'bb', 'hrv', 'nabiz', 'stres', 'yuk', 'derin', 'spo2', 'solunum']);
+  const egilim = {};
+  if (yanit.egilim && typeof yanit.egilim === 'object' && !Array.isArray(yanit.egilim)) {
+    for (const o of OLCUMLER) {
+      if (EGILIM_IDLERI.has(o.id) && typeof yanit.egilim[o.id] === 'string') egilim[o.id] = yanit.egilim[o.id];
+    }
+  }
   const GUNLER = yanit.gunler.map((g) => {
     if (!g || typeof g !== 'object') throw new TypeError('gün geçersiz');
     const tarih = yerelGun(g.tarih);
@@ -84,6 +93,7 @@ export function veriCevir(yanit) {
     meta: {
       sonEsitleme: say(yanit.sonEsitleme), keyDurum: metinMi(yanit.keyDurum) ? yanit.keyDurum : null,
       yorumKaynak: yanit.yorumKaynak === 'gemini' ? 'gemini' : 'sablon',
+      egilim,
     },
   };
 }

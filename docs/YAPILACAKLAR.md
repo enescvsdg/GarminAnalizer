@@ -89,9 +89,15 @@ Depoda izlenmeyen dosyalar: `prototip-eski/simge/ornek-01…05*.html`. Bunlar ku
 - Eşitleme saatte bir; Gemini günlük sınırı 24.
 - Depo adı GarminAnalizer kalıyor; depodaki anonimleştirilmiş örnek dosyalar olduğu gibi kalıyor.
 
-## 4. Sıradaki işler
+## 4. Trend çalışması ve yayın sırası
 
-Ayrıntılı plan: `docs/superpowers/plans/2026-11-16-trend-cark-aciklama-simge-yorum.md`. Tasarım: spec bölüm 9.2 ve 9.3. Aşağıdaki sırayla ilerle.
+Ayrıntılı plan `docs/superpowers/plans/2026-11-16-trend-cark-aciklama-simge-yorum.md` dosyasında, tasarım spec bölüm 9.2 ve 9.3'te.
+
+**16 Kasım, yerel durum.** `codex/trend-olcumler` dalında İş 1–3 uygulandı ve yayın belgeleri güncellendi. Onaylı dokuz simgenin kaynağı artık `uygulama/simgeler.js`. Prototip önizlemesi de aynı dosyayı kullanıyor. Bir ölçümün Gemini yorumu yoksa Trend mevcut 28 günlük özeti gösteriyor.
+
+Worker denetiminde ortak günlük 24 istek hakkı ve iki başarılı eğilim yazımı eşzamanlı çağrılara karşı korundu. Önceki güne ait gecikmiş işlemler yeni günün sayacını veya eğilim kaydını ezemiyor. Bir ölçümün yorumundaki sayılar o ölçümün kendi girdi satırına göre denetleniyor. Veritabanı yazımındaki koşullar yerel D1 ile sınandı.
+
+**Doğrulama ve kalan iş.** Dalda 383 test geçiyor. Yerel Chrome'da 390×664 ve 1440×900 boyutlarında uzun yorum, yapay zekâ etiketi, eksik gün, ölçüm değiştirme, eski Worker yanıtı ve çevrimdışı önbellek denendi. Gerçek fare ve dokunmatik yüzeyle elle deneme açık. Sıradaki yayın adımı, kullanıcı onayıyla Worker'ı güncellemek ve ilk gerçek Gemini yanıtını kontrol etmek (İş 4, adım 3). Ardından arayüz yayını ve fiziksel iPhone denemesi geliyor.
 
 ### İş 1 — Yazılmış üç işin denetimi
 
@@ -182,6 +188,6 @@ Hiçbiri yayına engel değil; fırsat oldukça düzeltilebilir.
 ## 7. Yeni oturuma başlarken
 
 1. `git status` ve `git log --oneline -10` ile dalı ve son commit'leri gör. Yeni iş için `main`'den yeni bir dal aç; `main`'e doğrudan commit etme (her gönderim yayınlanır).
-2. `npm test` çalıştır; 365 geçmeli.
-3. Bölüm 4'teki İş 1'den başla.
+2. `npm test` çalıştır. 16 Kasım'daki Trend dalında 383 test geçti.
+3. Bölüm 4'ün başındaki yerel durumu ve kalan yayın adımını kontrol et.
 4. Her dışa açık adımda (Worker'ı güncellemek, `main`'e göndermek) önce kullanıcıya ne yapacağını söyle ve onayını al. Kullanıcı Türkçe konuşuyor ve her iş adımından önce kısa bir plan görmek istiyor.

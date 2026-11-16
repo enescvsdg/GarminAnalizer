@@ -273,9 +273,12 @@ Kullanıcı istekleri ve kararları (tek tek soruldu):
   secret'ı (`wrangler secret put`). Hiçbiri tarayıcıya, repoya veya loga girmez.
 - Worker API'si `DEVICE_KEY` ister ve CORS yalnızca Pages adresine izin verir.
 - Loglara sağlık verisi yazılmaz.
-- Gemini'ye yalnızca özet sayılar gider. **Doğrulanacak:** kullanılan Gemini
-  katmanının (ücretsiz/ücretli) veri kullanım koşulları; Garmin şartlarında
-  üçüncü taraf yapay zekâ kullanımına dair bir hüküm var mı (SSS'te belirtilmiyor).
+- Gemini'ye yalnızca özet sayılar gider; bugünün ve Trend yorumlarının gönderdiği
+  alanlar aşağıdaki veri dökümünde açıklanır. Bugün ve Trend istekleri aynı
+  günlük 24 istek kotasını paylaşır (`GUNLUK_SINIR`).
+- **Doğrulanacak:** kullanılan Gemini katmanının (ücretsiz/ücretli) veri kullanım
+  koşulları; Garmin şartlarında üçüncü taraf yapay zekâ kullanımına dair hüküm
+  olup olmadığı (SSS'te belirtilmiyor).
 - Repo herkese açık olacağından test örnekleri anonimleştirilir veya
   `.gitignore`'da tutulur.
 
@@ -288,6 +291,19 @@ Bugünün hüküm ve gerekçesini Gemini yazar (ücretsiz katman; Google bu katm
 - İstek durumsuzdur (`store: false`). Anahtar yalnız Worker secret'ıdır.
 - Ayarlar'daki "Yapay zekâ yorumu" kapatılınca Gemini'ye istek gitmez; şablon metin gösterilir.
 - Gemini yanıt vermezse ya da kurala uymayan metin dönerse şablon metin gösterilir.
+
+### Trend için Gemini'ye giden veri (2026-11-16)
+
+Yeterli verisi olan her ölçüm için tek satırda son 28 günlük ortalama, veri olan
+gün sayısı, normal aralık, bu aralığın altında ve üstünde geçen gün sayıları ve
+yüksek/düşük değer yönü gönderilir. İki dönemde de yeterli veri varsa son 7 ve
+önceki 21 günün ortalamaları ile değişimin yönü de eklenir. Ham günlük değerler, tarihler
+ve gün adları gönderilmez. Dokuz ölçümün yorumları bir Gemini isteğinde üretilir;
+bugünün hüküm yorumu ve Trend yorumu istekleri Worker'daki ortak günlük 24
+istek sayacını kullanır. Yapay zekâ ayarı kapalıysa Gemini isteği yapılmaz.
+
+Canlı Worker günlük veriyi ve bugünün hükmünü sunuyor; yeni Trend yorumlarını
+içeren Worker sürümü henüz dağıtılmadı.
 
 ## 12. Test
 

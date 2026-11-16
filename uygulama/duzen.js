@@ -14,6 +14,17 @@ const SOL_PAY = 64, SAG_PAY = 56; // grafiğin ilk/son günü ile bölge kenarı
 const sonlu = (v) => typeof v === 'number' && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+export function simgeOrani(id, deger, bant) {
+  if (!sonlu(deger)) return null;
+  if (id === 'spo2') return clamp((deger - 88) / 12, 0, 1);
+  if (['uyku', 'bb', 'stres'].includes(id)) return clamp(deger / 100, 0, 1);
+  if (!['hrv', 'nabiz', 'yuk', 'derin', 'solunum'].includes(id)) return null;
+  const { min, max } = bant ?? {};
+  if (!sonlu(min) || !sonlu(max) || min >= max) return null;
+  // Normal aralık simgenin orta yarısında kalsın, iki uçta da sapmaya yer olsun.
+  return clamp(.25 + (deger - min) / (2 * (max - min)), 0, 1);
+}
+
 // 'genis' | 'cerceve' | 'telefon'. Boyut yoksa (gizli açılış) telefon: sonradan gelen gerçek boyut yeniden yükler.
 export function duzenModu(iw, ih) {
   if (!sonlu(iw) || !sonlu(ih) || iw <= 0 || ih <= 0) return 'telefon';

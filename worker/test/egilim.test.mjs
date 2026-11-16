@@ -349,3 +349,89 @@ test('egilimOku: kayıt yeniden doğrulanır (bozuk ya da yasak metin elenir)', 
   await durumYaz(k.db, 'egilim', 'bozuk');
   assert.equal(await egilimOku(k.db, BUGUN, k.satir), null);
 });
+
+test('egilimOku: karma kayarken saklanan girdi değiştirilmişse sayı doğrulaması atlanamaz', async () => {
+  const k = kur();
+  await calistir(k);
+  const kayit = await durumOku(k.db, 'egilim');
+  await durumYaz(k.db, 'egilim', { ...kayit, metin: `${kayit.metin} 973`, yorumlar: { uyku: 'Uykun 973 oldu.' } });
+  assert.equal(await egilimOku(k.db, BUGUN, degisik(5)), null);
+});
+
+test('eşzamanlı eğilim istekleri ortak günlük sınırı aşamaz', async () => {
+  const k = kur();
+  await durumYaz(k.db, 'yorum_sayac', { tarih: BUGUN, n: GUNLUK_SINIR - 1 });
+  let okuma = 0;
+  let devam;
+  const bekle = new Promise((resolve) => { devam = resolve; });
+  const db = { ...k.db, prepare(sql) {
+    const stmt = k.db.prepare(sql);
+    if (!sql.startsWith('SELECT value FROM sync_state')) return stmt;
+    return { ...stmt, bind(key) {
+      const bound = stmt.bind(key);
+      if (key !== 'egilim') return bound;
+      return { ...bound, async first() {
+        const value = await bound.first();
+        if (++okuma === 2) devam();
+        await bekle;
+        return value;
+      } };
+    } };
+  } };
+  const sonuc = await Promise.all([calistir(k, { db }), calistir(k, { db })]);
+  assert.deepEqual(sonuc.map((x) => x.durum).sort(), ['sinir', 'yazildi']);
+  assert.equal(k.cagrilar.length, 1);
+});
+
+test('eşzamanlı başarılı eğilimler günlük iki yazım sınırını aşamaz', async () => {
+  const k = kur();
+  await durumYaz(k.db, 'egilim_gun', { tarih: BUGUN, n: 1 });
+  let cagri = 0;
+  let devam;
+  const bekle = new Promise((resolve) => { devam = resolve; });
+  const yaz = async () => {
+    if (++cagri === 2) devam();
+    await bekle;
+    return hamKur(['uyku', 'Uykun dengeli.']);
+  };
+  const sonuc = await Promise.all([calistir(k, { yaz }), calistir(k, { yaz })]);
+  assert.deepEqual(sonuc.map((x) => x.durum).sort(), ['sinir', 'yazildi']);
+  assert.deepEqual(await durumOku(k.db, 'egilim_gun'), { tarih: BUGUN, n: 2 });
+});
+
+test('egilimGecerli: başka ölçümün sayısı bu ölçümün yorumu için izinli değildir', async () => {
+  const o = await ozetKur();
+  const uyku = satir(o, 'Uyku');
+  const hrv = satir(o, 'HRV');
+  const sayilar = (s) => s.match(/\d+(?:[.,]\d+)?/g) ?? [];
+  const diger = sayilar(hrv).find((s) => !sayilar(uyku).includes(s));
+  assert.ok(diger);
+  assert.deepEqual(egilimGecerli(hamKur(['uyku', `Uykun ${diger} oldu.`]), o), {});
+});
+
+test('gecikmiş eski gün isteği yeni günün ortak sayacını geriye almaz', async () => {
+  const k = kur();
+  const yarin = gunEkle(BUGUN, 1);
+  await durumYaz(k.db, 'yorum_sayac', { tarih: yarin, n: 4 });
+  assert.deepEqual(await calistir(k), { durum: 'sinir' });
+  assert.deepEqual(await durumOku(k.db, 'yorum_sayac'), { tarih: yarin, n: 4 });
+  assert.equal(k.cagrilar.length, 0);
+});
+
+test('eski günün geç biten üretimi yeni günün eğilim kaydını ve sayacını ezmez', async () => {
+  const k = kur();
+  let baslat;
+  let birak;
+  const basladi = new Promise((resolve) => { baslat = resolve; });
+  const bekle = new Promise((resolve) => { birak = resolve; });
+  const gec = calistir(k, { yaz: async () => { baslat(); await bekle; return hamKur(['uyku', 'Eski yorum.']); } });
+  await basladi;
+  const yarin = gunEkle(BUGUN, 1);
+  const yeni = { tarih: yarin, karma: 'yeni', yorumlar: { uyku: 'Yeni yorum.' } };
+  await durumYaz(k.db, 'egilim_gun', { tarih: yarin, n: 1 });
+  await durumYaz(k.db, 'egilim', yeni);
+  birak();
+  assert.deepEqual(await gec, { durum: 'sinir' });
+  assert.deepEqual(await durumOku(k.db, 'egilim_gun'), { tarih: yarin, n: 1 });
+  assert.deepEqual(await durumOku(k.db, 'egilim'), yeni);
+});

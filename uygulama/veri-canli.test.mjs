@@ -52,9 +52,30 @@ test('veriCevir 28 günü VERI biçimine çevirir', () => {
   assert.equal(son.ay, 'Kasım');
   assert.equal(typeof son.hukum, 'string');
   assert.equal(typeof son.gerekce, 'string');
-  assert.deepEqual(v.meta, { sonEsitleme: 1763000000000, keyDurum: 'gecerli', yorumKaynak: 'sablon' });
+  assert.deepEqual(v.meta, { sonEsitleme: 1763000000000, keyDurum: 'gecerli', yorumKaynak: 'sablon', egilim: {} });
   assert.equal(typeof v.OK.lo, 'string');
   assert.deepEqual(v.DURUM_METIN, { lo: 'altında', hi: 'üstünde', ok: 'normalde' });
+});
+
+test('meta.egilim yalnız dokuz ölçüm kimliğinin dizgi yorumlarını taşır', () => {
+  const api = yanit();
+  api.egilim = {
+    uyku: 'Uyku yorumudur.', bb: 7, hrv: null, nabiz: 'Nabız yorumu.',
+    stres: 'Stres yorumu.', yuk: 'Yük yorumu.', derin: 'Derin uyku yorumu.',
+    spo2: 'SpO₂ yorumu.', solunum: 'Solunum yorumu.', garip: 'aktarılmamalı', constructor: 'aktarılmamalı',
+  };
+  assert.deepEqual(veriCevir(api).meta.egilim, {
+    uyku: 'Uyku yorumudur.', nabiz: 'Nabız yorumu.', stres: 'Stres yorumu.', yuk: 'Yük yorumu.',
+    derin: 'Derin uyku yorumu.', spo2: 'SpO₂ yorumu.', solunum: 'Solunum yorumu.',
+  });
+});
+
+test('eski, null, dizi ve bozuk eğilim alanları güvenle boş nesne olur', () => {
+  for (const deger of [undefined, null, [], 'bozuk', 12]) {
+    const api = yanit();
+    if (deger !== undefined) api.egilim = deger;
+    assert.deepEqual(veriCevir(api).meta.egilim, {});
+  }
 });
 
 test('OLCUMLER alanları ve min/max API bandından gelir', () => {

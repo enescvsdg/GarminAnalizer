@@ -397,7 +397,8 @@ test('yorumGuncelle: sayaç yazımı başarısızsa yaz hiç çağrılmaz ve hat
       return {
         bind: (...a) => {
           const b = s.bind(...a);
-          return a[0] === 'yorum_sayac' && /INSERT/.test(sql) ? { ...b, run: async () => { throw new Error('d1 yazma hatası'); } } : b;
+          return /INSERT INTO sync_state/.test(sql) && sql.includes("'yorum_sayac'")
+            ? { ...b, first: async () => { throw new Error('d1 yazma hatası'); } } : b;
         },
       };
     },

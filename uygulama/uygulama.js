@@ -1,4 +1,6 @@
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani } from './duzen.js';
+import { simgeKur } from './simgeler.js';
+import { ACIKLAMA } from './aciklama.js';
 const $ = (id) => document.getElementById(id);
 const telKok = $('tel');
 // Düzen açılışta bir kez seçilir: geniş ekran (≥1000×620) ayrı yerleşim alır, altı bugünkü telefon/çerçeve davranışıdır.
@@ -76,7 +78,7 @@ const st = { e: GUNLER[N - 1].e, bpm: bpmDe(GUNLER[N - 1]), ign: RM ? 1 : 0, orb
 // Bugün yerleşimi: başlık ile gün şeridi arasında kalan boşluğa göre hesaplanır
 const lay = { cy: 430, rx: 139, ry0: 150, ry1: 166, ks: 1, rs: 0.86 };
 // Trend çizim alanı
-const tl = { ust: 300, alt: 640 };
+const tl = { ust: 300, alt: 640, baslikAlt: 0 };
 
 /* ================= WebGL: yaşayan, esneyen şekil ================= */
 const gl = cv.getContext('webgl', { antialias: false, alpha: false });
@@ -266,6 +268,47 @@ function yerlesimB(yumusak) {
 
 /* ================= TREND: tek ölçüm ================= */
 const svg = $('katman'), trend = $('trend');
+let simge = null, aciklamaAcik = false, olcumGecis = null;
+function simgeYaz(o, v, du) {
+  if (simge) simge.guncelle({ oran: simgeOrani(o.id, v, o), durum: du, ham: v });
+}
+function trendMetin(t) {
+  const ham = VERI.meta?.egilim?.[t.o.id];
+  const yorum = typeof ham === 'string' ? ham.trim() : '';
+  $('tGer').textContent = yorum || t.ozet;
+  $('tYz').hidden = !yorum;
+}
+function aciklamaKapat(odak = true) {
+  if (GENIS || !aciklamaAcik) return;
+  aciklamaAcik = false; $('tAciklama').hidden = true;
+  $('tSimge').setAttribute('aria-expanded', 'false');
+  if (odak) $('tSimge').focus({ preventScroll: true });
+}
+function aciklamaYerlesim() {
+  const kart = $('tAciklama');
+  if (GENIS) {
+    kart.style.top = tl.alt + 78 + ($('ekSatir').hidden ? 0 : $('ekSatir').offsetHeight + 12) + 'px';
+    kart.style.maxHeight = Math.max(44, telY($('cip'), 'top') - parseFloat(kart.style.top) - 8) + 'px';
+  } else {
+    kart.style.top = telY($('tBas'), 'bottom') + 8 + 'px';
+    kart.style.maxHeight = Math.max(44, telY($('cip'), 'top') - parseFloat(kart.style.top) - 12) + 'px';
+  }
+}
+$('tSimge').addEventListener('pointerdown', (ev) => ev.stopPropagation());
+$('tAciklama').addEventListener('pointerdown', (ev) => ev.stopPropagation());
+$('tMetin').addEventListener('pointerdown', (ev) => ev.stopPropagation());
+$('tSimge').addEventListener('click', () => {
+  if (GENIS) return;
+  if (aciklamaAcik) { aciklamaKapat(); return; }
+  aciklamaAcik = true; $('tAciklama').hidden = false;
+  $('tSimge').setAttribute('aria-expanded', 'true'); aciklamaYerlesim();
+});
+addEventListener('pointerdown', (ev) => {
+  if (!ev.target.closest?.('#tSimge,#tAciklama')) aciklamaKapat();
+}, { capture: true });
+addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && aciklamaAcik) { ev.preventDefault(); aciklamaKapat(); }
+});
 // ölçüm başına: 0..1'e ölçeklenmiş günlük değer, 7 günlük ortalama, normal bandı, iyilik, özet cümlesi
 // null günler: sırt komşu dolu günler arasında doğrusal geçer, uçlarda en yakın dolu değerde kalır
 function doldur(a) {
@@ -367,17 +410,29 @@ function ekYaz(g) { // seçili günün ek ayrıntısı; gösterilecek veri yoksa
   el.hidden = false;
 }
 function olcumSec(oi, animasyon) {
+  aciklamaKapat();
   sonOlcum = oi; const t = T[oi];
+  if (olcumGecis) olcumGecis.kill();
+  if (simge) simge.yokEt();
+  simge = simgeKur($('tSimge'), t.o.id, { gsap, boyut: 50 });
+  if (!GENIS && ekran !== 'trend') simge.durdur();
+  const ac = Object.hasOwn(ACIKLAMA, t.o.id) ? ACIKLAMA[t.o.id] : { soru: `${t.o.ad} nedir?`, metin: 'Bu ölçüm için ayrıntılı açıklama henüz bulunmuyor.', yon: 'Grafikte gösterilen normal aralıkla karşılaştırabilirsin.' };
+  $('tSimge').setAttribute('aria-label', ac.soru);
+  if (GENIS) $('tSimge').removeAttribute('aria-expanded');
+  $('tAciklama').hidden = !GENIS;
+  $('tAciklamaSoru').textContent = ac.soru;
+  $('tAciklamaMetin').textContent = ac.metin;
+  $('tAciklamaYon').textContent = ac.yon;
   secBtn.forEach((b, j) => b.setAttribute('aria-pressed', j === oi));
   const sc = $('secici'), b = secBtn[oi];
   sc.scrollTo({ left: b.offsetLeft - (sc.clientWidth - b.offsetWidth) / 2, behavior: animasyon && !RM ? 'smooth' : 'auto' });
   $('bantYazi').textContent = `${t.o.kisisel === false ? 'genel aralık' : 'normal'} ${t.o.min}–${t.o.max}${t.o.birim}`;
   ekDestek = GUNLER.some((g) => CANLI.ekSatiri(t.o.id, g.ek) !== null);
-  $('tGer').textContent = t.ozet;
+  trendMetin(t);
   if (animasyon && !RM) {
     yaz($('tAd'), t.o.ad);
     const a = { v: cur.v.slice(), a: cur.a.slice(), b0: cur.b0, b1: cur.b1 }, pr = { t: 0 };
-    gsap.to(pr, { t: 1, duration: 0.75, ease: 'power3.inOut', onUpdate() {
+    olcumGecis = gsap.to(pr, { t: 1, duration: 0.75, ease: 'power3.inOut', onUpdate() {
       for (let i = 0; i < N; i++) { cur.v[i] = lerp(a.v[i], t.nv[i], pr.t); cur.a[i] = lerp(a.a[i], t.na[i], pr.t); }
       cur.b0 = lerp(a.b0, t.bant[0], pr.t); cur.b1 = lerp(a.b1, t.bant[1], pr.t); yollar();
     } });
@@ -390,23 +445,28 @@ function olcumSec(oi, animasyon) {
 }
 function gunYaz(i, canli) {
   if (i === selT) return; const ilk = selT < 0; selT = i; const g = GUNLER[i], t = T[sonOlcum], v = t.v[i], du = durum(t.o, v), yok = v === null, sap = du === 'lo' || du === 'hi';
+  simgeYaz(t.o, v, du);
   $('tTarih').textContent = `${g.gunUzun}, ${g.gun} ${g.ay}`;
   $('cip').textContent = i === N - 1 ? `Bugün, ${g.gun} ${g.ay}` : `${g.gunKisa} ${g.gun} ${g.ay}`;
   const bl = $('balon'); bl.querySelector('b').textContent = yok ? '–' : bicim(v); bl.querySelector('.br').textContent = yok ? '' : t.o.birim.trim();
   bl.querySelector('.dr').innerHTML = yok ? 'veri yok' : durumHtml(du, true); bl.classList.toggle('sap', sap); $('nokta').classList.toggle('sap', sap);
   trend.setAttribute('aria-valuenow', i + 1);
   trend.setAttribute('aria-valuetext', yok ? `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} için veri yok` : `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} ${bicim(v)}${t.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}`);
-  ekYaz(g);
+  ekYaz(g); aciklamaYerlesim();
   if (GENIS) balonW = bl.offsetWidth; // balonun sağa mı sola mı açılacağı için; gün değişince bir kez ölçülür
   if (!ilk && canli && (ekran === 'trend' || GENIS) && !mesgul && !yok) SES.nota(t.iyi[i]);
 }
 function yerlesimT() {
-  tl.ust = Math.round(telY($('tBas'), 'bottom') + 96);
-  tl.alt = Math.round(telY($('cip'), 'top') - 86 - (ekDestek ? 64 : 0));
+  tl.alt = Math.round(telY($('cip'), 'top') - 86 - (ekDestek ? 64 : 0) - (GENIS ? 108 : 0));
+  // Önce yorum ve grafik için yer ayır. Dar alanda değer balonu noktanın yanına gelir.
+  $('tMetin').style.maxHeight = Math.max(28, tl.alt - 90 - 6 - telY($('tMetin'), 'top')) + 'px';
+  tl.baslikAlt = telY($('tBas'), 'bottom');
+  tl.ust = Math.round(tl.baslikAlt + (GENIS ? 64 : 76));
   $('ekSatir').style.top = tl.alt + 78 + 'px';
   if (tl.alt - tl.ust < 90) tl.ust = tl.alt - 90;
   const im = $('imlec'); im.setAttribute('x1', cx); im.setAttribute('x2', cx); im.setAttribute('y1', tl.ust - 30); im.setAttribute('y2', tl.alt + 40);
   $('nokta').setAttribute('cx', cx); $('ipucu').style.top = tl.alt + 16 + 'px';
+  aciklamaYerlesim();
   yollar(); eksen();
 }
 for (let i = 0; i < 46; i++) {
@@ -425,7 +485,7 @@ let hedef = N - 1, pA = N - 1;
 function git(i, sure) { hedef = clamp(Math.round(i), 0, N - 1); gsap.to(st, { P: hedef, duration: RM ? 0 : sure || 0.75, ease: 'power3.out', overwrite: 'auto' }); }
 let suruk = false, surukledi = false, x0 = 0, P0 = 0, sonX = 0, sonT = 0, hiz = 0;
 trend.addEventListener('pointerdown', (ev) => {
-  if (mesgul || GENIS) return; // geniş ekranda sürükleme yok: imleç fareyi izler (aşağıda)
+  if (mesgul || ayarAcik || GENIS || ev.target.closest?.('#tSimge,#tAciklama,#tMetin')) return;
   suruk = true; surukledi = false; x0 = sonX = ev.clientX; P0 = st.P; sonT = performance.now(); hiz = 0; gsap.killTweensOf(st, 'P');
 });
 addEventListener('pointermove', (ev) => {
@@ -455,7 +515,7 @@ trend.addEventListener('keydown', (ev) => {
 let carkB = 0, carkT = 0;
 function carkGit(h) { if (h !== hedef) git(h, carkSure(Math.abs(h - st.P))); }
 function carkOlay(ev, bolge) {
-  if (ev.ctrlKey || ayarAcik || mesgul || (ev.target.closest && ev.target.closest('#secici'))) return;
+  if (ev.ctrlKey || ayarAcik || mesgul || (ev.target.closest && ev.target.closest('#tBas,#tAciklama'))) return;
   if (bolge && !bolge(ev)) return;
   ev.preventDefault();
   const t = performance.now(); if (t - carkT > 400) carkB = 0; carkT = t; // duran tekerleğin artığı sonraki harekete taşınmaz
@@ -478,6 +538,7 @@ if (GENIS) {
   const grafikte = (p) => p.y > tl.ust - 96 && p.y < tl.alt + 84 && p.x >= 0 && p.x <= GD.twu; // başlığın altı, gün etiketlerinin üstü
   trend.addEventListener('wheel', (ev) => carkOlay(ev, (e) => grafikte(konum(e))), { passive: false });
   trend.addEventListener('click', (ev) => {
+    if (ayarAcik || mesgul || ev.target.closest?.('#tBas,#tAciklama')) return;
     const p = konum(ev); if (!grafikte(p)) return;
     const i = gunIndeksi(p.x, GD.solPay, DW, N);
     if (i !== hedef) { titret(8); if (T[sonOlcum].v[i] !== null) SES.can(T[sonOlcum].iyi[i]); }
@@ -539,6 +600,7 @@ function trendeGec(oi, kaynak) {
 }
 function bugunGec() {
   if (mesgul || ekran === 'bugun') return;
+  aciklamaKapat(false); if (simge) simge.durdur();
   ekran = 'bugun'; sekmeGuncelle();
   const gi = clamp(Math.round(st.P), 0, N - 1); if (gi >= G0 && gi - G0 !== sel7) sec(gi - G0, true);
   yerlesimB(false);
@@ -570,7 +632,7 @@ const sesDegis = (anahtar) => () => { SES.ayar[anahtar] = !SES.ayar[anahtar]; SE
 $('sesBtn').addEventListener('click', sesDegis('acik')); $('aSes').addEventListener('click', sesDegis('acik')); $('aKalp').addEventListener('click', sesDegis('kalp'));
 let ayarOnce = null;
 function ayarAc() {
-  if (ayarAcik) return; ayarAcik = true; ayarOnce = document.activeElement; sekmeGuncelle(); SES.tik();
+  if (ayarAcik) return; aciklamaKapat(false); ayarAcik = true; ayarOnce = document.activeElement; sekmeGuncelle(); SES.tik();
   gsap.to('#perde', { autoAlpha: 1, duration: RM ? 0 : 0.25 });
   if (GENIS) { // geniş ekranda ortada bir pencere
     $('ayarBtn').setAttribute('aria-expanded', 'true'); $('ayar').scrollTop = 0;
@@ -794,7 +856,7 @@ gsap.ticker.add((time, dt) => {
     }
     $('nokta').setAttribute('cy', ny.toFixed(1)); $('nokta').style.opacity = T[sonOlcum].v[clamp(Math.round(pc), 0, N - 1)] === null ? 0 : st.yuk;
     ['bantDolgu', 'bantUst', 'bantAlt', 'bantYazi'].forEach((id) => ($(id).style.opacity = st.yuk));
-    $('balon').style.transform = `translate(${GENIS ? balonX(ix, balonW, GD.twu).toFixed(1) : cx + 16}px,${Math.max(tl.ust - 92, ny - 70).toFixed(1)}px)`;
+    $('balon').style.transform = `translate(${GENIS ? balonX(ix, balonW, GD.twu).toFixed(1) : cx + 16}px,${Math.max(tl.baslikAlt + 4, ny - 70).toFixed(1)}px)`;
     const e = clamp(cr(T[sonOlcum].iyi, pc), 0, 1);
     $('gok').style.background = `linear-gradient(180deg,${cTop(e)} 0%,${cMid(e)} ${Math.round((tl.ust / H) * 62)}%,${cBot(e)} ${Math.round((tl.alt / H) * 86)}%)`;
     $('onDolgu').setAttribute('fill', cYakin(e)); $('arkaDolgu').setAttribute('fill', cUzak(e));
@@ -812,6 +874,15 @@ gsap.ticker.add((time, dt) => {
 /* ================= Açılış ================= */
 seritKur(); sigdir(); olcumSec(0, false); sec(6, true); st.cy = lay.cy;
 if (GENIS) { gsap.set(trend, { autoAlpha: 1 }); st.yuk = st.yukA = st.gunesY = 1; } // geniş ekranda Trend hep açık
+// Başlık sözcük animasyonu ve yazı tipi yüklemesi satır sayısını değiştirebilir.
+if (typeof ResizeObserver === 'function') {
+  let olcumBekliyor = false;
+  new ResizeObserver(() => {
+    if (olcumBekliyor) return;
+    olcumBekliyor = true;
+    requestAnimationFrame(() => { olcumBekliyor = false; yerlesimT(); });
+  }).observe($('tBas'));
+}
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (ekran === 'bugun') { yerlesimB(false); if (!mesgul) st.cy = lay.cy; } else yerlesimT(); if (GENIS) yerlesimT(); });
 if (!RM) {
   const g = GUNLER[N - 1];

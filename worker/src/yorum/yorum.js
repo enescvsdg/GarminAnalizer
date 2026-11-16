@@ -105,14 +105,15 @@ export async function yapayZekaYaz(db, acik) {
   await durumYaz(db, 'ayar_yapay_zeka', acik === true);
 }
 
-// Günlük istek sayacı (hüküm ve eğilim yorumu ORTAK): { tarih, n } kaydı, gün değişince sıfırdan sayılır.
-export async function gunlukSayacOku(db, bugun) {
-  const sayac = await durumOku(db, 'yorum_sayac');
-  return sayac?.tarih === bugun ? sayac.n : 0;
-}
-
-export async function gunlukSayacYaz(db, bugun, n) {
-  await durumYaz(db, 'yorum_sayac', { tarih: bugun, n });
+// Tek SQL ifadesi sınırı denetleyip hakkı ayırır; eşzamanlı yorumlar aynı hakkı kullanamaz.
+export async function gunlukHakAl(db, bugun) {
+  const r = await db.prepare(`INSERT INTO sync_state (key, value) VALUES ('yorum_sayac', json_object('tarih', ?, 'n', 1))
+    ON CONFLICT(key) DO UPDATE SET value = json_object('tarih', ?, 'n',
+      CASE WHEN json_extract(value, '$.tarih') = ? THEN json_extract(value, '$.n') + 1 ELSE 1 END)
+    WHERE COALESCE(json_extract(value, '$.tarih'), '') < ?
+      OR (json_extract(value, '$.tarih') = ? AND json_extract(value, '$.n') < ?)
+    RETURNING value`).bind(bugun, bugun, bugun, bugun, bugun, GUNLUK_SINIR).first();
+  return r !== null;
 }
 
 export async function yorumGuncelle({ db, satirlar, bugun, simdiMs, yaz }) {
@@ -127,9 +128,7 @@ export async function yorumGuncelle({ db, satirlar, bugun, simdiMs, yaz }) {
   const hataSayisi = hata?.tarih === bugun && hata.karma === girdi.karma ? hata.n : 0;
   if (hataSayisi >= HATA_SINIRI) return { durum: 'hata' };
 
-  const n = await gunlukSayacOku(db, bugun);
-  if (n >= GUNLUK_SINIR) return { durum: 'sinir' };
-  await gunlukSayacYaz(db, bugun, n + 1); // istekten ÖNCE
+  if (!(await gunlukHakAl(db, bugun))) return { durum: 'sinir' }; // istekten ÖNCE
 
   let ham = null;
   try {

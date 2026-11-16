@@ -8,7 +8,9 @@ Bu proje Garmin ile bağlantılı değildir ve Garmin tarafından onaylanmamış
 
 - **Worker:** `worker/` altındaki Cloudflare Worker, zamanlanmış tetikleyiciyle Garmin verisini çeker ve bir D1 veritabanına yazar. Uygulamaya yalnız cihaz anahtarıyla erişilebilen küçük bir API sunar.
 - **Uygulama:** `uygulama/` altındaki statik PWA (çerçeve ve derleme adımı yok) GitHub Pages'ten yayınlanır. Veriyi Worker'dan alır; son gerçek veriyi cihazda saklar, bağlantı yokken onu "çevrimdışı" etiketiyle gösterir.
-- **Yapay zekâ yorumu (isteğe bağlı):** Gemini bugünün hüküm ve gerekçe metnini yazar. Anahtar tanımlı değilse bu kısım hiç çalışmaz.
+- **Yapay zekâ yorumu (isteğe bağlı):** Gemini bugünün hüküm ve gerekçe metnini, ayrıca Trend için ölçüm başına kısa eğilim yorumlarını yazar. Anahtar tanımlı değilse bu kısım hiç çalışmaz.
+
+Canlı Worker günlük veriyi ve bugünün hükmünü sunuyor; yeni Trend yorumlarını içeren Worker sürümü henüz dağıtılmadı.
 
 ## Kendi kopyanı kurmak
 
@@ -30,7 +32,7 @@ iPhone'da: Safari'de aç, Paylaş, Ana Ekrana Ekle. Ana ekrandaki uygulamanın d
 
 - Garmin verisi yalnız kendi Cloudflare D1 veritabanında durur. Depoda ham sağlık verisi, anahtar ya da Worker adresi yoktur; `kesif/ornek/` altındaki dosyalar test için anonimleştirilmiş örneklerdir.
 - Cihaz anahtarı, Worker adresi ve son görülen veri tarayıcının `localStorage` alanında tutulur. Ayarlar'daki "Bağlantıyı kaldır" üçünü de siler.
-- Gemini'ye yalnız bugünün özet sayıları ve ölçüm adları gider: tarih, kişi adı, aktivite ya da ham kayıt gönderilmez. `GEMINI_API_KEY` tanımlı değilse hiçbir şey gönderilmez. Uygulamada Ayarlar'daki "Yapay zekâ yorumu" anahtarı yorumu kapatır; kalıcı kapatmak için secret'ı silmen yeter.
+- Gemini bugünün yorumu için ölçüm adlarını ve özet değerleri alır. Trend için ölçüm başına 28 günlük ortalama, veri olan gün sayısı, normal aralık ve bu aralığın altında veya üstünde geçen gün sayıları gönderilir. Yeterli veri varsa son 7 ve önceki 21 günün ortalamaları ile değişimin yönü de eklenir. Trend isteğinde gün gün değerler ve tarihler gönderilmez. İki yorum özelliği aynı günlük 24 istek kotasını paylaşır. `GEMINI_API_KEY` tanımlı değilse hiçbir şey gönderilmez. Uygulamada Ayarlar'daki "Yapay zekâ yorumu" anahtarı yorumu kapatır; kalıcı kapatmak için secret'ı silmen yeter.
 
 - Yazı tipleri Google Fonts'tan yüklenir; sayfa açılırken cihazın IP adresi Google'a görünür. Başka üçüncü taraf betiği ya da izleyici yoktur.
 
