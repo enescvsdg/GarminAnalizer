@@ -85,6 +85,9 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .secici button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;font-size:13.5px;font-weight:500;white-space:nowrap;color:rgba(255,246,236,.86);background:rgba(12,8,18,.32);border:1px solid rgba(255,246,236,.2);text-shadow:none;transition:background .2s,color .2s,border-color .2s}
 .secici button[aria-pressed=true]{background:var(--metin);color:#1a1022;border-color:var(--metin);font-weight:600}
 #trend .tarih{padding-right:0}
+#trend #tTarih{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}
+#trend #tKaynak{padding:3px 8px;border:1px solid rgba(255,246,236,.24);border-radius:999px;background:rgba(12,8,18,.48);font:600 10px/1.2 system-ui,sans-serif;letter-spacing:.02em;color:rgba(255,246,236,.82);white-space:nowrap}
+#trend #tKaynak[hidden]{display:none}
 #ust{pointer-events:none}
 #imlec{stroke:rgba(255,246,236,.5);stroke-width:1;stroke-dasharray:2 5}
 #nokta{fill:var(--metin);stroke:rgba(10,6,16,.55);stroke-width:2}
@@ -109,7 +112,8 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 #tSimge{width:50px;height:50px;flex:none;pointer-events:auto;border-radius:14px;touch-action:manipulation}
 #tSimge svg{display:block;width:50px;height:50px}
 #tSimge:focus-visible{outline:2px solid var(--metin);outline-offset:4px}
-#tMetin{display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:contain;pointer-events:auto;touch-action:pan-y;scrollbar-width:thin}
+#tMetin{display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:contain;pointer-events:none;touch-action:pan-y;scrollbar-width:thin}
+#tMetin.kayar{pointer-events:auto}
 #tGer{overflow-y:auto;min-height:0;overscroll-behavior:contain;touch-action:pan-y;flex:1}
 #tYz{flex:none}
 #trend #tGer{font-size:14px;line-height:1.35}
@@ -188,6 +192,7 @@ button.serit svg.ok{width:10px;height:10px;stroke-width:1.6;fill:none;stroke-lin
 #ekSatir{position:absolute;left:24px;right:24px;pointer-events:none;color:rgba(255,246,236,.92);text-shadow:0 1px 10px rgba(8,4,14,.85)}
 #ekSatir[hidden]{display:none}
 #ekSatir .em{font-size:12.5px;font-weight:600;line-height:16px;font-variant-numeric:tabular-nums}
+#ekSatir .uykuFarki{font-size:12px;line-height:16px;font-variant-numeric:tabular-nums}
 #ekSatir .cb{display:flex;gap:2px;height:8px;margin:5px 0 4px;border-radius:4px;overflow:hidden}
 #ekSatir .cb span{min-width:3px;background:var(--c)}
 #ekSatir .lg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;font-size:11px;line-height:14px;font-variant-numeric:tabular-nums}
@@ -225,6 +230,11 @@ html.genis,html.genis body{background:#08050c}
 #arac{position:absolute;top:var(--st);right:16px;z-index:5;display:flex;gap:8px;align-items:center}
 .genis #sesBtn,#ayarBtn{position:static;height:40px;border:1px solid rgba(255,246,236,.2);background:rgba(12,8,18,.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:border-color .2s,color .2s}
 .genis #sesBtn{width:40px}
+@media(any-pointer:coarse){
+  .genis .secici button{min-width:var(--dok-temas,44px);min-height:max(var(--dok,40px),var(--dok-temas,44px))}
+  .genis #sesBtn,.genis #ayarBtn{height:44px}
+  .genis #sesBtn{width:44px}
+}
 #ayarBtn{display:flex;align-items:center;gap:7px;padding:0 16px 0 12px;border-radius:999px;font-size:14px;font-weight:500;color:rgba(255,246,236,.88)}
 #ayarBtn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.6}
 .genis #sesBtn:hover,#ayarBtn:hover,#ayarBtn[aria-expanded=true]{border-color:rgba(255,246,236,.45);color:var(--metin)}
@@ -250,7 +260,7 @@ html.genis,html.genis body{background:#08050c}
       <div id="balon"><div><b>0</b><span class="br"></span></div><div class="dr"></div></div>
       <header class="bas" id="tBas">
         <nav class="secici" id="secici" aria-label="Ölçüm seç"></nav>
-        <p class="tarih" id="tTarih"></p>
+        <p class="tarih" id="tTarih"><span id="tGunMetni"></span><span id="tKaynak" role="status" hidden></span></p>
         <div class="tBaslik"><button type="button" id="tSimge" aria-controls="tAciklama" aria-expanded="false" aria-label="Ölçüm nedir?"></button><h1 id="tAd"></h1></div>
         <div id="tMetin"><p class="ger" id="tGer"></p><p class="yz" id="tYz" hidden>Yapay zekâ yorumu</p></div>
       </header>

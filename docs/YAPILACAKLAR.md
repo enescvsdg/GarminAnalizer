@@ -64,6 +64,7 @@ Bunlar pazarlık konusu değil; her biri bir kez yaşanmış bir sorundan çıkt
 - Gemini ile bugünün hüküm ve gerekçesi (şablon yedekli, yön ve sayı denetimli).
 - PWA: iPhone ana ekranı, çevrimdışı son veri, sürümlü önbellek, "Örnek veri" ve "Çevrimdışı" şeritleri.
 - Bugün (altı kart) ve Trend (dokuz ölçüm, gün ayrıntısı satırı) ekranları, telefon düzeninde.
+- Trend ölçüm simgeleri (`uygulama/simgeler.js`), ölçüm açıklamaları (`uygulama/aciklama.js`) ve Gemini eğilim yorumları (Worker'da `egilim`, Trend'de başlık altı).
 
 ### 16 Kasım 2026'da yayınlananlar
 
@@ -74,14 +75,14 @@ Kullanıcının isteğiyle `masaustu` dalı `main`'e birleştirilip yayınlandı
 | `de8dccc`, `1332f9e` | Masaüstü (geniş ekran) düzeni: pencere ≥ 1000×620 iken solda Bugün, sağda 28 günlük Trend | Yayında; denetlendi, bulgular düzeltildi |
 | `23e0771` | Çark gezinmesi: tekerlek, tıklama, ok tuşları; fareyi gezdirmek günü değiştirmez | Yayında; tarayıcıda doğrulandı, **bağımsız denetimden geçmedi** |
 | `2d8f1a3` | Worker: Gemini ile ölçüm eğilim yorumları (`worker/src/yorum/egilim.js`), `/api/gunler` yanıtında `egilim` alanı | İlk sürüm; denetim ve sonraki Worker yayını bölüm 4'te |
-| `fbf1f80` | Dokuz canlı ölçüm simgesi ve önizleme sayfası (`prototip-eski/simge/`) | Yazıldı, kullanıcı onayladı, **uygulamaya henüz yerleştirilmedi** |
+| `fbf1f80` | Dokuz canlı ölçüm simgesi ve önizleme sayfası (`prototip-eski/simge/`) | Uygulamaya yerleştirildi (`uygulama/simgeler.js`), canlıda |
 | `3962ddd` | "Faz" uygulama simgesi ve marka rehberi | Yayında |
 
 Depoda izlenmeyen dosyalar: `prototip-eski/simge/ornek-01…05*.html`. Bunlar kullanıcının başka bir oturumda yaptığı simge denemeleri; kullanılmayacaklar. Silmek ya da tutmak kullanıcının kararı; commit etme.
 
 ### Kullanıcının verdiği kararlar
 
-- Ölçüm simgeleri: `prototip-eski/simge/simgeler.js` içindekiler kullanılacak.
+- Ölçüm simgeleri: `uygulama/simgeler.js` içindekiler kullanılıyor (prototip önizlemesi de aynı dosyayı kullanır).
 - Uygulama simgesi: `marka/faz/` içindeki "Faz".
 - Bilgisayarda gezinme: çark (tekerlek ve tıklama); fareyi izleyen imleç istenmiyor.
 - Eğilim yorumu için Gemini'ye yalnızca özet gider (ortalama, normal dışı gün sayısı, son 7 günün önceki 21 güne göre yönü).
@@ -97,21 +98,27 @@ Ayrıntılı plan `docs/superpowers/plans/2026-11-16-trend-cark-aciklama-simge-y
 
 Worker denetiminde ortak günlük 24 istek hakkı ve iki başarılı eğilim yazımı eşzamanlı çağrılara karşı korundu. Önceki güne ait gecikmiş işlemler yeni günün sayacını veya eğilim kaydını ezemiyor. Bir ölçümün yorumundaki sayılar o ölçümün kendi girdi satırına göre denetleniyor. Veritabanı yazımındaki koşullar yerel D1 ile sınandı.
 
-**Doğrulama ve kalan iş.** Dalda 383 test geçiyor. Yerel Chrome'da 390×664 ve 1440×900 boyutlarında uzun yorum, yapay zekâ etiketi, eksik gün, ölçüm değiştirme, eski Worker yanıtı ve çevrimdışı önbellek denendi. Gerçek fare ve dokunmatik yüzeyle elle deneme açık. `784b12d` sürümündeki Worker Cloudflare'a dağıtıldı. Zamanlayıcı her 15 dakikada bir tetikleniyor, eşitleme saatte bir çalışıyor. 21.15 eşitlemesi tamamlandı. Mevcut günlük yorum geçerliydi. İlk Trend isteği 20 saniyede zaman aşımına uğradı (`gemini: zaman`, `egilim: hata`).
+**Doğrulama ve kalan iş.** `codex/uyku-karsilastirma` dalında 388 test geçiyor. Yerel Chrome'da 390×664 ve 1440×900 boyutlarında uzun yorum, yapay zekâ etiketi, eksik gün, ölçüm değiştirme, eski Worker yanıtı ve çevrimdışı önbellek denendi. Gerçek fare ve dokunmatik yüzeyle elle deneme açık. `784b12d` sürümündeki Worker Cloudflare'a dağıtıldı. Zamanlayıcı her 15 dakikada bir tetikleniyor, eşitleme saatte bir çalışıyor. 21.15 eşitlemesi tamamlandı. Mevcut günlük yorum geçerliydi. İlk Trend isteği 20 saniyede zaman aşımına uğradı (`gemini: zaman`, `egilim: hata`).
 
 **Worker yayını.** Trend isteğine 60 saniye tanıyan `409545a` sürümü 16 Kasım'da kullanıcı onayıyla Cloudflare'a dağıtıldı. Yayından önce 383 test geçti. 22.15 eşitlemesinden sonra canlı D1'de o güne ait bir başarılı yazım ve dokuz ölçüm için dokuz yorum doğrulandı. Kullanıcı arayüz yayınını onayladı. Bu sürümün `main` dalına gönderimi GitHub Pages yayınını tetikler. Yayından sonra fiziksel iPhone’da Trend simgesi, gün değiştirme ve yorum görünümü kontrol edilmeli.
 
-### İş 1 — Yazılmış üç işin denetimi
+**Dal durumu.** `codex/uyku-karsilastirma` dalı uyku karşılaştırmasını ve inceleme düzeltmelerini (Trend metninden kaydırma, gizlilik metni, uyku sıfır durumu, belge güncellemesi) taşır; `main`'e birleştirilmedi. Karşılaştırma satırı yalnızca Worker yeniden dağıtılınca görünür (`sleepNeed` verisi eski Worker yanıtında yok): `npx wrangler deploy`, kullanıcı onayı ister.
+
+**Uyku karşılaştırması.** Uyku evreleri çubuğunun üstünde seçili gecenin Garmin toplamı (`sleep_seconds`), o gece için Garmin önerisi (`sleepNeed.actual`) ve dakika farkı gösterilir. Eksik kayıtta yalnızca mevcut süre gösterilir. Trend tarihinde örnek veya çevrimdışı veri belirtilir. Geniş ekrandaki dokunmatik ölçüm seçici, ses ve ayar düğmelerinin hedefi en az 44 CSS pikselidir.
+
+*İş 1–3 tamamlandı (kodda ve `main`'de/dalda); aşağıdaki ayrıntılar tarihsel kayıttır. İş 4'te yalnızca canlı doğrulama notları geçerli.*
+
+### İş 1 — Yazılmış üç işin denetimi (YAPILDI)
 
 Çark (`23e0771`) ve eğilim yorumu (`2d8f1a3`) bağımsız bir gözle okunmadı. Yayından önce:
 
 - **Çark:** `uygulama/uygulama.js` içindeki Trend etkileşimini oku. Kontrol et: telefon sürüklemesi çalışıyor; tekerlek yalnızca grafik bölgesinde yakalanıyor ve sayfayı kaydırmıyor; `ctrlKey` (yakınlaştırma) ve Ayarlar açıkken yok sayılıyor; dokunmatik yüzeyin küçük olayları tek tek gün atlatmıyor; hızlı çentikler hedefi biriktiriyor ve geri sıçrama olmuyor. Gerçek fare ve dokunmatik yüzeyle elle dene (ajan yalnızca yapay olaylarla denedi).
 - **Eğilim yorumu:** `worker/src/yorum/egilim.js` ve `worker/test/egilim.test.mjs`. Kontrol et: Gemini'ye giden metinde tarih, gün adı ya da gün gün değer yok; günlük sayaç bugünün hükmüyle ortak ve istekten önce artıyor; günde en çok 2 başarılı yazım; dünkü kayıt gösterilmiyor; `egilimOku` hata verse de `/api/gunler` 200 dönüyor; yasak kelimeler ve girdide olmayan sayı reddediliyor.
-- **Simge modülü:** `prototip-eski/simge/simgeler.js`. Kontrol et: `yokEt` her şeyi temizliyor, kimlikler örnekler arasında çakışmıyor, `null` ve `NaN` değerlerde hata yok.
+- **Simge modülü:** `uygulama/simgeler.js`. Kontrol et: `yokEt` her şeyi temizliyor, kimlikler örnekler arasında çakışmıyor, `null` ve `NaN` değerlerde hata yok.
 
 Bitti sayılır: bulunan önemli sorunlar düzeltildi, `npm test` yeşil.
 
-### İş 2 — Ölçüm açıklamaları ve simgelerin Trend'e yerleştirilmesi (plan: Task 2)
+### İş 2 — Ölçüm açıklamaları ve simgelerin Trend'e yerleştirilmesi (YAPILDI)
 
 - `uygulama/aciklama.js`: dokuz ölçüm için sabit Türkçe metin (`soru`, `metin`, `yon`). Ne ölçtüğünü ve yüksek mi düşük mü iyi olduğunu söyler. Tıbbi teşhis ya da tavsiye içermez. Ölçüm kimlikleri: `uyku`, `bb`, `hrv`, `nabiz`, `stres`, `yuk`, `derin`, `spo2`, `solunum`.
 - `prototip-eski/simge/simgeler.js` → `uygulama/simgeler.js` olarak taşınır, `KABUK` listesine eklenir, testi yazılır.
@@ -124,7 +131,7 @@ Bilinen zayıf simgeler (istenirse iyileştir): solunum (nefes egzersizi gibi ok
 
 Bitti sayılır: 390×664 ve 1440×900'de simge doğru günü gösteriyor, kart hiçbir şeyin üstüne taşmıyor, az hareket modunda durağan, `npm test` yeşil.
 
-### İş 3 — Eğilim yorumunun arayüzde gösterilmesi (plan: Task 4)
+### İş 3 — Eğilim yorumunun arayüzde gösterilmesi (YAPILDI)
 
 - `uygulama/veri-canli.js` `veriCevir`: `VERI.meta.egilim = {[olcumId]: metin}` (yalnızca bilinen kimlikler ve dizgi değerler; alan yoksa `{}`).
 - Trend'de seçili ölçümün yorumu varsa başlığın altındaki "Son 28 günde … gün normal aralığının dışında" cümlesinin yerine gelir ve altında "Yapay zekâ yorumu" etiketi durur. Yoksa mevcut cümle kalır. Masaüstünde ikisi birlikte gösterilebilir.
@@ -173,14 +180,14 @@ Hiçbiri yayına engel değil; fırsat oldukça düzeltilebilir.
 - Geçersiz Garmin anahtarı düzeltildikten sonra bir sonraki deneme 24 saate kadar gecikir; elle tetikleme yok. (Çözüm: D1'de `sync_state` tablosundan `key_durum` ve `son_deneme` satırlarını silmek.)
 - `settings` tablosu ve `GET /api/durum` kullanılmıyor.
 - Dünkü yük ölçümünün bandı kendi değerini de içeriyor.
+- Süren bir Gemini hatasında günde ikiden fazla deneme olabilir: hata sayacı girdi özetine (hash) göre tutuluyor, her deneme ortak günlük 24 isteklik hakkı yiyor.
 - `IZINLI_ORIGIN` içinde `http://localhost:4173` duruyor (yerel deneme için; zararsız).
 
 **Uygulama**
 - `localStorage`, `enescvsdg.github.io` altındaki bütün sitelerle ortaktır; aynı hesaptan yayınlanan başka bir site cihaz anahtarını okuyabilir. README'de yazıyor; tam ayrım için ayrı alan adı gerekir.
-- Trend ekranında "Örnek veri" ya da "Çevrimdışı" işareti yok; yalnızca Bugün'de var.
 - Zayıf ağda önbellekteki veri 6 saniyelik beklemeden sonra geliyor.
 - Uygulama açıkken güncelleme gelirse sayfa yenilenir; Ayarlar'da yarım yazılmış bir anahtar silinebilir.
-- Masaüstü: pencere tam eşikte (1000×620) gidip gelirse her seferinde yeniden yüklenir; iPad'de hedefler 40 piksel (44 olmalı); `duzen.js` statik `import` olduğu için yüklenemezse uygulama açılmaz.
+- Masaüstü: pencere tam eşikte (1000×620) gidip gelirse her seferinde yeniden yüklenir; `duzen.js` statik `import` olduğu için yüklenemezse uygulama açılmaz.
 - Şerit metinleri ve öncelikleri saf işleve çıkarılıp test edilmedi.
 - GitHub Actions "Node 20 deprecated" uyarısı veriyor; eylem sürümleri yükseltilmeli.
 
@@ -190,6 +197,6 @@ Hiçbiri yayına engel değil; fırsat oldukça düzeltilebilir.
 ## 7. Yeni oturuma başlarken
 
 1. `git status` ve `git log --oneline -10` ile dalı ve son commit'leri gör. Yeni iş için `main`'den yeni bir dal aç; `main`'e doğrudan commit etme (her gönderim yayınlanır).
-2. `npm test` çalıştır. 16 Kasım'daki Trend dalında 383 test geçti.
+2. `npm test` çalıştır. `codex/uyku-karsilastirma` dalında 388 test geçti.
 3. Bölüm 4'ün başındaki yerel durumu ve kalan yayın adımını kontrol et.
 4. Her dışa açık adımda (Worker'ı güncellemek, `main`'e göndermek) önce kullanıcıya ne yapacağını söyle ve onayını al. Kullanıcı Türkçe konuşuyor ve her iş adımından önce kısa bir plan görmek istiyor.

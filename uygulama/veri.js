@@ -72,7 +72,7 @@
     const orta = Math.round(960 * clamp((d.stres - 10) / 100, 0.03, 0.3));
     const dusuk = Math.round(960 * 0.28);
     return {
-      uyku: { derin: d.derin, hafif, rem, uyanik, ihtiyac: 490 },
+      uyku: { toplam: d.derin + hafif + rem, derin: d.derin, hafif, rem, uyanik, ihtiyac: 490 },
       bb: { dolan: Math.round(d.bb * 0.8 + (r2() - 0.5) * 8), biten: Math.round(50 + d.yuk * 0.1 + r2() * 20) },
       stres: { dinlenme: Math.max(0, 960 - yuksek - orta - dusuk), dusuk, orta, yuksek },
       hrv: { durum: 'BALANCED', haftalik: Math.round(d.hrv + (r2() - 0.5) * 4) },

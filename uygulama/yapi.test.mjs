@@ -128,7 +128,7 @@ function uiIslev(ad, baglam) {
 test('Trend yorumu seçili ölçüme aittir; eski Worker ve boş yorum özete döner', () => {
   const el = Object.fromEntries(['tGer', 'tYz'].map((id) => [id, {}]));
   const veri = { meta: { egilim: { uyku: '<b>Uzun yorum</b>', bb: ' ' } } };
-  const yaz = uiIslev('trendMetin', { $: (id) => el[id], VERI: veri });
+  const yaz = uiIslev('trendMetin', { $: (id) => el[id], VERI: veri, metinKayar() {} });
   yaz({ o: { id: 'uyku' }, ozet: 'özet' });
   assert.equal(el.tGer.textContent, '<b>Uzun yorum</b>');
   assert.equal(el.tYz.hidden, false);
@@ -199,4 +199,33 @@ test('bilinmeyen ölçüm genel açıklamaya döner ve simge sistem hareket terc
   const sec = kaynak.slice(kaynak.indexOf('function olcumSec('), kaynak.indexOf('function gunYaz('));
   assert.doesNotMatch(sec, /azHareket: RM/);
   assert.match(kaynak, /if \(tl\.alt - tl\.ust < 90\) tl\.ust = tl\.alt - 90/);
+});
+
+test('Trend veri kaynağını yalnızca örnek veya önbellek verisinde gösterir', () => {
+  const kaynak = oku('uygulama.js');
+  const durum = uiIslev('trendKaynak', {});
+  assert.equal(durum({ canli: true, kaynak: 'canli' }), '');
+  assert.equal(durum({ canli: false, kaynak: 'onbellek' }), 'Çevrimdışı');
+  assert.equal(durum({ canli: false, kaynak: 'yok' }), 'Örnek veri');
+  const html = oku('index.html');
+  assert.match(html, /id="tKaynak"[^>]*role="status"[^>]*hidden/);
+  assert.match(html, /id="tTarih"><span id="tGunMetni"><\/span><span id="tKaynak"/);
+});
+
+test('#tMetin varsayılan olarak dokunuşu geçirir; yalnız taşınca yakalar (telefonda gün kaydırma)', () => {
+  const html = oku('index.html');
+  const kural = html.match(/#tMetin\{[^}]*\}/)[0];
+  assert.match(kural, /pointer-events:none/);
+  assert.doesNotMatch(kural, /pointer-events:auto/);
+  assert.match(html, /#tMetin\.kayar\{pointer-events:auto\}/);
+  const sinif = { acik: null };
+  const el = { tGer: { scrollHeight: 120, clientHeight: 60 }, tMetin: { classList: { toggle: (_, d) => { sinif.acik = d; } } } };
+  const f = uiIslev('metinKayar', { $: (id) => el[id] });
+  f(); assert.equal(sinif.acik, true);
+  el.tGer.scrollHeight = 61; f(); assert.equal(sinif.acik, false);
+});
+test('Ayarlar gizlilik metni 28 günlük özeti anlatır, eski cümle yok', () => {
+  const js = oku('uygulama.js');
+  assert.match(js, /son 28 günlük özeti/);
+  assert.doesNotMatch(js, /geçmiş günler gönderilmez/);
 });
