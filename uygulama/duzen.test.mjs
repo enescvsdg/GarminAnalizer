@@ -150,3 +150,13 @@ test('DUZEN globalThis üzerinde de vardır', () => {
   assert.equal(globalThis.DUZEN, DUZEN);
   assert.equal(DUZEN.duzenModu(1440, 900), 'genis');
 });
+
+test('klavyeEylem: değiştirici tuş, giriş alanı odağı ve açık Ayarlar eylem üretmez', () => {
+  const d = { gun: 5, olcum: 2, gunSayisi: 28, olcumSayisi: 9 };
+  assert.deepEqual(klavyeEylem('ArrowLeft', d, {}), { tur: 'gun', deger: 4 });
+  for (const kosul of [{ meta: true }, { ctrl: true }, { alt: true }, { inputOdak: true }, { ayarAcik: true }]) {
+    for (const tus of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '1', 'Home', 'End']) {
+      assert.equal(klavyeEylem(tus, d, kosul), null, `${tus} ${JSON.stringify(kosul)}`);
+    }
+  }
+});

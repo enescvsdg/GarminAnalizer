@@ -4,6 +4,7 @@ const telKok = $('tel');
 // Düzen açılışta bir kez seçilir: geniş ekran (≥1000×620) ayrı yerleşim alır, altı bugünkü telefon/çerçeve davranışıdır.
 // Pencere geniş ↔ dar eşiğini aşarsa sayfa bir kez yeniden yüklenir (aşağıda).
 const GENIS = duzenModu(innerWidth, innerHeight) === 'genis';
+const KART_EYLEM = GENIS ? 'Trendde göster' : 'Trendini aç'; // geniş ekranda kart ekran değiştirmez
 let GD = null, gunSayisi = 28; // geniş ekran geometrisi (duzen.js genisDuzen) ve grafikteki gün sayısı
 // Geniş ekran: telefon çerçevesi kalkar; şekil ve Bugün sol, Trend sağ bölgeye taşınır; ses ve Ayarlar sağ üstte
 function genisKur() {
@@ -238,7 +239,7 @@ function sec(i, sessiz) {
   L.forEach((l, j) => {
     const v = g.d[l.o.id], du = durum(l.o, v), sap = du === 'lo' || du === 'hi';
     l.el.classList.toggle('sap', sap); l.dr.innerHTML = du === null ? 'veri yok' : durumHtml(du); kivrim(l, G0 + i);
-    l.el.setAttribute('aria-label', du === null ? `${l.o.ad}: veri yok. Trendini aç` : `${l.o.ad} ${bicim(v)}${l.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}. Trendini aç`);
+    l.el.setAttribute('aria-label', du === null ? `${l.o.ad}: veri yok. ${KART_EYLEM}` : `${l.o.ad} ${bicim(v)}${l.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}. ${KART_EYLEM}`);
     gsap.to(l, { k: sap ? 1 : 0, duration: 1.1 * D, delay: j * 0.045 * D, ease: 'back.out(1.7)', overwrite: 'auto' });
     gsap.killTweensOf(l, 'val'); l.br.textContent = v === null ? '' : l.o.birim.trim();
     if (v === null) l.deg.textContent = '–';
@@ -425,7 +426,8 @@ let hedef = N - 1, pA = N - 1;
 function git(i, sure) { hedef = clamp(Math.round(i), 0, N - 1); gsap.to(st, { P: hedef, duration: RM ? 0 : sure || 0.75, ease: 'power3.out', overwrite: 'auto' }); }
 let suruk = false, surukledi = false, x0 = 0, P0 = 0, sonX = 0, sonT = 0, hiz = 0;
 trend.addEventListener('pointerdown', (ev) => {
-  if (mesgul || GENIS) return; // geniş ekranda sürükleme yok: imleç fareyi izler (aşağıda) suruk = true; surukledi = false; x0 = sonX = ev.clientX; P0 = st.P; sonT = performance.now(); hiz = 0; gsap.killTweensOf(st, 'P');
+  if (mesgul || GENIS) return; // geniş ekranda sürükleme yok: imleç fareyi izler (aşağıda)
+  suruk = true; surukledi = false; x0 = sonX = ev.clientX; P0 = st.P; sonT = performance.now(); hiz = 0; gsap.killTweensOf(st, 'P');
 });
 addEventListener('pointermove', (ev) => {
   if (!suruk) return;
@@ -476,10 +478,10 @@ if (GENIS) {
     git(i, 0.3);
   });
   addEventListener('keydown', (ev) => {
-    if (ayarAcik || ev.altKey || ev.ctrlKey || ev.metaKey) return;
     const h = ev.target;
-    if (h && h.closest && h.closest('input,textarea,select,[contenteditable]:not([contenteditable=false])')) return;
-    const e = klavyeEylem(ev.key, { gun: hedef, olcum: sonOlcum, gunSayisi: N, olcumSayisi: O.length });
+    const inputOdak = !!(h && h.closest && h.closest('input,textarea,select,[contenteditable]:not([contenteditable=false])'));
+    const e = klavyeEylem(ev.key, { gun: hedef, olcum: sonOlcum, gunSayisi: N, olcumSayisi: O.length },
+      { alt: ev.altKey, ctrl: ev.ctrlKey, meta: ev.metaKey, inputOdak, ayarAcik });
     if (!e) return;
     ev.preventDefault(); ipucuGizle();
     if (e.tur === 'gun') { ustGun = -1; if (e.deger !== hedef || Math.abs(st.P - hedef) > 0.01) git(e.deger, 0.45); }
@@ -577,7 +579,9 @@ function ayarKapat() {
   gsap.to('#perde', { autoAlpha: 0, duration: RM ? 0 : 0.25 });
   if (GENIS) { $('ayarBtn').setAttribute('aria-expanded', 'false'); gsap.to('#ayar', { y: 10, autoAlpha: 0, duration: RM ? 0 : 0.2, ease: 'power2.in', overwrite: 'auto' }); }
   else gsap.to('#ayar', { yPercent: 110, duration: RM ? 0 : 0.32, ease: 'power3.in', onComplete: () => gsap.set('#ayar', { autoAlpha: 0 }) });
-  if (ayarOnce) ayarOnce.focus({ preventScroll: true });
+  // Safari tıklanan düğmeye odak vermez (activeElement body kalır): geniş ekranda Ayarlar düğmesine dön
+  const don = ayarOnce && ayarOnce !== document.body ? ayarOnce : (GENIS ? $('ayarBtn') : ayarOnce);
+  if (don) don.focus({ preventScroll: true });
 }
 $('sAyar').addEventListener('click', () => (ayarAcik ? ayarKapat() : ayarAc()));
 if (GENIS) {

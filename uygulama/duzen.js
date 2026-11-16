@@ -5,7 +5,7 @@ export const BUGUN_W = 390;
 export const GENIS_MIN_W = 1000;
 export const GENIS_MIN_H = 620;
 export const TELEFON_MAX_W = 520;
-const TABAN_H = 720; // Bugün bölgesinin hedef yüksekliği (birim): ölçek = pencere yüksekliği / bu
+const TABAN_H = 660; // 720 iken 620 px yükseklikte en küçük yazı ~9,3 px'e düşüyordu; 660 ile ~10 px // Bugün bölgesinin hedef yüksekliği (birim): ölçek = pencere yüksekliği / bu
 const OLCEK_MIN = 0.5, OLCEK_MAX = 1.5;
 const BUGUN_ORAN = 0.46; // Bugün bölgesi pencerenin bundan genişini almaz
 const TREND_MAX_U = 1100; // Trend içeriğinin en geniş hali (birim); fazlası iki bölgeyi ortalar
@@ -72,7 +72,10 @@ export function balonX(imlecX, balonW, bolgeW, bosluk = 16, kenar = 12) {
 }
 
 // Geniş ekran klavyesi: ←/→ gün, Home/End ilk/son gün, ↑/↓ ve 1–9 ölçüm. İlgisiz tuşta null.
-export function klavyeEylem(tus, { gun, olcum, gunSayisi, olcumSayisi }) {
+// kosul: değiştirici tuş basılıysa (tarayıcı kısayolları: Cmd+1, Cmd+←), odak bir giriş alanındaysa
+// ya da Ayarlar açıksa hiçbir eylem üretilmez.
+export function klavyeEylem(tus, { gun, olcum, gunSayisi, olcumSayisi }, kosul = {}) {
+  if (kosul.alt || kosul.ctrl || kosul.meta || kosul.inputOdak || kosul.ayarAcik) return null;
   const g = clamp(gun | 0, 0, gunSayisi - 1), o = clamp(olcum | 0, 0, olcumSayisi - 1);
   if (tus === 'ArrowLeft') return { tur: 'gun', deger: Math.max(0, g - 1) };
   if (tus === 'ArrowRight') return { tur: 'gun', deger: Math.min(gunSayisi - 1, g + 1) };

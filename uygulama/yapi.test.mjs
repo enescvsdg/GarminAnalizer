@@ -106,3 +106,12 @@ test('kabuk.js her iki sayfada da ilk betiktir (denetleyici eşzamanlı yakalanm
     assert.equal(ilk[1] ?? ilk[2] ?? ilk[3], 'kabuk.js', ad);
   }
 });
+
+test('uygulama.js: yorum satırı kod yutmaz (telefon Trend sürüklemesi çalışır kalır)', () => {
+  const satirlar = oku('uygulama.js').split('\n');
+  // sürüklemeyi başlatan atama yorumun içinde değil, kendi kod satırında olmalı
+  assert.ok(satirlar.some((s) => /^\s*suruk = true;/.test(s)), 'suruk = true; kod satırı bulunamadı');
+  // "//" yorumundan sonra noktalı virgülle biten atama zinciri: yutulmuş kod işareti
+  const yutulan = satirlar.filter((s) => /\/\/[^'"`]*\b[A-Za-z_$][\w$.]* = [^;]+; [A-Za-z_$][\w$.]* = [^;]+;/.test(s));
+  assert.deepEqual(yutulan, []);
+});
