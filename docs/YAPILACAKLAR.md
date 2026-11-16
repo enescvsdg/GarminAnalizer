@@ -65,17 +65,17 @@ Bunlar pazarlık konusu değil; her biri bir kez yaşanmış bir sorundan çıkt
 - PWA: iPhone ana ekranı, çevrimdışı son veri, sürümlü önbellek, "Örnek veri" ve "Çevrimdışı" şeritleri.
 - Bugün (altı kart) ve Trend (dokuz ölçüm, gün ayrıntısı satırı) ekranları, telefon düzeninde.
 
-### `masaustu` dalında bekleyenler (yayınlanmadı, GitHub'a gönderilmedi)
+### 16 Kasım 2026'da yayınlananlar
 
-Dal yereldedir. `npm test`: 365 geçiyor.
+Kullanıcının isteğiyle `masaustu` dalı `main`'e birleştirilip yayınlandı (`npm test`: 365 geçiyor). Aşağıdaki tablodaki her şey artık `main`'de; arayüzle ilgili olanlar canlı sitede. **Worker güncellenmedi:** eğilim yorumu kodu depoda duruyor ama canlı Worker'da yok. Yayın öncesi telefon görünümü (Trend'de kaydırma, Bugün'e dönüş) ve masaüstü çarkı (fare gezdirince gün değişmiyor, bir çentik bir gün, dokunmatik yüzey, sayfa kaymıyor) tarayıcıda yapay olaylarla doğrulandı.
 
 | Commit | Ne | Durum |
 | --- | --- | --- |
-| `de8dccc`, `1332f9e` | Masaüstü (geniş ekran) düzeni: pencere ≥ 1000×620 iken solda Bugün, sağda 28 günlük Trend | Denetlendi, bulgular düzeltildi, tarayıcıda doğrulandı |
-| `23e0771` | Çark gezinmesi: tekerlek, tıklama, ok tuşları; fareyi gezdirmek günü değiştirmez | Yazıldı, **denetlenmedi** |
-| `2d8f1a3` | Worker: Gemini ile ölçüm eğilim yorumları (`worker/src/yorum/egilim.js`), `/api/gunler` yanıtında `egilim` alanı | Yazıldı, **denetlenmedi**, canlıya yüklenmedi, gerçek Gemini ile denenmedi |
+| `de8dccc`, `1332f9e` | Masaüstü (geniş ekran) düzeni: pencere ≥ 1000×620 iken solda Bugün, sağda 28 günlük Trend | Yayında; denetlendi, bulgular düzeltildi |
+| `23e0771` | Çark gezinmesi: tekerlek, tıklama, ok tuşları; fareyi gezdirmek günü değiştirmez | Yayında; tarayıcıda doğrulandı, **bağımsız denetimden geçmedi** |
+| `2d8f1a3` | Worker: Gemini ile ölçüm eğilim yorumları (`worker/src/yorum/egilim.js`), `/api/gunler` yanıtında `egilim` alanı | Kod `main`'de; **denetlenmedi**, canlı Worker'a yüklenmedi, gerçek Gemini ile denenmedi |
 | `fbf1f80` | Dokuz canlı ölçüm simgesi ve önizleme sayfası (`prototip-eski/simge/`) | Yazıldı, kullanıcı onayladı, **uygulamaya henüz yerleştirilmedi** |
-| `3962ddd` | "Faz" uygulama simgesi ve marka rehberi | Kullanıcı hazırladı, dala alındı |
+| `3962ddd` | "Faz" uygulama simgesi ve marka rehberi | Yayında |
 
 Depoda izlenmeyen dosyalar: `prototip-eski/simge/ornek-01…05*.html`. Bunlar kullanıcının başka bir oturumda yaptığı simge denemeleri; kullanılmayacaklar. Silmek ya da tutmak kullanıcının kararı; commit etme.
 
@@ -89,7 +89,7 @@ Depoda izlenmeyen dosyalar: `prototip-eski/simge/ornek-01…05*.html`. Bunlar ku
 - Eşitleme saatte bir; Gemini günlük sınırı 24.
 - Depo adı GarminAnalizer kalıyor; depodaki anonimleştirilmiş örnek dosyalar olduğu gibi kalıyor.
 
-## 4. Sıradaki işler (bu dalı bitirip yayınlamak)
+## 4. Sıradaki işler
 
 Ayrıntılı plan: `docs/superpowers/plans/2026-11-16-trend-cark-aciklama-simge-yorum.md`. Tasarım: spec bölüm 9.2 ve 9.3. Aşağıdaki sırayla ilerle.
 
@@ -131,7 +131,7 @@ Sıra önemli, her adım kullanıcı onayı ister:
 1. Bütün dalın son denetimi: telefon görünümünde gerileme yok, herkese açık depoya uygun (gizli değer, adres, kişisel bilgi yok), CSP ve `KABUK` tam.
 2. `README.md` ve spec bölüm 11'e Gemini'ye giden eğilim özetini ekle.
 3. Worker'ı güncelle: `cd worker && npx wrangler deploy`. Sonraki eşitlemeden sonra logda `egilim: yazildi` görülmeli (`npx wrangler tail`). Gemini'nin dokuz yorumluk yanıtı hiç denenmedi; çıktı sınırı (2400 belirteç) ve zaman aşımı (20 sn) tahmindir. Logda `gemini: bicim` ya da `gemini: zaman` görürsen bunları ayarla.
-4. `masaustu` → `main` birleştir ve gönder. İş akışı bitince canlı sitede sürüm satırını (Ayarlar'ın altı), telefon görünümünü ve masaüstü düzenini kontrol et.
+4. Çalıştığın dalı `main`'e birleştir ve gönder. İş akışı bitince canlı sitede sürüm satırını (Ayarlar'ın altı), telefon görünümünü ve masaüstü düzenini kontrol et.
 5. iPhone'da: uygulamayı iki kez aç (ilkinde eski sürüm görünüp bir kez kendiliğinden yenilenir), Trend'de kaydırmayı, yeni simgeleri ve yorumu dene. Ana ekran simgesinin "Faz" olarak değişmesi için uygulamayı ana ekrandan silip yeniden eklemek gerekebilir.
 
 ## 5. Sonraki planlar (henüz başlanmadı)
@@ -181,7 +181,7 @@ Hiçbiri yayına engel değil; fırsat oldukça düzeltilebilir.
 
 ## 7. Yeni oturuma başlarken
 
-1. `git status` ve `git log --oneline -10` ile dalı ve son commit'leri gör. Dal `masaustu` olmalı.
+1. `git status` ve `git log --oneline -10` ile dalı ve son commit'leri gör. Yeni iş için `main`'den yeni bir dal aç; `main`'e doğrudan commit etme (her gönderim yayınlanır).
 2. `npm test` çalıştır; 365 geçmeli.
 3. Bölüm 4'teki İş 1'den başla.
 4. Her dışa açık adımda (Worker'ı güncellemek, `main`'e göndermek) önce kullanıcıya ne yapacağını söyle ve onayını al. Kullanıcı Türkçe konuşuyor ve her iş adımından önce kısa bir plan görmek istiyor.
