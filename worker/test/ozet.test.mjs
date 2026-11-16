@@ -64,7 +64,7 @@ function gunler(bitis, n, ek = {}) {
   return Array.from({ length: n }, (_, i) => ({
     date: gunEkle(bitis, -(n - 1 - i)),
     sleep_score: 80, bb_high: 70, hrv_avg: 55, resting_hr: 52, stress_avg: 30, training_load: 60,
-    sleep_deep_s: 4230, sleep_light_s: 14400, sleep_rem_s: 5400, sleep_awake_s: 600, sleep_need_min: 480,
+    sleep_seconds: 24030, sleep_deep_s: 4230, sleep_light_s: 14400, sleep_rem_s: 5400, sleep_awake_s: 600, sleep_need_min: 480,
     hrv_status: 'BALANCED', hrv_weekly_avg: 54, bb_charged: 70, bb_drained: 45,
     stress_rest_s: 18000, stress_low_s: 12000, stress_med_s: 6000, stress_high_s: 1800,
     spo2_avg: 96, resp_avg: 14, ...ek,
@@ -148,7 +148,7 @@ test('apiYaniti dokuz ölçüm, kart bayrağı ve ek alanı döner', () => {
   assert.deepEqual(Object.keys(y.gunler[27].d), OLCUMLER.map((o) => o.id));
   const ek = y.gunler[27].ek;
   assert.deepEqual(ek, {
-    uyku: { derin: 71, hafif: 240, rem: 90, uyanik: 10, ihtiyac: 480 },
+    uyku: { toplam: 401, derin: 71, hafif: 240, rem: 90, uyanik: 10, ihtiyac: 480 },
     bb: { dolan: 70, biten: 45 },
     stres: { dinlenme: 300, dusuk: 200, orta: 100, yuksek: 30 },
     hrv: { durum: 'BALANCED', haftalik: 54 },
@@ -156,7 +156,7 @@ test('apiYaniti dokuz ölçüm, kart bayrağı ve ek alanı döner', () => {
   assert.equal(y.gunler[27].d.derin, 71);
   // satır yoksa ek tam şekilli, yaprakları null
   assert.deepEqual(y.gunler[0].ek, {
-    uyku: { derin: null, hafif: null, rem: null, uyanik: null, ihtiyac: null },
+    uyku: { toplam: null, derin: null, hafif: null, rem: null, uyanik: null, ihtiyac: null },
     bb: { dolan: null, biten: null },
     stres: { dinlenme: null, dusuk: null, orta: null, yuksek: null },
     hrv: { durum: null, haftalik: null },
@@ -165,14 +165,27 @@ test('apiYaniti dokuz ölçüm, kart bayrağı ve ek alanı döner', () => {
 });
 
 test('ek: 0 değerleri korunur, eksik alanlar null', () => {
-  const s = [{ date: '2026-11-13', sleep_deep_s: 0, bb_drained: 0, stress_high_s: 0, hrv_status: null }];
+  const s = [{ date: '2026-11-13', sleep_seconds: 0, sleep_deep_s: 0, bb_drained: 0, stress_high_s: 0, hrv_status: null }];
   const ek = apiYaniti(s, '2026-11-13', 1, META).gunler[0].ek;
+  assert.equal(ek.uyku.toplam, 0);
   assert.equal(ek.uyku.derin, 0);
   assert.equal(ek.uyku.hafif, null);
   assert.equal(ek.bb.biten, 0);
   assert.equal(ek.bb.dolan, null);
   assert.equal(ek.stres.yuksek, 0);
   assert.equal(ek.hrv.durum, null);
+});
+
+test('uyku toplamı seçilen güne ait resmi sleep_seconds değerinden gelir', () => {
+  const s = [
+    { date: '2026-11-12', sleep_seconds: 36000 },
+    { date: '2026-11-13', sleep_seconds: 25200, sleep_need_min: 480 },
+  ];
+  const y = apiYaniti(s, '2026-11-13', 2, META);
+  assert.equal(y.gunler[0].ek.uyku.toplam, 600);
+  assert.equal(y.gunler[1].ek.uyku.toplam, 420);
+  assert.equal(y.gunler[1].ek.uyku.ihtiyac, 480);
+  assert.equal(apiYaniti([{ date: '2026-11-13' }], '2026-11-13', 1, META).gunler[0].ek.uyku.toplam, null);
 });
 
 test('apiYanitinda NaN ve undefined yok (ek dahil)', () => {

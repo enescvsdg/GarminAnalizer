@@ -200,3 +200,14 @@ test('bilinmeyen ölçüm genel açıklamaya döner ve simge sistem hareket terc
   assert.doesNotMatch(sec, /azHareket: RM/);
   assert.match(kaynak, /if \(tl\.alt - tl\.ust < 90\) tl\.ust = tl\.alt - 90/);
 });
+
+test('Trend veri kaynağını yalnızca örnek veya önbellek verisinde gösterir', () => {
+  const kaynak = oku('uygulama.js');
+  const durum = uiIslev('trendKaynak', {});
+  assert.equal(durum({ canli: true, kaynak: 'canli' }), '');
+  assert.equal(durum({ canli: false, kaynak: 'onbellek' }), 'Çevrimdışı');
+  assert.equal(durum({ canli: false, kaynak: 'yok' }), 'Örnek veri');
+  const html = oku('index.html');
+  assert.match(html, /id="tKaynak"[^>]*role="status"[^>]*hidden/);
+  assert.match(html, /id="tTarih"><span id="tGunMetni"><\/span><span id="tKaynak"/);
+});

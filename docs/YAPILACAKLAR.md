@@ -101,6 +101,8 @@ Worker denetiminde ortak günlük 24 istek hakkı ve iki başarılı eğilim yaz
 
 **Worker yayını.** Trend isteğine 60 saniye tanıyan `409545a` sürümü 16 Kasım'da kullanıcı onayıyla Cloudflare'a dağıtıldı. Yayından önce 383 test geçti. 22.15 eşitlemesinden sonra canlı D1'de o güne ait bir başarılı yazım ve dokuz ölçüm için dokuz yorum doğrulandı. Kullanıcı arayüz yayınını onayladı. Bu sürümün `main` dalına gönderimi GitHub Pages yayınını tetikler. Yayından sonra fiziksel iPhone’da Trend simgesi, gün değiştirme ve yorum görünümü kontrol edilmeli.
 
+**Uyku karşılaştırması.** Uyku evreleri çubuğunun üstünde seçili gecenin Garmin toplamı (`sleep_seconds`), o gece için Garmin önerisi (`sleepNeed.actual`) ve dakika farkı gösterilir. Eksik kayıtta yalnızca mevcut süre gösterilir. Trend tarihinde örnek veya çevrimdışı veri belirtilir. Geniş ekrandaki dokunmatik ölçüm seçici, ses ve ayar düğmelerinin hedefi en az 44 CSS pikselidir.
+
 ### İş 1 — Yazılmış üç işin denetimi
 
 Çark (`23e0771`) ve eğilim yorumu (`2d8f1a3`) bağımsız bir gözle okunmadı. Yayından önce:
@@ -177,10 +179,9 @@ Hiçbiri yayına engel değil; fırsat oldukça düzeltilebilir.
 
 **Uygulama**
 - `localStorage`, `enescvsdg.github.io` altındaki bütün sitelerle ortaktır; aynı hesaptan yayınlanan başka bir site cihaz anahtarını okuyabilir. README'de yazıyor; tam ayrım için ayrı alan adı gerekir.
-- Trend ekranında "Örnek veri" ya da "Çevrimdışı" işareti yok; yalnızca Bugün'de var.
 - Zayıf ağda önbellekteki veri 6 saniyelik beklemeden sonra geliyor.
 - Uygulama açıkken güncelleme gelirse sayfa yenilenir; Ayarlar'da yarım yazılmış bir anahtar silinebilir.
-- Masaüstü: pencere tam eşikte (1000×620) gidip gelirse her seferinde yeniden yüklenir; iPad'de hedefler 40 piksel (44 olmalı); `duzen.js` statik `import` olduğu için yüklenemezse uygulama açılmaz.
+- Masaüstü: pencere tam eşikte (1000×620) gidip gelirse her seferinde yeniden yüklenir; `duzen.js` statik `import` olduğu için yüklenemezse uygulama açılmaz.
 - Şerit metinleri ve öncelikleri saf işleve çıkarılıp test edilmedi.
 - GitHub Actions "Node 20 deprecated" uyarısı veriyor; eylem sürümleri yükseltilmeli.
 

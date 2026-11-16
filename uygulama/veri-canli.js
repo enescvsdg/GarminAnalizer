@@ -45,7 +45,7 @@ function ekKur(ek) {
   const e = ek && typeof ek === 'object' ? ek : {};
   const k = (n) => (e[n] && typeof e[n] === 'object' ? e[n] : {});
   return {
-    uyku: { derin: say(k('uyku').derin), hafif: say(k('uyku').hafif), rem: say(k('uyku').rem), uyanik: say(k('uyku').uyanik), ihtiyac: say(k('uyku').ihtiyac) },
+    uyku: { toplam: say(k('uyku').toplam), derin: say(k('uyku').derin), hafif: say(k('uyku').hafif), rem: say(k('uyku').rem), uyanik: say(k('uyku').uyanik), ihtiyac: say(k('uyku').ihtiyac) },
     bb: { dolan: say(k('bb').dolan), biten: say(k('bb').biten) },
     stres: { dinlenme: say(k('stres').dinlenme), dusuk: say(k('stres').dusuk), orta: say(k('stres').orta), yuksek: say(k('stres').yuksek) },
     hrv: { durum: metinMi(k('hrv').durum) ? k('hrv').durum : null, haftalik: say(k('hrv').haftalik) },
@@ -294,14 +294,32 @@ function dilimle(kaynak, tanim) {
   return dilimler.some((d) => d.dk > 0) ? dilimler : null;
 }
 
-// Trend'de seçili günün ek ayrıntı satırı. Gösterilecek bir şey yoksa null (satır DOM'a girmez).
-// { dilimler: [{id, etiket, dk, metin}]|null, metin: string|null }
+function uykuSuresi(dakika) {
+  const saat = Math.floor(dakika / 60);
+  const kalan = dakika % 60;
+  if (!saat) return `${kalan} dk`;
+  return kalan ? `${saat} sa ${kalan} dk` : `${saat} sa`;
+}
+
+// Trend'de seçili günün ek ayrıntı satırı. Gösterilecek bir şey yoksa null.
 export function ekSatiri(olcumId, ek) {
   if (!ek || typeof ek !== 'object') return null;
-  let dilimler = null; let metin = null;
+  let dilimler = null; let metin = null; let ayrinti = null;
   if (olcumId === 'uyku' && ek.uyku) {
     dilimler = dilimle(ek.uyku, UYKU_DILIMLERI);
-    if (sonlu(ek.uyku.ihtiyac)) metin = `İhtiyaç: ${sureMetni(ek.uyku.ihtiyac)}`;
+    const { toplam, ihtiyac } = ek.uyku;
+    const uyudu = Number.isInteger(toplam) && toplam >= 0;
+    const hedefVar = Number.isInteger(ihtiyac) && ihtiyac > 0;
+    if (uyudu) metin = `${uykuSuresi(toplam)} uyudun`;
+    if (hedefVar) {
+      const hedef = `Garmin önerisi ${uykuSuresi(ihtiyac)}`;
+      if (uyudu) {
+        const fark = toplam - ihtiyac;
+        const yorum = fark === 0 ? 'Öneriyle aynı'
+          : `${uykuSuresi(Math.abs(fark))} daha ${fark < 0 ? 'az' : 'fazla'}`;
+        ayrinti = `${hedef} · ${yorum}`;
+      } else metin = hedef;
+    }
   } else if (olcumId === 'stres' && ek.stres) {
     dilimler = dilimle(ek.stres, STRES_DILIMLERI);
   } else if (olcumId === 'bb' && ek.bb) {
@@ -312,7 +330,7 @@ export function ekSatiri(olcumId, ek) {
   } else if (olcumId === 'hrv' && ek.hrv) {
     if (sonlu(ek.hrv.haftalik)) metin = `Haftalık ortalama ${ek.hrv.haftalik} ms`;
   }
-  return dilimler || metin ? { dilimler, metin } : null;
+  return dilimler || metin ? { dilimler, metin, ayrinti } : null;
 }
 
 export const CANLI = {

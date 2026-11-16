@@ -28,7 +28,8 @@ function genisOlcek() {
   const s = GD.s, b = $('bolgeB'), t = $('bolgeT');
   b.style.width = '390px'; b.style.height = GD.hb + 'px'; b.style.transform = `translate(${GD.bx.toFixed(2)}px,0) scale(${s})`;
   t.style.width = GD.twu + 'px'; t.style.height = GD.hb + 'px'; t.style.transform = `translate(${GD.tx.toFixed(2)}px,0) scale(${s})`;
-  t.style.setProperty('--dok', Math.max(40, 36 / s).toFixed(1) + 'px'); // ölçüm seçici en az 36 px dokunma hedefi
+  t.style.setProperty('--dok', Math.max(40, 36 / s).toFixed(1) + 'px');
+  t.style.setProperty('--dok-temas', Math.ceil(44 / s) + 'px'); // ölçek sonrası ölçüm düğmeleri en az 44 CSS px
   telKok.classList.toggle('serbest', GD.ox > 1); // ultra geniş: iki bölge ortada, kenarlar da erir
   $('arac').style.right = (16 + GD.ox).toFixed(1) + 'px'; // sağ üst düğmeler içeriğin sağ üst köşesinde
   const ac = $('arac').offsetWidth + 28; // düğmelerin altına seçici girmesin
@@ -398,6 +399,7 @@ function ekYaz(g) { // seçili günün ek ayrıntısı; gösterilecek veri yoksa
   if (!s) { el.hidden = true; return; }
   const ek = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
   if (s.metin) el.appendChild(ek('div', 'em', s.metin));
+  if (s.ayrinti) el.appendChild(ek('div', 'uykuFarki', s.ayrinti));
   if (s.dilimler) {
     const cb = ek('div', 'cb'), lg = ek('div', 'lg'); cb.setAttribute('aria-hidden', 'true');
     s.dilimler.forEach((d) => {
@@ -446,7 +448,7 @@ function olcumSec(oi, animasyon) {
 function gunYaz(i, canli) {
   if (i === selT) return; const ilk = selT < 0; selT = i; const g = GUNLER[i], t = T[sonOlcum], v = t.v[i], du = durum(t.o, v), yok = v === null, sap = du === 'lo' || du === 'hi';
   simgeYaz(t.o, v, du);
-  $('tTarih').textContent = `${g.gunUzun}, ${g.gun} ${g.ay}`;
+  $('tGunMetni').textContent = `${g.gunUzun}, ${g.gun} ${g.ay}`;
   $('cip').textContent = i === N - 1 ? `Bugün, ${g.gun} ${g.ay}` : `${g.gunKisa} ${g.gun} ${g.ay}`;
   const bl = $('balon'); bl.querySelector('b').textContent = yok ? '–' : bicim(v); bl.querySelector('.br').textContent = yok ? '' : t.o.birim.trim();
   bl.querySelector('.dr').innerHTML = yok ? 'veri yok' : durumHtml(du, true); bl.classList.toggle('sap', sap); $('nokta').classList.toggle('sap', sap);
@@ -457,7 +459,8 @@ function gunYaz(i, canli) {
   if (!ilk && canli && (ekran === 'trend' || GENIS) && !mesgul && !yok) SES.nota(t.iyi[i]);
 }
 function yerlesimT() {
-  tl.alt = Math.round(telY($('cip'), 'top') - 86 - (ekDestek ? 64 : 0) - (GENIS ? 108 : 0));
+  const ekYukseklik = ekDestek ? Math.max(64, $('ekSatir').offsetHeight) : 0;
+  tl.alt = Math.round(telY($('cip'), 'top') - 86 - ekYukseklik - (GENIS ? 108 : 0));
   // Önce yorum ve grafik için yer ayır. Dar alanda değer balonu noktanın yanına gelir.
   $('tMetin').style.maxHeight = Math.max(28, tl.alt - 90 - 6 - telY($('tMetin'), 'top')) + 'px';
   tl.baslikAlt = telY($('tBas'), 'bottom');
@@ -716,7 +719,13 @@ $('bBagla').addEventListener('click', () => {
 $('bKaldir').addEventListener('click', () => { CANLI.baglantiSil(); location.reload(); });
 [$('bAdres'), $('bAnahtar')].forEach((e) => e.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') $('bBagla').click(); }));
 $('seritDugme').addEventListener('click', ayarAc); // Ayarlar sekmesiyle aynı açılış yolu
+function trendKaynak(b) {
+  if (b.canli) return '';
+  return b.kaynak === 'onbellek' ? 'Çevrimdışı' : 'Örnek veri';
+}
 function seritKur() { // Bugün başlığının üstünde kalıcı uyarı
+  const tk = $('tKaynak'), durum = trendKaynak(bag);
+  tk.textContent = durum; tk.hidden = !durum; // canlı veride gösterge görünmez
   if (!bag.baglanti) { // hiç bağlantı yok: ekrandaki sayılar örnek veridir; dokununca Ayarlar açılır
     $('seritDugmeMetin').textContent = "Örnek veri. Kendi verin için Ayarlar'dan bağlan.";
     $('seritDugme').hidden = false;
@@ -877,11 +886,13 @@ if (GENIS) { gsap.set(trend, { autoAlpha: 1 }); st.yuk = st.yukA = st.gunesY = 1
 // Başlık sözcük animasyonu ve yazı tipi yüklemesi satır sayısını değiştirebilir.
 if (typeof ResizeObserver === 'function') {
   let olcumBekliyor = false;
-  new ResizeObserver(() => {
+  const trendBoyutu = new ResizeObserver(() => {
     if (olcumBekliyor) return;
     olcumBekliyor = true;
     requestAnimationFrame(() => { olcumBekliyor = false; yerlesimT(); });
-  }).observe($('tBas'));
+  });
+  trendBoyutu.observe($('tBas'));
+  trendBoyutu.observe($('ekSatir'));
 }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (ekran === 'bugun') { yerlesimB(false); if (!mesgul) st.cy = lay.cy; } else yerlesimT(); if (GENIS) yerlesimT(); });
 if (!RM) {
