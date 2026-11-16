@@ -252,6 +252,7 @@ Kullanıcı istekleri ve kararları (tek tek soruldu):
 - **Yapay zekâ yorumu (Trend):** her ölçüm için 1–2 cümle eğilim yorumu. Gemini'ye yalnızca ÖZET gider: 28 günün ortalaması, normal dışı gün sayısı, son 7 günün önceki 21 güne göre yönü ve büyüklüğü, normal aralık. Tarih ve gün gün değerler gitmez. Dokuz ölçümün yorumu günde tek istekle yazılır; bugünkü hükümle aynı doğrulama kurallarından geçer (uzunluk, yasak karakter, girdide olmayan sayı yok), geçmezse gösterilmez. "Yapay zekâ yorumu" anahtarı kapalıyken istek gitmez. Telefonda başlığın altındaki 28 günlük özet cümlesinin yerine gelir (yorum yoksa o cümle kalır) ve "Yapay zekâ yorumu" etiketi taşır.
 - **Yaklaşımlar (gezinme):** fareyi izleyen imleç (hızlı, denetimsiz — reddedildi); çark + farede sessiz ön izleme; seçilen: yalnız çark, tıklama ve klavye.
 - **Yaklaşımlar (Gemini verisi):** 28 günün ham değerleri (zengin yorum, geçmiş Google'a gider — reddedildi); seçilen: yalnız özet; yorum olmaması.
+- **Simge kararı (2026-11-16):** kullanıcı önizlemedeki dokuz simgeyi onayladı (`prototip-eski/simge/simgeler.js`). Uygulama simgesi (logo) ayrıdır: kullanıcının hazırladığı "Faz" (`marka/faz/`, rehber `CLAUDE.md`).
 - **Yayın sırası:** masaüstü düzeniyle birlikte, tek seferde yayınlanır.
 
 ## 10. Hata durumları
