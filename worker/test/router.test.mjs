@@ -81,7 +81,7 @@ test('OPTIONS 204, Allow-Headers X-Device-Key içerir, kimlik istemez', async ()
     istek('/api/gunler', { yontem: 'OPTIONS', anahtar: null, basliklar: { Origin: ORIGIN } }), ortam(), SIMDI);
   assert.equal(r.status, 204);
   assert.equal(r.headers.get('Access-Control-Allow-Headers'), 'X-Device-Key, Content-Type');
-  assert.equal(r.headers.get('Access-Control-Allow-Methods'), 'GET, PUT, OPTIONS');
+  assert.equal(r.headers.get('Access-Control-Allow-Methods'), 'GET, PUT, POST, DELETE, OPTIONS');
   assert.equal(r.headers.get('Access-Control-Max-Age'), '86400');
   assert.equal(r.headers.get('Access-Control-Allow-Origin'), ORIGIN);
   assert.equal(r.headers.get('Vary'), 'Origin');
@@ -400,7 +400,7 @@ test('/api/gunler egilim: egilimOku fırlatsa da yanıt 200 ve egilim null', asy
 
 test('/api/ayar: varsayılan açık, PUT gidiş-dönüş', async () => {
   const env = ortam();
-  const al = async () => json(await istekIsle(istek('/api/ayar'), env, SIMDI));
+  const al = async () => ({ yapayZeka: (await json(await istekIsle(istek('/api/ayar'), env, SIMDI))).yapayZeka });
   assert.deepEqual(await al(), { yapayZeka: true });
   const k = await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde: { yapayZeka: false } }), env, SIMDI);
   assert.equal(k.status, 200);
@@ -418,7 +418,7 @@ test('/api/ayar PUT anahtarsız 401 ve ayar değişmez', async () => {
   assert.deepEqual(await json(r), { hata: 'yetkisiz' });
   const y = await istekIsle(istek('/api/ayar', { yontem: 'PUT', anahtar: 'yanlis', govde: { yapayZeka: false } }), env, SIMDI);
   assert.equal(y.status, 401);
-  assert.deepEqual(await json(await istekIsle(istek('/api/ayar'), env, SIMDI)), { yapayZeka: true });
+  assert.deepEqual({ yapayZeka: (await json(await istekIsle(istek('/api/ayar'), env, SIMDI))).yapayZeka }, { yapayZeka: true });
 });
 
 test('/api/ayar PUT kimlik gövde okunmadan önce denetlenir', async () => {
@@ -449,7 +449,7 @@ test('/api/ayar PUT geçersiz gövde 400 ve ayar değişmez', async () => {
   assert.deepEqual(await dene('[true]'), { hata: 'gecersiz' });
   assert.deepEqual(await dene('null'), { hata: 'gecersiz' });
   assert.deepEqual(await dene({ yapayZeka: false, ek: 'x'.repeat(2000) }), { hata: 'gecersiz' });
-  assert.deepEqual(await json(await istekIsle(istek('/api/ayar'), env, SIMDI)), { yapayZeka: true });
+  assert.deepEqual({ yapayZeka: (await json(await istekIsle(istek('/api/ayar'), env, SIMDI))).yapayZeka }, { yapayZeka: true });
 });
 
 test('PUT /api/gunler, PUT /api/yok, POST /api/ayar, DELETE /api/ayar 405', async () => {
@@ -465,7 +465,7 @@ test('OPTIONS /api/ayar yeni başlıkları döner', async () => {
   const r = await istekIsle(
     istek('/api/ayar', { yontem: 'OPTIONS', anahtar: null, basliklar: { Origin: ORIGIN } }), ortam(), SIMDI);
   assert.equal(r.status, 204);
-  assert.equal(r.headers.get('Access-Control-Allow-Methods'), 'GET, PUT, OPTIONS');
+  assert.equal(r.headers.get('Access-Control-Allow-Methods'), 'GET, PUT, POST, DELETE, OPTIONS');
   assert.equal(r.headers.get('Access-Control-Allow-Headers'), 'X-Device-Key, Content-Type');
 });
 
@@ -513,7 +513,7 @@ test('/api/ayar PUT: Content-Length olmadan akan 1 KB üstü gövde 400, akış 
   assert.deepEqual(await json(y), { hata: 'gecersiz' });
   assert.equal(iptalEdildi(), true);
   assert.ok(okunan() < parcalar.length, 'gövdenin tamamı okunmamalı');
-  assert.deepEqual(await json(await istekIsle(istek('/api/ayar'), env, SIMDI)), { yapayZeka: true });
+  assert.deepEqual({ yapayZeka: (await json(await istekIsle(istek('/api/ayar'), env, SIMDI))).yapayZeka }, { yapayZeka: true });
 });
 
 test('/api/ayar PUT: küçük akan gövde çalışır', async () => {
@@ -522,7 +522,7 @@ test('/api/ayar PUT: küçük akan gövde çalışır', async () => {
   const y = await istekIsle(r, env, SIMDI);
   assert.equal(y.status, 200);
   assert.deepEqual(await json(y), { yapayZeka: false });
-  assert.deepEqual(await json(await istekIsle(istek('/api/ayar'), env, SIMDI)), { yapayZeka: false });
+  assert.deepEqual({ yapayZeka: (await json(await istekIsle(istek('/api/ayar'), env, SIMDI))).yapayZeka }, { yapayZeka: false });
 });
 
 test('/api/ayar PUT: tam 1024 bayt kabul, 1025 bayt red; gövdesiz istek 400', async () => {
@@ -544,4 +544,185 @@ test('/api/ayar PUT: akışlı istekte de kimlik gövde okunmadan önce denetlen
   const { r, okunan } = akisIstek(['{"yapayZeka":false}'], { anahtar: null });
   assert.equal((await istekIsle(r, env, SIMDI)).status, 401);
   assert.equal(okunan(), 0);
+});
+
+// ---- bildirim abonelikleri ----
+import { abonelikleriOku, abonelikYaz } from '../src/db.js';
+
+const UC = 'https://push.ok/abc';
+const ABONE = { endpoint: UC, p256dh: 'BPabc_-123', auth: 'xyz_-9' };
+function sahtePush(sonuc = 'tamam') {
+  const cagrilar = [];
+  return {
+    cagrilar,
+    ucNoktaGecerli: (u) => typeof u === 'string' && u.startsWith('https://push.ok/'),
+    pushGonder: async (g) => {
+      cagrilar.push(g);
+      return { durum: typeof sonuc === 'function' ? sonuc(g) : sonuc, kod: null };
+    },
+  };
+}
+const push = (env, yol, yontem, govde, { push: p = sahtePush(), anahtar = 'gizli' } = {}) =>
+  istekIsle(istek(yol, { yontem, govde, anahtar }), env, SIMDI, { push: p });
+const VAPID = { VAPID_PUBLIC_KEY: 'acik', VAPID_PRIVATE_KEY: 'gizli-vapid', VAPID_KONU: 'https://ornek.test/' };
+
+test('GET /api/ayar: bildirim alanı (anahtar yok -> null, abone sayısı)', async () => {
+  const env = ortam();
+  assert.deepEqual(await json(await istekIsle(istek('/api/ayar'), env, SIMDI)), { yapayZeka: true, bildirim: { acikAnahtar: null, abone: 0 } });
+  const env2 = ortam({ VAPID_PUBLIC_KEY: 'AbC' });
+  await abonelikYaz(env2.DB, ABONE, 1);
+  assert.deepEqual(await json(await istekIsle(istek('/api/ayar'), env2, SIMDI)), { yapayZeka: true, bildirim: { acikAnahtar: 'AbC', abone: 1 } });
+});
+
+test('yeni yollar: anahtarsız ve yanlış anahtarlı 401 (her yöntem), yönteme göre 405, OPTIONS kimliksiz', async () => {
+  const env = ortam();
+  for (const [yol, yontem] of [['/api/abonelik', 'POST'], ['/api/abonelik', 'DELETE'], ['/api/deneme-bildirim', 'POST']]) {
+    for (const anahtar of [null, 'yanlis']) {
+      const r = await push(env, yol, yontem, { endpoint: UC }, { anahtar });
+      assert.equal(r.status, 401, `${yontem} ${yol}`);
+      assert.deepEqual(await json(r), { hata: 'yetkisiz' });
+    }
+  }
+  for (const [yol, yontem] of [['/api/abonelik', 'PUT'], ['/api/deneme-bildirim', 'DELETE'], ['/api/deneme-bildirim', 'PUT'], ['/api/ayar', 'DELETE'], ['/api/gunler', 'DELETE'], ['/api/yok', 'POST'], ['/api/yok', 'DELETE']]) {
+    const r = await push(env, yol, yontem, {});
+    assert.equal(r.status, 405, `${yontem} ${yol}`);
+  }
+  const o = await istekIsle(istek('/api/abonelik', { yontem: 'OPTIONS', anahtar: null, basliklar: { Origin: ORIGIN } }), env, SIMDI);
+  assert.equal(o.status, 204);
+  assert.match(o.headers.get('Access-Control-Allow-Methods'), /POST/);
+  assert.match(o.headers.get('Access-Control-Allow-Methods'), /DELETE/);
+});
+
+test('POST /api/abonelik: kimlik gövde okunmadan önce denetlenir', async () => {
+  const env = ortam();
+  const r = istek('/api/abonelik', { yontem: 'POST', anahtar: null, govde: ABONE });
+  const y = await istekIsle(r, env, SIMDI, { push: sahtePush() });
+  assert.equal(y.status, 401);
+  assert.equal(r.bodyUsed, false);
+});
+
+test('POST /api/abonelik: geçerli kayıt 200 ve aynı uç nokta tekrar kaydı çoğaltmaz', async () => {
+  const env = ortam();
+  const r = await push(env, '/api/abonelik', 'POST', ABONE);
+  assert.equal(r.status, 200);
+  assert.deepEqual(await json(r), { tamam: true });
+  await push(env, '/api/abonelik', 'POST', { ...ABONE, auth: 'yeni_1' });
+  const liste = await abonelikleriOku(env.DB);
+  assert.equal(liste.length, 1);
+  assert.equal(liste[0].auth, 'yeni_1');
+});
+
+test('POST /api/abonelik: geçersiz uç nokta ve alanlar 400, kayıt yazılmaz', async () => {
+  const env = ortam();
+  const kotu = [
+    { ...ABONE, endpoint: 'https://kotu.example/x' },
+    { ...ABONE, endpoint: 'http://push.ok/x' },
+    { ...ABONE, endpoint: 5 },
+    { ...ABONE, endpoint: undefined },
+    { ...ABONE, p256dh: '' },
+    { ...ABONE, p256dh: 'a b' },
+    { ...ABONE, p256dh: 'x'.repeat(300) },
+    { ...ABONE, auth: 7 },
+    { ...ABONE, auth: undefined },
+    [],
+    'metin',
+    '{bozuk',
+  ];
+  for (const g of kotu) {
+    const r = await push(env, '/api/abonelik', 'POST', typeof g === 'string' ? g : JSON.stringify(g));
+    assert.equal(r.status, 400, JSON.stringify(g));
+    assert.deepEqual(await json(r), { hata: 'gecersiz' });
+  }
+  assert.equal((await abonelikleriOku(env.DB)).length, 0);
+  assert.equal((await istekIsle(istek('/api/abonelik', { yontem: 'POST' }), env, SIMDI, { push: sahtePush() })).status, 400); // gövdesiz
+});
+
+test('POST /api/abonelik: en çok 5 abonelik, en eski silinir', async () => {
+  const env = ortam();
+  for (let i = 1; i <= 7; i += 1) {
+    const r = await push(env, '/api/abonelik', 'POST', { ...ABONE, endpoint: `https://push.ok/${i}` });
+    assert.equal(r.status, 200);
+  }
+  const liste = (await abonelikleriOku(env.DB)).map((a) => a.endpoint);
+  assert.equal(liste.length, 5);
+  assert.ok(!liste.includes('https://push.ok/1') && !liste.includes('https://push.ok/2'));
+});
+
+function akisPush(yol, yontem, parcalar) {
+  const enc = new TextEncoder();
+  let iptal = false;
+  let i = 0;
+  const govde = new ReadableStream({
+    pull(c) { if (i < parcalar.length) c.enqueue(enc.encode(parcalar[i++])); else c.close(); },
+    cancel() { iptal = true; },
+  }, { highWaterMark: 0 });
+  const r = new Request(`https://w.test${yol}`, { method: yontem, headers: { 'X-Device-Key': 'gizli' }, body: govde, duplex: 'half' });
+  return { r, iptalEdildi: () => iptal, okunan: () => i };
+}
+
+test('abonelik gövde sınırı 2 KiB: akışta kesilir, tam 2048 kabul, 2049 red; PUT /api/ayar 1 KiB kalır', async () => {
+  const env = ortam();
+  const parcalar = [`{"endpoint":"${UC}","p256dh":"`, ...Array(20).fill('x'.repeat(200)), '","auth":"a"}'];
+  const { r, iptalEdildi, okunan } = akisPush('/api/abonelik', 'POST', parcalar);
+  assert.equal(r.headers.get('Content-Length'), null);
+  const y = await istekIsle(r, env, SIMDI, { push: sahtePush() });
+  assert.equal(y.status, 400);
+  assert.equal(iptalEdildi(), true);
+  assert.ok(okunan() < parcalar.length);
+  const doldur = (n) => { const bas = `{"endpoint":"${UC}","p256dh":"p","auth":"a","ek":"`; return bas + 'x'.repeat(n - bas.length - 2) + '"}'; };
+  assert.equal((await push(env, '/api/abonelik', 'POST', doldur(2048))).status, 200);
+  assert.equal((await push(env, '/api/abonelik', 'POST', doldur(2049))).status, 400);
+  // 1 KiB ile 2 KiB arası /api/ayar için hâlâ red
+  const bas = '{"yapayZeka":true,"ek":"';
+  const ayarGovde = bas + 'x'.repeat(1500 - bas.length - 2) + '"}';
+  assert.equal((await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde: ayarGovde }), env, SIMDI)).status, 400);
+});
+
+test('DELETE /api/abonelik: siler, olmayan için de 200, geçersiz gövde 400', async () => {
+  const env = ortam();
+  await abonelikYaz(env.DB, ABONE, 1);
+  const a = await push(env, '/api/abonelik', 'DELETE', { endpoint: UC });
+  assert.equal(a.status, 200);
+  assert.deepEqual(await json(a), { tamam: true });
+  assert.equal((await abonelikleriOku(env.DB)).length, 0);
+  const b = await push(env, '/api/abonelik', 'DELETE', { endpoint: UC });
+  assert.equal(b.status, 200);
+  for (const g of [{}, { endpoint: 5 }, { endpoint: '' }, '{x']) {
+    const r = await push(env, '/api/abonelik', 'DELETE', typeof g === 'string' ? g : JSON.stringify(g));
+    assert.equal(r.status, 400);
+  }
+});
+
+test('POST /api/deneme-bildirim: abonelik yoksa 0/0 (anahtarsız ortamda da), gönderici çağrılmaz', async () => {
+  const env = ortam();
+  const p = sahtePush();
+  const r = await push(env, '/api/deneme-bildirim', 'POST', undefined, { push: p });
+  assert.equal(r.status, 200);
+  assert.deepEqual(await json(r), { gonderilen: 0, basarili: 0 });
+  assert.equal(p.cagrilar.length, 0);
+});
+
+test('POST /api/deneme-bildirim: VAPID anahtarı yoksa 503 yapilandirma, gönderici çağrılmaz', async () => {
+  const env = ortam({ VAPID_PUBLIC_KEY: 'acik' });
+  await abonelikYaz(env.DB, ABONE, 1);
+  const p = sahtePush();
+  const r = await push(env, '/api/deneme-bildirim', 'POST', undefined, { push: p });
+  assert.equal(r.status, 503);
+  assert.deepEqual(await json(r), { hata: 'yapilandirma' });
+  assert.equal(p.cagrilar.length, 0);
+});
+
+test('POST /api/deneme-bildirim: sayar, yük doğru, gitti dönen silinir', async () => {
+  const env = ortam(VAPID);
+  for (const i of [1, 2, 3]) await abonelikYaz(env.DB, { ...ABONE, endpoint: `https://push.ok/${i}` }, i);
+  const p = sahtePush((g) => ({ 'https://push.ok/1': 'tamam', 'https://push.ok/2': 'gitti', 'https://push.ok/3': 'hata' })[g.abonelik.endpoint]);
+  const r = await push(env, '/api/deneme-bildirim', 'POST', undefined, { push: p });
+  assert.equal(r.status, 200);
+  const govde = await json(r);
+  assert.deepEqual(govde, { gonderilen: 3, basarili: 1 });
+  assert.equal(p.cagrilar.length, 3);
+  assert.deepEqual(p.cagrilar[0].yuk, { baslik: 'GarminAnalizer', govde: 'Bildirimler çalışıyor.', etiket: 'deneme', url: './' });
+  assert.deepEqual(p.cagrilar[0].vapid, { acik: 'acik', gizli: 'gizli-vapid', konu: 'https://ornek.test/' });
+  assert.deepEqual((await abonelikleriOku(env.DB)).map((a) => a.endpoint), ['https://push.ok/1', 'https://push.ok/3']);
+  assert.ok(!JSON.stringify(govde).includes('gizli-vapid'));
 });

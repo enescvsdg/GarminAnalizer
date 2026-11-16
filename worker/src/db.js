@@ -59,3 +59,30 @@ export async function durumYaz(db, anahtar, deger) {
   await db.prepare('INSERT INTO sync_state (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
     .bind(anahtar, JSON.stringify(deger)).run();
 }
+
+export const ABONELIK_ENFAZLA = 5;
+
+// Aynı uç nokta yeniden gelirse anahtarlar ve zaman güncellenir; fazlası en eskiden silinir.
+export async function abonelikYaz(db, { endpoint, p256dh, auth }, simdiMs) {
+  await db.batch([
+    db.prepare(
+      'INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?) ' +
+      'ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth, created_at = excluded.created_at',
+    ).bind(endpoint, p256dh, auth, simdiMs),
+    db.prepare(
+      'DELETE FROM push_subscriptions WHERE endpoint NOT IN ' +
+      '(SELECT endpoint FROM push_subscriptions ORDER BY created_at DESC, rowid DESC LIMIT ?)',
+    ).bind(ABONELIK_ENFAZLA),
+  ]);
+}
+
+export async function abonelikSil(db, endpoint) {
+  await db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(endpoint).run();
+}
+
+export async function abonelikleriOku(db) {
+  const { results } = await db.prepare(
+    'SELECT endpoint, p256dh, auth, created_at FROM push_subscriptions ORDER BY created_at ASC, rowid ASC',
+  ).all();
+  return results;
+}

@@ -13,3 +13,5 @@ database_id = "6cf0299c-0772-4ccc-ae37-9ccb3ce8c9e4"
 [vars]
 IZINLI_ORIGIN = "https://enescvsdg.github.io,http://localhost:4173"
 GEMINI_MODEL = "gemini-3.5-flash-lite"
+VAPID_PUBLIC_KEY = ""
+VAPID_KONU = "https://enescvsdg.github.io/GarminAnalizer/"
