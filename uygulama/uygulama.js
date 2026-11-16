@@ -278,6 +278,12 @@ function trendMetin(t) {
   const yorum = typeof ham === 'string' ? ham.trim() : '';
   $('tGer').textContent = yorum || t.ozet;
   $('tYz').hidden = !yorum;
+  metinKayar();
+}
+// Metin kutusuna sığmıyorsa dokunuşları yakalar (dikey kaydırma çalışsın); sığıyorsa dokunuş Trend'e geçer ve gün kaydırma çalışır.
+function metinKayar() {
+  const g = $('tGer');
+  $('tMetin').classList.toggle('kayar', g.scrollHeight > g.clientHeight + 1);
 }
 function aciklamaKapat(odak = true) {
   if (GENIS || !aciklamaAcik) return;
@@ -454,7 +460,7 @@ function gunYaz(i, canli) {
   bl.querySelector('.dr').innerHTML = yok ? 'veri yok' : durumHtml(du, true); bl.classList.toggle('sap', sap); $('nokta').classList.toggle('sap', sap);
   trend.setAttribute('aria-valuenow', i + 1);
   trend.setAttribute('aria-valuetext', yok ? `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} için veri yok` : `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} ${bicim(v)}${t.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}`);
-  ekYaz(g); aciklamaYerlesim();
+  ekYaz(g); if (GENIS || aciklamaAcik) aciklamaYerlesim();
   if (GENIS) balonW = bl.offsetWidth; // balonun sağa mı sola mı açılacağı için; gün değişince bir kez ölçülür
   if (!ilk && canli && (ekran === 'trend' || GENIS) && !mesgul && !yok) SES.nota(t.iyi[i]);
 }
@@ -470,6 +476,7 @@ function yerlesimT() {
   const im = $('imlec'); im.setAttribute('x1', cx); im.setAttribute('x2', cx); im.setAttribute('y1', tl.ust - 30); im.setAttribute('y2', tl.alt + 40);
   $('nokta').setAttribute('cx', cx); $('ipucu').style.top = tl.alt + 16 + 'px';
   aciklamaYerlesim();
+  metinKayar();
   yollar(); eksen();
 }
 for (let i = 0; i < 46; i++) {
@@ -596,7 +603,7 @@ function trendeGec(oi, kaynak) {
     const u = document.createElement('div'); u.className = 'ucan'; u.textContent = kaynak.deg.textContent;
     u.style.color = getComputedStyle(kaynak.deg).color; tel.appendChild(u);
     gsap.set(u, { x: (r.left - tr.left) / S, y: (r.top - tr.top) / S, fontSize: 27 * lay.ks });
-    z.to(u, { x: cx + 16, y: Math.max(tl.ust - 92, ufuk - 70), fontSize: 40, duration: 0.95, ease: 'power3.inOut' }, 0.08)
+    z.to(u, { x: cx + 16, y: Math.max(tl.baslikAlt + 4, ufuk - 70), fontSize: 40, duration: 0.95, ease: 'power3.inOut' }, 0.08)
       .add(() => { if (T[sonOlcum].v[hedef] !== null) SES.can(T[sonOlcum].iyi[hedef]); gsap.set('#balon', { autoAlpha: 1 }); u.remove(); }, 1.06)
       .fromTo('#balon .dr', { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 1.1);
   }
@@ -676,7 +683,7 @@ const yz = { deger: false, hazir: false, mesgul: false, oku: 0 };
 function yzGoster(not) {
   const kapali = !bag.canli || !yz.hazir || yz.mesgul;
   $('aYz').disabled = kapali; $('aYz').setAttribute('aria-disabled', kapali); $('aYz').setAttribute('aria-checked', yz.deger);
-  $('yzAcik').textContent = bag.canli ? "Açıkken bugünün özet sayıları yorum için Google Gemini'ye gönderilir. Adın, tarih ve geçmiş günler gönderilmez." : "Worker'a bağlanınca kullanılabilir.";
+  $('yzAcik').textContent = bag.canli ? "Açıkken bugünün özet sayıları ve her ölçümün son 28 günlük özeti (ortalama, normal dışı gün sayısı, son haftanın yönü) yorum için Google Gemini'ye gönderilir. Adın, tarihler ve gün gün değerler gönderilmez." : "Worker'a bağlanınca kullanılabilir.";
   $('yzDurum').textContent = not || '';
 }
 async function yzOku() { // Ayarlar her açıldığında sunucudaki durum okunur; yanıt gelene kadar anahtar kapalı kalır

@@ -294,13 +294,6 @@ function dilimle(kaynak, tanim) {
   return dilimler.some((d) => d.dk > 0) ? dilimler : null;
 }
 
-function uykuSuresi(dakika) {
-  const saat = Math.floor(dakika / 60);
-  const kalan = dakika % 60;
-  if (!saat) return `${kalan} dk`;
-  return kalan ? `${saat} sa ${kalan} dk` : `${saat} sa`;
-}
-
 // Trend'de seçili günün ek ayrıntı satırı. Gösterilecek bir şey yoksa null.
 export function ekSatiri(olcumId, ek) {
   if (!ek || typeof ek !== 'object') return null;
@@ -308,15 +301,15 @@ export function ekSatiri(olcumId, ek) {
   if (olcumId === 'uyku' && ek.uyku) {
     dilimler = dilimle(ek.uyku, UYKU_DILIMLERI);
     const { toplam, ihtiyac } = ek.uyku;
-    const uyudu = Number.isInteger(toplam) && toplam >= 0;
+    const uyudu = Number.isInteger(toplam) && toplam > 0;
     const hedefVar = Number.isInteger(ihtiyac) && ihtiyac > 0;
-    if (uyudu) metin = `${uykuSuresi(toplam)} uyudun`;
+    if (uyudu) metin = `${sureMetni(toplam)} uyudun`;
     if (hedefVar) {
-      const hedef = `Garmin önerisi ${uykuSuresi(ihtiyac)}`;
+      const hedef = `Garmin önerisi ${sureMetni(ihtiyac)}`;
       if (uyudu) {
         const fark = toplam - ihtiyac;
         const yorum = fark === 0 ? 'Öneriyle aynı'
-          : `${uykuSuresi(Math.abs(fark))} daha ${fark < 0 ? 'az' : 'fazla'}`;
+          : `${sureMetni(Math.abs(fark))} daha ${fark < 0 ? 'az' : 'fazla'}`;
         ayrinti = `${hedef} · ${yorum}`;
       } else metin = hedef;
     }

@@ -350,8 +350,8 @@ test('ekSatiri uyku: dört dilim, dakika, ihtiyaç', () => {
   assert.deepEqual(s.dilimler.map((d) => d.etiket), ['Derin', 'Hafif', 'REM', 'Uyanık']);
   assert.deepEqual(s.dilimler.map((d) => d.dk), [71, 233, 100, 15]);
   assert.equal(s.dilimler[1].metin, '3s 53dk');
-  assert.equal(s.metin, '7 sa 35 dk uyudun');
-  assert.equal(s.ayrinti, 'Garmin önerisi 8 sa 10 dk · 35 dk daha az');
+  assert.equal(s.metin, '7s 35dk uyudun');
+  assert.equal(s.ayrinti, 'Garmin önerisi 8s 10dk · 35 dk daha az');
 });
 
 test('ekSatiri: null dilim atlanır, hepsi 0 ise çubuk yok, hepsi null ise satır yok', () => {
@@ -360,7 +360,7 @@ test('ekSatiri: null dilim atlanır, hepsi 0 ise çubuk yok, hepsi null ise sat�
   assert.equal(kismi.metin, null);
   const sifir = ekSatiri('uyku', { uyku: { derin: 0, hafif: 0, rem: 0, uyanik: 0, ihtiyac: 480 } });
   assert.equal(sifir.dilimler, null);
-  assert.equal(sifir.metin, 'Garmin önerisi 8 sa');
+  assert.equal(sifir.metin, 'Garmin önerisi 8s');
   assert.equal(ekSatiri('uyku', { uyku: { derin: 0, hafif: 0, rem: 0, uyanik: 0, ihtiyac: null } }), null);
   assert.equal(ekSatiri('uyku', { uyku: { derin: null, hafif: null, rem: null, uyanik: null, ihtiyac: null } }), null);
   assert.equal(ekSatiri('uyku', null), null);
@@ -369,13 +369,18 @@ test('ekSatiri: null dilim atlanır, hepsi 0 ise çubuk yok, hepsi null ise sat�
 
 test('uyku karşılaştırması fazla, eşit ve eksik kayıtları ayırır', () => {
   const uyku = (toplam, ihtiyac) => ekSatiri('uyku', { uyku: { toplam, ihtiyac } });
-  assert.equal(uyku(510, 490).ayrinti, 'Garmin önerisi 8 sa 10 dk · 20 dk daha fazla');
-  assert.equal(uyku(490, 490).ayrinti, 'Garmin önerisi 8 sa 10 dk · Öneriyle aynı');
-  assert.equal(uyku(455, null).metin, '7 sa 35 dk uyudun');
+  assert.equal(uyku(510, 490).ayrinti, 'Garmin önerisi 8s 10dk · 20 dk daha fazla');
+  assert.equal(uyku(490, 490).ayrinti, 'Garmin önerisi 8s 10dk · Öneriyle aynı');
+  assert.equal(uyku(455, null).metin, '7s 35dk uyudun');
   assert.ok(!uyku(455, null).ayrinti);
   assert.ok(!uyku(undefined, 490).ayrinti);
   assert.equal(uyku(null, null), null);
-  assert.equal(uyku(0, 60).ayrinti, 'Garmin önerisi 1 sa · 1 sa daha az');
+  const sifir = uyku(0, 60);
+  assert.equal(sifir.metin, 'Garmin önerisi 60 dk');
+  assert.ok(!sifir.ayrinti);
+  assert.ok(!/uyudun/.test(sifir.metin));
+  assert.equal(uyku(0, null), null);
+  assert.equal(uyku(60, 120).ayrinti, 'Garmin önerisi 2s · 60 dk daha az');
 });
 
 test('ekSatiri bb, stres, hrv ve ek satırı olmayan ölçümler', () => {
