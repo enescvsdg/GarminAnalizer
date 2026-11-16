@@ -149,6 +149,19 @@ Baz çizgi sapması 2 gün üst üste sürerse ayrı bir bildirim gönderilir (g
 fazla 1 uyarı). Metin şablonludur, teşhis içermez. Ek olarak key bitişine 14 gün
 kala ve key geçersiz çıktığında bildirim gönderilir.
 
+### 8.1 Bildirimler — güncel tasarım (2026-11-17, kullanıcı onayı)
+
+Bölüm 7 ve 8'deki "ayarlanan saatte brifing" tasarımının yerini alır.
+
+- **Tetikleyici:** brifing sabit saatte değil, o gecenin uyku verisi (bugünün `sleep_score` değeri) Garmin'den ilk kez geldiğinde gönderilir; günde tek brifing. Veri İstanbul saatiyle 21:00'den sonra gelirse o gün gönderilmez. Uyku verisi hiç gelmezse brifing yoktur (sessiz).
+- **Sabah sık bakma:** 05:00–11:00 (İstanbul) arasında, bugünün uyku verisi gelene kadar eşitleme her zamanlayıcı tikinde (15 dk) çalışır; gelince saatlik düzene döner. Mevcut bekleme (kısmi hata, geçersiz key) kuralları önceliklidir.
+- **İçerik:** başlık günün hükmü, gövde gerekçe (uygulamadaki metnin aynısı: Gemini yorumu varsa o, yoksa şablon). Bir kart ölçümü iki gün üst üste normal dışındaysa gövdenin sonuna tek satır eklenir ("HRV iki gündür normalin altında."); ayrı bildirim gönderilmez.
+- **Garmin key geçersiz:** ayrı bildirim, key geçersiz duruma her geçişte bir kez.
+- **Abonelik:** Ayarlar'daki "Bildirimler" anahtarı izin ister ve aboneliği Worker'a kaydeder (D1 `push_subscriptions`); kapatınca silinir. "Deneme bildirimi gönder" düğmesi vardır. iPhone'da yalnızca ana ekrana eklenmiş uygulamada çalışır; değilse anahtar devre dışıdır ve nedeni yazar.
+- **Gönderim:** VAPID (ES256) + RFC 8291 `aes128gcm` şifreleme, Worker'ın WebCrypto'suyla, kütüphanesiz. İçerik uçtan uca şifrelidir. Push servisi 404/410 dönerse abonelik silinir. Abonelik uç noktası yalnız bilinen push servislerine (Apple, Google FCM, Mozilla) ait `https` adresi olabilir.
+- **Gizli değerler:** `VAPID_PRIVATE_KEY` Worker secret'ıdır (kullanıcı girer); açık anahtar `wrangler.toml` içinde `VAPID_PUBLIC_KEY` ve uygulamaya `/api/ayar` yanıtıyla verilir.
+- **Yaklaşımlar:** sabit saat (bazı sabahlar eski ya da geç veri — reddedildi); veri gelince, saatlik eşitlemeyle (bir saate kadar gecikme); seçilen: veri gelince, sabah 15 dakikada bir bakarak.
+
 ## 9. PWA ekranları
 
 Üç ekran, altta sekme çubuğu (Bugün / Trend / Ayarlar). Çalışan tasarım
