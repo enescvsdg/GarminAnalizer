@@ -31,7 +31,7 @@ export function metniCikar(yanit) {
   return null;
 }
 
-export async function geminiYaz({ apiKey, model, fetch, sistem, girdi, sema, zamanAsimiMs = 12000, gunluk }) {
+export async function geminiYaz({ apiKey, model, fetch, sistem, girdi, sema, zamanAsimiMs = 12000, gunluk, maksCikti = 600 }) {
   // Günlük yalnız { asama, kod? } alır; içerik, girdi ve anahtar aktarılmaz.
   const not = (olay) => {
     try { gunluk?.(olay); } catch { /* günlük hatası sonucu etkilemez */ }
@@ -48,7 +48,7 @@ export async function geminiYaz({ apiKey, model, fetch, sistem, girdi, sema, zam
         input: girdi,
         system_instruction: sistem,
         store: false,
-        generation_config: { thinking_level: 'minimal', max_output_tokens: 600 },
+        generation_config: { thinking_level: 'minimal', max_output_tokens: maksCikti },
         response_format: { type: 'text', mime_type: 'application/json', schema: sema },
       });
       const r = await fetch(URL_TABAN, {

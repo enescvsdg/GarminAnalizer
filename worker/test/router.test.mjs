@@ -2,11 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { testD1 } from './helpers/d1.mjs';
 import { istekIsle } from '../src/api/router.js';
-import { durumYaz, gunUpsert } from '../src/db.js';
+import { durumYaz, durumOku, gunUpsert } from '../src/db.js';
 import { gunEkle } from '../src/zaman.js';
 import { apiYaniti } from '../src/stats/ozet.js';
 import { bant, OLCUMLER } from '../src/stats/baseline.js';
 import { yorumGuncelle } from '../src/yorum/yorum.js';
+import { egilimGuncelle } from '../src/yorum/egilim.js';
 
 const SIMDI = Date.UTC(2026, 10, 12, 9, 0); // 12 Kas 2026 12:00 İstanbul
 const ORIGIN = 'https://ornek.github.io';
@@ -296,7 +297,8 @@ test('yorumKaynak: kayıt yokken sablon ve yanıt değişmez', async () => {
   await dolu(env);
   const g = await gunlerAl(env);
   assert.equal(g.yorumKaynak, 'sablon');
-  const { yorumKaynak, ...gerisi } = g;
+  const { yorumKaynak, egilim, ...gerisi } = g;
+  assert.equal(egilim, null);
   assert.deepEqual(gerisi, apiYaniti(await (await import('../src/db.js')).gunleriOku(env.DB, gunEkle(BUGUN, -34), BUGUN), BUGUN, 5, { sonEsitleme: null, keyDurum: null }));
 });
 
@@ -326,6 +328,74 @@ test('veri değişince eski Gemini yorumu gösterilmez', async () => {
   const g = await gunlerAl(env);
   assert.equal(g.yorumKaynak, 'sablon');
   assert.notEqual(g.gunler.at(-1).hukum, YORUM.hukum);
+});
+
+// ---- Eğilim yorumu ----
+const EGILIM = { uyku: 'Uykun bu ay dengeli seyretti.', hrv: 'HRV normal aralığında kaldı.' };
+async function egilimYaz(env) {
+  const { gunleriOku } = await import('../src/db.js');
+  const satirlar = await gunleriOku(env.DB, gunEkle(BUGUN, -60), BUGUN);
+  const r = await egilimGuncelle({
+    db: env.DB, satirlar, bugun: BUGUN, simdiMs: SIMDI,
+    yaz: async () => ({ yorumlar: Object.entries(EGILIM).map(([id, metin]) => ({ id, metin })) }),
+  });
+  assert.equal(r.durum, 'yazildi');
+}
+
+test('/api/gunler egilim alanı: kayıt varken nesne, yokken null; diğer alanlar aynen', async () => {
+  const env = ortam();
+  await dolu(env);
+  const once = await gunlerAl(env);
+  assert.equal(once.egilim, null);
+  await egilimYaz(env);
+  const sonra = await gunlerAl(env);
+  assert.deepEqual(sonra.egilim, EGILIM);
+  const { egilim: a, ...digerSonra } = sonra;
+  const { egilim: b, ...digerOnce } = once;
+  assert.deepEqual(digerSonra, digerOnce);
+  // gun=1 ve gun=28 de aynı eğilimi verir (özet yanıt penceresinden bağımsız)
+  assert.deepEqual((await gunlerAl(env, '?gun=1')).egilim, EGILIM);
+  assert.deepEqual((await gunlerAl(env, '?gun=28')).egilim, EGILIM);
+});
+
+test('/api/gunler egilim: ayar kapalıyken null, dünkü kayıt null, bozuk kayıt yanıtı bozmaz', async () => {
+  const env = ortam();
+  await dolu(env);
+  await egilimYaz(env);
+  await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde: { yapayZeka: false } }), env, SIMDI);
+  assert.equal((await gunlerAl(env)).egilim, null);
+  await istekIsle(istek('/api/ayar', { yontem: 'PUT', govde: { yapayZeka: true } }), env, SIMDI);
+  assert.deepEqual((await gunlerAl(env)).egilim, EGILIM);
+  const kayit = await durumOku(env.DB, 'egilim');
+  await durumYaz(env.DB, 'egilim', { ...kayit, tarih: gunEkle(BUGUN, -1) });
+  assert.equal((await gunlerAl(env)).egilim, null);
+  await durumYaz(env.DB, 'egilim', 12345);
+  const r = await istekIsle(istek('/api/gunler?gun=5'), env, SIMDI);
+  assert.equal(r.status, 200);
+  assert.equal((await json(r)).egilim, null);
+});
+
+test('/api/gunler egilim: egilimOku fırlatsa da yanıt 200 ve egilim null', async () => {
+  const env = ortam();
+  await dolu(env);
+  await egilimYaz(env);
+  // durumOku yalnız 'egilim' anahtarında patlayan bir D1 sarmalayıcısı
+  const gercek = env.DB;
+  env.DB = {
+    prepare(sql) {
+      const h = gercek.prepare(sql);
+      return {
+        bind(...a) {
+          if (a[0] === 'egilim') throw new Error('d1 hatasi');
+          return h.bind(...a);
+        },
+      };
+    },
+    batch: (...a) => gercek.batch(...a),
+  };
+  const r = await istekIsle(istek('/api/gunler?gun=5'), env, SIMDI);
+  assert.equal(r.status, 200);
+  assert.equal((await json(r)).egilim, null);
 });
 
 test('/api/ayar: varsayılan açık, PUT gidiş-dönüş', async () => {
