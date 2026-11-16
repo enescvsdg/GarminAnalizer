@@ -241,6 +241,19 @@ Kullanıcı kararı: ayrı bir uygulama değil, aynı sitenin geniş ekranda aç
 - **Pencere eşiği aşılırsa** (geniş ↔ dar) sayfa yeniden yüklenir.
 - **Yaklaşımlar:** (1) iki telefon ekranını yan yana ölçekleyerek göstermek — en ucuz, ama grafik dar kalır ve masaüstüne özgü hiçbir şey kazandırmaz; (2) seçilen: Bugün aynı koordinat sisteminde kalır, Trend geniş ekran için ayrı yerleşim ve etkileşim (28 gün, fare/klavye) alır; (3) baştan ayrı bir masaüstü sayfası — iki ayrı arayüzün bakımı. (2) seçildi: en çok değer grafikte, en az risk Bugün'de.
 
+### 9.3 Trend: çark gezinmesi, ölçüm açıklaması, canlı simgeler, yapay zekâ yorumu (2026-11-16)
+
+Kullanıcı istekleri ve kararları (tek tek soruldu):
+
+- **Neden:** grafik, ölçümün ne anlama geldiği bilinmeden az şey söylüyor; bilgisayarda günler arasında gezmek çok hızlı ve denetimsiz.
+- **Çark gezinmesi (bilgisayar):** fareyi gezdirmek günü DEĞİŞTİRMEZ. Tekerleğin her çentiği bir gün ilerletir; günler yumuşakça ve hafif bir tık sesiyle yerine oturur; hızlı çevrilirse çark gibi yavaşlayarak durur. Bir güne tıklamak doğrudan oraya götürür; ok tuşları aynı çark hareketini kullanır. Telefonda parmakla kaydırma aynı "gün gün oturma" hissini (tık sesi, titreşim) taşır.
+- **Ölçüm açıklaması:** dokuz ölçüm için sabit, kısa Türkçe metin (ne ölçer, yüksek mi düşük mü iyi, neye dikkat). Yapay zekâ yazmaz; uygulamayla gelir, çevrimdışı çalışır. Telefonda başlıktaki simgeye dokununca küçük bir kart olarak açılır; bilgisayarda grafiğin yanında açık durur.
+- **Canlı simgeler:** her ölçümün başlığında küçük, hareketli bir simge. Kullanıcı beklentisi: görsel olarak üst seviye. Tasarım kararı: simgeler süs değil, veriyi yaşar — hareketleri seçili günün değerine bağlıdır (ör. pil doluluğu Body Battery kadar, nabız çizgisi dinlenme nabzı hızında atar, ay uyku skoruna göre dolar). Uygulamanın görsel diliyle (sıcak ışıma, şeftali–mor) çizilir; `prefers-reduced-motion` altında durağan ama yine değeri gösterir. Önce ayrı bir önizleme sayfasında dokuzu birden kullanıcıya gösterilir; onaydan sonra uygulamaya girer.
+- **Yapay zekâ yorumu (Trend):** her ölçüm için 1–2 cümle eğilim yorumu. Gemini'ye yalnızca ÖZET gider: 28 günün ortalaması, normal dışı gün sayısı, son 7 günün önceki 21 güne göre yönü ve büyüklüğü, normal aralık. Tarih ve gün gün değerler gitmez. Dokuz ölçümün yorumu günde tek istekle yazılır; bugünkü hükümle aynı doğrulama kurallarından geçer (uzunluk, yasak karakter, girdide olmayan sayı yok), geçmezse gösterilmez. "Yapay zekâ yorumu" anahtarı kapalıyken istek gitmez. Telefonda başlığın altındaki 28 günlük özet cümlesinin yerine gelir (yorum yoksa o cümle kalır) ve "Yapay zekâ yorumu" etiketi taşır.
+- **Yaklaşımlar (gezinme):** fareyi izleyen imleç (hızlı, denetimsiz — reddedildi); çark + farede sessiz ön izleme; seçilen: yalnız çark, tıklama ve klavye.
+- **Yaklaşımlar (Gemini verisi):** 28 günün ham değerleri (zengin yorum, geçmiş Google'a gider — reddedildi); seçilen: yalnız özet; yorum olmaması.
+- **Yayın sırası:** masaüstü düzeniyle birlikte, tek seferde yayınlanır.
+
 ## 10. Hata durumları
 
 | Durum | Davranış |
