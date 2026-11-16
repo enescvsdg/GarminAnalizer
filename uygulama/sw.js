@@ -13,6 +13,7 @@ const KABUK = [
   './simgeler.js',
   './aciklama.js',
   './kabuk.js',
+  './bildirim.js',
   './vendor/gsap.min.js',
   './manifest.webmanifest',
   './simge/simge-180.png',
@@ -100,4 +101,53 @@ self.addEventListener('message', (olay) => {
   if (olay.data && olay.data.tur === 'surum' && olay.ports && olay.ports[0]) {
     olay.ports[0].postMessage({ surum: SURUM });
   }
+});
+
+/* ---------- Bildirimler ---------- */
+
+const SIMGE = './simge/simge-192.png';
+const YEDEK_BASLIK = 'GarminAnalizer';
+const YEDEK_GOVDE = 'Yeni bilgi var.';
+const doluMetin = (v) => typeof v === 'string' && v.trim().length > 0;
+
+// Yük {baslik, govde, etiket, url}. Boş, JSON olmayan ya da bozuk yükte genel metin gösterilir (iOS her push'ta bildirim ister).
+function yukOku(olay) {
+  let y = null;
+  try { y = olay.data ? olay.data.json() : null; } catch (hata) { y = null; }
+  if (!y || typeof y !== 'object' || Array.isArray(y)) y = {};
+  return {
+    baslik: doluMetin(y.baslik) ? y.baslik.slice(0, 120) : YEDEK_BASLIK,
+    govde: doluMetin(y.govde) ? y.govde.slice(0, 400) : YEDEK_GOVDE,
+    etiket: doluMetin(y.etiket) ? y.etiket.slice(0, 64) : 'garminanalizer',
+    url: typeof y.url === 'string' ? y.url : './',
+  };
+}
+
+// Yalnız kapsam içi göreli adres açılır; mutlak ya da kapsam dışı adres kapsam köküne döner.
+function hedefUrl(veri) {
+  const ham = veri && typeof veri.url === 'string' ? veri.url : './';
+  if (/^[a-z][a-z0-9+.-]*:/i.test(ham) || ham.startsWith('//') || ham.startsWith('/') || ham.includes('\\')) return KAPSAM;
+  try {
+    const hedef = new URL(ham, KAPSAM).href;
+    return hedef.startsWith(KAPSAM) ? hedef : KAPSAM;
+  } catch (hata) { return KAPSAM; }
+}
+
+async function pencereAc(hedef) {
+  const liste = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const acik = liste.find((c) => typeof c.url === 'string' && c.url.startsWith(KAPSAM));
+  if (acik && typeof acik.focus === 'function') return acik.focus();
+  return self.clients.openWindow(hedef);
+}
+
+self.addEventListener('push', (olay) => {
+  const y = yukOku(olay);
+  olay.waitUntil(self.registration.showNotification(y.baslik, {
+    body: y.govde, tag: y.etiket, icon: SIMGE, badge: SIMGE, data: { url: y.url },
+  }));
+});
+
+self.addEventListener('notificationclick', (olay) => {
+  olay.notification.close();
+  olay.waitUntil(pencereAc(hedefUrl(olay.notification.data)));
 });

@@ -205,6 +205,13 @@ button.serit svg.ok{width:10px;height:10px;stroke-width:1.6;fill:none;stroke-lin
 #aYz:disabled{opacity:.45;cursor:default}
 #ayar #yzDurum{font-weight:600;color:var(--isaret)}
 #ayar #yzDurum:empty{display:none}
+#aBil{height:44px;padding:6px 0;background-clip:content-box}
+#aBil::after{top:9px}
+#aBil:disabled{opacity:.45;cursor:default}
+#ayar #bilDurum{margin-top:0;font-weight:600;color:var(--isaret)}
+#ayar #bilDurum:empty{display:none}
+#ayar .deneme{width:100%;min-height:44px;margin-top:8px;border-radius:14px;background:rgba(255,246,236,.1);font-weight:600;font-size:14px}
+#ayar .deneme:disabled{opacity:.45;cursor:default}
 #ayar #surum{font-size:11px;text-align:center;color:rgba(255,246,236,.45);font-variant-numeric:tabular-nums}
 #ayar #surum[hidden]{display:none}
 #ekSatir .lg span{padding-left:11px;font-weight:600;white-space:nowrap}
@@ -307,6 +314,9 @@ html.genis,html.genis body{background:#08050c}
       <div class="satir"><span id="l3">Yapay zekâ yorumu</span><button type="button" class="anah" id="aYz" role="switch" aria-labelledby="l3" aria-describedby="yzAcik" aria-checked="false" aria-disabled="true" disabled></button></div>
       <p id="yzAcik"></p>
       <p id="yzDurum" role="status"></p>
+      <div class="satir"><span id="l4">Bildirimler</span><button type="button" class="anah" id="aBil" role="switch" aria-labelledby="l4" aria-describedby="bilDurum" aria-checked="false" aria-disabled="true" disabled></button></div>
+      <p id="bilDurum" role="status"></p>
+      <button type="button" class="deneme" id="bilDene" disabled>Deneme bildirimi gönder</button>
       <p>Sesler ekrana ilk dokunuşundan sonra başlar. Telefon sessizdeyse çalmaz.</p>
       <button type="button" class="kapat" id="aKapat">Kapat</button>
       <p id="surum" hidden></p>

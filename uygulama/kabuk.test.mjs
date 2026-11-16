@@ -31,8 +31,10 @@ function yayinDosyalari(dizin = KOK) {
 }
 
 // ---- Service worker'ı sahte ortamda çalıştırma ----------------------------
-function swOrtami({ eksik = [], onbellekler = new Map(), taban = TABAN, kapsam = taban, kayitYok = false } = {}) {
+function swOrtami({ eksik = [], onbellekler = new Map(), taban = TABAN, kapsam = taban, kayitYok = false, pencereler = [] } = {}) {
   const dinleyici = {};
+  const bildirimler = [];
+  const acilan = [];
   const getir = [];
   const cozum = (u) => new URL(typeof u === 'string' ? u : u.url, taban).href;
   const seçenek = (o) => (o || {});
@@ -66,9 +68,14 @@ function swOrtami({ eksik = [], onbellekler = new Map(), taban = TABAN, kapsam =
     URL, Promise, Response: class { constructor(g, i) { this.govde = g; Object.assign(this, i); this.ok = true; } },
     self: {
       location: { href: taban + 'sw.js', origin: new URL(taban).origin },
-      ...(kayitYok ? {} : { registration: { scope: kapsam } }),
+      ...(kayitYok ? {} : { registration: { scope: kapsam, async showNotification(baslik, secenek) { bildirimler.push({ baslik, secenek }); } } }),
       addEventListener(tur, fn) { dinleyici[tur] = fn; },
-      clients: { claimCagrildi: 0, async claim() { this.claimCagrildi++; } },
+      clients: {
+        claimCagrildi: 0,
+        async claim() { this.claimCagrildi++; },
+        async matchAll() { return pencereler; },
+        async openWindow(u) { acilan.push(u); return { url: u }; },
+      },
       skipWaitingCagrildi: 0,
       skipWaiting() { this.skipWaitingCagrildi++; return Promise.resolve(); },
     },
@@ -90,7 +97,7 @@ function swOrtami({ eksik = [], onbellekler = new Map(), taban = TABAN, kapsam =
     return { e, bitti: () => bekle };
   };
   const surum = ctx.SURUM ?? vm.runInContext('SURUM', ctx);
-  return { ctx, dinleyici, olay, getir, caches, surum };
+  return { ctx, dinleyici, olay, getir, caches, surum, bildirimler, acilan };
 }
 
 function istek(url, { method = 'GET', mode = 'cors' } = {}) {
@@ -153,6 +160,8 @@ test('betiklerin import ettiği yerel modüller KABUK listesindedir', () => {
   }
   assert.match(oku('uygulama.js'), /import\('\.\/veri-canli\.js'\)/);
   assert.ok(kabuk.includes(norm('./veri-canli.js')));
+  assert.match(oku('uygulama.js'), /import\('\.\/bildirim\.js'\)/);
+  assert.ok(kabuk.includes(norm('./bildirim.js')));
 });
 
 test('index.html manifest, apple-touch-icon ve kabuk.js; sesler.html kabuk.js içerir', () => {
@@ -531,4 +540,116 @@ test('yerelde (localhost) worker kaydedilmez ve eski kayıt kaldırılır; ?sw=1
   await bekle();
   assert.equal(yayin.log.kayit.length, 1);
   assert.equal(yayin.log.kaldirildi, 0);
+});
+
+// ---- Bildirimler (push, notificationclick) ---------------------------------
+const SIMGE = './simge/simge-192.png';
+const pushOlayi = (veri) => ({ data: veri === undefined ? null : veri });
+const jsonVeri = (nesne) => ({ json: () => JSON.parse(JSON.stringify(nesne)) });
+const metinVeri = (m) => ({ json: () => JSON.parse(m) });
+
+test('push: geçerli yük showNotification çağırır (başlık, gövde, etiket, simge, rozet, url)', async () => {
+  const o = swOrtami();
+  const { bitti } = o.olay('push', pushOlayi(jsonVeri({ baslik: 'Toparlanmış bir gün', govde: 'Uyku ve HRV iyi.', etiket: 'brifing', url: './' })));
+  await bitti();
+  assert.equal(o.bildirimler.length, 1);
+  const { baslik, secenek } = o.bildirimler[0];
+  assert.equal(baslik, 'Toparlanmış bir gün');
+  assert.equal(secenek.body, 'Uyku ve HRV iyi.');
+  assert.equal(secenek.tag, 'brifing');
+  assert.equal(secenek.icon, SIMGE);
+  assert.equal(secenek.badge, SIMGE);
+  assert.equal(secenek.data.url, './');
+});
+
+test('push: boş, bozuk, nesne olmayan ya da eksik alanlı yükte genel metin gösterilir', async () => {
+  const durumlar = [
+    pushOlayi(undefined), // veri yok
+    pushOlayi(metinVeri('bu json degil')),
+    pushOlayi(metinVeri('null')),
+    pushOlayi(metinVeri('"yalnız dizgi"')),
+    pushOlayi(metinVeri('[1,2]')),
+    pushOlayi(jsonVeri({})),
+    pushOlayi(jsonVeri({ baslik: 5, govde: null, etiket: {}, url: 7 })),
+    pushOlayi(jsonVeri({ baslik: '  ', govde: '' })),
+    pushOlayi({ json() { throw new Error('okunamadı'); } }),
+  ];
+  for (const d of durumlar) {
+    const o = swOrtami();
+    await o.olay('push', d).bitti();
+    assert.equal(o.bildirimler.length, 1);
+    assert.equal(o.bildirimler[0].baslik, 'GarminAnalizer');
+    assert.equal(o.bildirimler[0].secenek.body, 'Yeni bilgi var.');
+    assert.equal(o.bildirimler[0].secenek.icon, SIMGE);
+    assert.equal(typeof o.bildirimler[0].secenek.tag, 'string');
+    assert.equal(o.bildirimler[0].secenek.data.url, './');
+  }
+});
+
+test('push: bildirim gösterilirken olay waitUntil ile açık tutulur', async () => {
+  const o = swOrtami();
+  const { bitti } = o.olay('push', pushOlayi(jsonVeri({ baslik: 'a', govde: 'b', etiket: 'c', url: './' })));
+  assert.ok(bitti() && typeof bitti().then === 'function');
+});
+
+function tikla(o, veri) {
+  let kapandi = 0;
+  const bildirim = { close() { kapandi += 1; }, data: veri };
+  const r = o.olay('notificationclick', { notification: bildirim });
+  return { bitti: r.bitti, kapandi: () => kapandi };
+}
+
+test('notificationclick: bildirimi kapatır; açık kapsam penceresi varsa odaklar, yeni pencere açmaz', async () => {
+  const odak = [];
+  const dis = { url: 'https://baska.example/', focus: async () => odak.push('dis') };
+  const ic = { url: TABAN + 'index.html', focus: async () => odak.push('ic') };
+  const o = swOrtami({ pencereler: [dis, ic] });
+  const t = tikla(o, { url: './' });
+  await t.bitti();
+  assert.equal(t.kapandi(), 1);
+  assert.deepEqual(odak, ['ic']);
+  assert.equal(o.acilan.length, 0);
+});
+
+test('notificationclick: açık pencere yoksa kapsam kökünü açar', async () => {
+  const o = swOrtami({ pencereler: [{ url: 'https://baska.example/', focus: async () => assert.fail('odaklanmamalı') }] });
+  const t = tikla(o, { url: './' });
+  await t.bitti();
+  assert.equal(t.kapandi(), 1);
+  assert.deepEqual([...o.acilan], [TABAN]);
+});
+
+test('notificationclick: mutlak, kapsam dışı, protokollü ya da bozuk url yok sayılır; kapsam kökü açılır', async () => {
+  const kotuler = [
+    'https://kotu.example/', 'http://kotu.example/x', TABAN + 'index.html', '//kotu.example/', '/baska/yol', '../baska/',
+    '../../', 'javascript:alert(1)', 'data:text/html,x', '\\kotu.example', 5, null, undefined, {},
+  ];
+  for (const url of kotuler) {
+    const o = swOrtami();
+    await tikla(o, url === undefined ? {} : { url }).bitti();
+    assert.deepEqual([...o.acilan], [TABAN], String(url));
+  }
+  const o = swOrtami();
+  await tikla(o, null).bitti(); // bildirimde veri yok
+  assert.deepEqual([...o.acilan], [TABAN]);
+});
+
+test('notificationclick: kapsam içi göreli url açılır', async () => {
+  const o = swOrtami();
+  await tikla(o, { url: './sesler.html' }).bitti();
+  assert.deepEqual([...o.acilan], [TABAN + 'sesler.html']);
+});
+
+test('notificationclick: alt dizin kapsamında da kapsam dışı yol kapsam köküne döner', async () => {
+  const taban = 'https://ornek.github.io/GarminAnalizer/';
+  const o = swOrtami({ taban, kapsam: taban });
+  await tikla(o, { url: '../' }).bitti();
+  assert.deepEqual([...o.acilan], [taban]);
+});
+
+test('sw.js bildirim kodu mutlak yerel yol ve console.log içermez; push ve notificationclick dinleyicileri vardır', () => {
+  const o = swOrtami();
+  assert.equal(typeof o.dinleyici.push, 'function');
+  assert.equal(typeof o.dinleyici.notificationclick, 'function');
+  assert.doesNotMatch(oku('sw.js'), /console\./);
 });
