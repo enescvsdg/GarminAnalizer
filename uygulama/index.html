@@ -175,6 +175,34 @@ button.serit svg.ok{width:10px;height:10px;stroke-width:1.6;fill:none;stroke-lin
 #ayar #surum{font-size:11px;text-align:center;color:rgba(255,246,236,.45);font-variant-numeric:tabular-nums}
 #ayar #surum[hidden]{display:none}
 #ekSatir .lg span{padding-left:11px;font-weight:600;white-space:nowrap}
+
+/* MASAÜSTÜ (geniş ekran, ≥1000×620): yalnız .genis altında geçerlidir; telefon ve çerçeve düzeni etkilenmez.
+   Sahne pencereyi doldurur; Bugün ve Trend iki ayrı ölçekli bölgededir (uygulama.js genisKur/genisOlcek). */
+html.genis,html.genis body{background:#08050c}
+.tel.genis{position:fixed;left:0;top:0;width:100%;height:100%;overflow:clip;border-radius:0;box-shadow:none;background:#08050c;--st:max(14px,env(safe-area-inset-top));--sb:0px;--tb:20px}
+.bolge{position:absolute;left:0;top:0;overflow:hidden;overflow:clip;transform-origin:0 0} /* clip: odak ya da kaydırma bölgeyi/sahneyi kaydıramaz */
+.genis .sekme{display:none}
+/* iki bölge arasında dikiş yok: şeklin zemini sağa, gökyüzü sola doğru sahnenin koyusuna erir */
+.genis #gl{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 44px),transparent)}
+.genis #gok,.genis #yildiz{-webkit-mask-image:linear-gradient(90deg,transparent,#000 160px);mask-image:linear-gradient(90deg,transparent,#000 160px)}
+.genis #katman{-webkit-mask-image:linear-gradient(90deg,transparent,#000 40px);mask-image:linear-gradient(90deg,transparent,#000 40px)}
+.genis.serbest #gl{-webkit-mask-image:linear-gradient(90deg,transparent,#000 44px,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(90deg,transparent,#000 44px,#000 calc(100% - 44px),transparent)}
+.genis.serbest #gok,.genis.serbest #yildiz{-webkit-mask-image:linear-gradient(90deg,transparent,#000 160px,#000 calc(100% - 160px),transparent);mask-image:linear-gradient(90deg,transparent,#000 160px,#000 calc(100% - 160px),transparent)}
+.genis.serbest #katman{-webkit-mask-image:linear-gradient(90deg,transparent,#000 40px,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(90deg,transparent,#000 40px,#000 calc(100% - 40px),transparent)}
+.genis #trend,.genis #trend:active{cursor:default}
+.genis .secici{flex-wrap:wrap;overflow:visible;margin:0 0 14px;padding:0;-webkit-mask-image:none;mask-image:none}
+.genis .secici button{min-height:var(--dok,40px)}
+.genis .secici button:not([aria-pressed=true]):hover{border-color:rgba(255,246,236,.42);color:var(--metin)}
+.genis #ekSatir{max-width:560px}
+#sabit{stroke:rgba(255,246,236,.32);stroke-width:1;stroke-dasharray:1 4}
+#arac{position:absolute;top:var(--st);right:16px;z-index:5;display:flex;gap:8px;align-items:center}
+.genis #sesBtn,#ayarBtn{position:static;height:40px;border:1px solid rgba(255,246,236,.2);background:rgba(12,8,18,.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:border-color .2s,color .2s}
+.genis #sesBtn{width:40px}
+#ayarBtn{display:flex;align-items:center;gap:7px;padding:0 16px 0 12px;border-radius:999px;font-size:14px;font-weight:500;color:rgba(255,246,236,.88)}
+#ayarBtn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.6}
+.genis #sesBtn:hover,#ayarBtn:hover,#ayarBtn[aria-expanded=true]{border-color:rgba(255,246,236,.45);color:var(--metin)}
+.genis #perde{background:rgba(5,3,8,.62)}
+.genis #ayar{left:50%;top:50%;right:auto;bottom:auto;width:min(440px,calc(100% - 32px));max-height:calc(100% - 48px);border-radius:24px;box-shadow:0 30px 90px rgba(0,0,0,.6)}
 </style>
 </head>
 <body>
