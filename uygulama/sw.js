@@ -9,6 +9,7 @@ const KABUK = [
   './veri.js',
   './ses.js',
   './veri-canli.js',
+  './duzen.js',
   './kabuk.js',
   './vendor/gsap.min.js',
   './manifest.webmanifest',

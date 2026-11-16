@@ -3,6 +3,7 @@ import { apiYaniti } from '../stats/ozet.js';
 import { gunleriOku, durumOku } from '../db.js';
 import { yerelTarih, gunEkle } from '../zaman.js';
 import { yorumOku, yapayZekaAcik, yapayZekaYaz } from '../yorum/yorum.js';
+import { egilimOku } from '../yorum/egilim.js';
 
 const enc = new TextEncoder();
 
@@ -62,6 +63,11 @@ async function gunler(url, env, simdiMs, cors) {
     son.hukum = yorum.hukum;
     son.gerekce = yorum.gerekce;
     govde.yorumKaynak = 'gemini';
+  }
+  try {
+    govde.egilim = await egilimOku(env.DB, bugun, satirlar); // eğilim de süs katmanıdır; hata API'yi bozmaz
+  } catch {
+    govde.egilim = null;
   }
   return yanit(govde, 200, cors);
 }

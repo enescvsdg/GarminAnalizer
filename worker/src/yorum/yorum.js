@@ -25,7 +25,7 @@ const sayiMetni = (x) => String(Math.round(x * 10) / 10);
 const DURUM_METNI = { lo: 'altında', ok: 'normalde', hi: 'üstünde' };
 const enc = new TextEncoder();
 
-async function karmaHesapla(metin) {
+export async function karmaHesapla(metin) {
   const ozet = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(metin)));
   return Array.from(ozet, (b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
 }
@@ -54,9 +54,9 @@ export async function ozetGirdisi(satirlar, bugun) {
   return { metin, karma: await karmaHesapla(metin), kademe, enerji: e };
 }
 
-const YASAK = new RegExp('[<>{}]|http|[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2069\\ufeff\\u00ad]|\\p{Extended_Pictographic}', 'iu');
+export const YASAK = new RegExp('[<>{}]|http|[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2069\\ufeff\\u00ad]|\\p{Extended_Pictographic}', 'iu');
 
-function temizle(s, enFazlaKarakter, enFazlaKelime) {
+export function temizle(s, enFazlaKarakter, enFazlaKelime) {
   if (typeof s !== 'string' || YASAK.test(s)) return null;
   const t = s.trim().replace(/\s+/g, ' ');
   if (t === '' || t.length > enFazlaKarakter) return null;
@@ -105,6 +105,16 @@ export async function yapayZekaYaz(db, acik) {
   await durumYaz(db, 'ayar_yapay_zeka', acik === true);
 }
 
+// Günlük istek sayacı (hüküm ve eğilim yorumu ORTAK): { tarih, n } kaydı, gün değişince sıfırdan sayılır.
+export async function gunlukSayacOku(db, bugun) {
+  const sayac = await durumOku(db, 'yorum_sayac');
+  return sayac?.tarih === bugun ? sayac.n : 0;
+}
+
+export async function gunlukSayacYaz(db, bugun, n) {
+  await durumYaz(db, 'yorum_sayac', { tarih: bugun, n });
+}
+
 export async function yorumGuncelle({ db, satirlar, bugun, simdiMs, yaz }) {
   if (!(await yapayZekaAcik(db))) return { durum: 'kapali' };
   const girdi = await ozetGirdisi(satirlar, bugun);
@@ -117,10 +127,9 @@ export async function yorumGuncelle({ db, satirlar, bugun, simdiMs, yaz }) {
   const hataSayisi = hata?.tarih === bugun && hata.karma === girdi.karma ? hata.n : 0;
   if (hataSayisi >= HATA_SINIRI) return { durum: 'hata' };
 
-  const sayac = await durumOku(db, 'yorum_sayac');
-  const n = sayac?.tarih === bugun ? sayac.n : 0;
+  const n = await gunlukSayacOku(db, bugun);
   if (n >= GUNLUK_SINIR) return { durum: 'sinir' };
-  await durumYaz(db, 'yorum_sayac', { tarih: bugun, n: n + 1 }); // istekten ÖNCE
+  await gunlukSayacYaz(db, bugun, n + 1); // istekten ÖNCE
 
   let ham = null;
   try {

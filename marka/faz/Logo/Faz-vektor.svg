@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" role="img" aria-label="GarminAnalizer Faz">
+ <defs>
+  <linearGradient id="glass" x1="0" y1=".8" x2="1" y2=".2" gradientUnits="objectBoundingBox">
+   <stop stop-color="#82ac97"/><stop offset=".15" stop-color="#d9f4dd"/><stop offset=".28" stop-color="#ffe6b9"/><stop offset=".42" stop-color="#a4c5a6"/><stop offset=".62" stop-color="#c6eada"/><stop offset=".77" stop-color="#fff7dc"/><stop offset=".91" stop-color="#afd8bd"/><stop offset="1" stop-color="#679280"/>
+  </linearGradient>
+  <linearGradient id="back" x1="0" y1="1" x2=".96" y2="0">
+   <stop stop-color="#ffe1a9"/><stop offset=".18" stop-color="#e9ac7e"/><stop offset=".4" stop-color="#626e58"/><stop offset=".63" stop-color="#82997b"/><stop offset=".83" stop-color="#b2dfc1"/><stop offset="1" stop-color="#658572"/>
+  </linearGradient>
+  <linearGradient id="edge" x1="0" y1=".4" x2="1" y2=".6">
+   <stop stop-color="#8cbca4"/><stop offset=".17" stop-color="#fceac6"/><stop offset=".31" stop-color="#ffbd88"/><stop offset=".52" stop-color="#fff5d5"/><stop offset=".7" stop-color="#e7a778"/><stop offset=".86" stop-color="#c2e3c7"/><stop offset="1" stop-color="#ffe0ad"/>
+  </linearGradient>
+  <linearGradient id="curl" x1=".15" y1="1" x2=".91" y2="0">
+   <stop stop-color="#ad815f"/><stop offset=".17" stop-color="#f6d6a6"/><stop offset=".35" stop-color="#aac7aa"/><stop offset=".59" stop-color="#719981"/><stop offset=".68" stop-color="#bfebd4"/><stop offset=".87" stop-color="#e9f5d8"/><stop offset="1" stop-color="#96bca0"/>
+  </linearGradient>
+ </defs>
+ <g stroke-linejoin="round">
+  <path id="rear-face" fill="url(#back)" stroke="#f5d7ad" stroke-width="3" d="M477 601 C560 642 601 826 671 959 C711 1039 756 1064 817 1061 C890 1061 935 1006 967 950 L1007 845 C930 948 871 937 826 840 C790 746 767 589 735 449 C719 375 699 329 665 322 C596 331 543 486 477 601Z"/>
+  <path id="rising-fold" fill="url(#curl)" stroke="#d9edcc" stroke-width="3" d="M799 792 C859 847 910 774 958 663 C1018 510 1044 473 1090 470 C1144 463 1184 527 1224 583 C1242 607 1243 635 1233 640 C1212 652 1167 635 1118 658 C1043 692 1010 820 970 922 C943 982 913 1009 883 996 C845 983 817 884 799 792Z"/>
+  <path id="far-edge" fill="url(#edge)" stroke="#fff0ce" stroke-width="2" d="M1070 689 C1111 607 1152 568 1190 571 C1215 573 1234 596 1238 617 L1237 634 Q1234 647 1217 646 C1151 642 1115 660 1070 689Z"/>
+  <path id="front-face" fill="url(#glass)" stroke="#d7edcb" stroke-width="4" d="M12 839 C14 820 48 807 68 793 C156 732 193 635 251 506 C347 290 415 127 537 119 C622 113 661 198 690 286 L711 369 C689 328 657 333 624 369 C542 452 490 609 425 737 C376 837 325 892 224 920 C141 942 66 950 18 942 C12 941 11 936 11 927Z"/>
+  <path id="near-edge" fill="url(#edge)" stroke="#f5e0b9" stroke-width="2.5" d="M12 838 C22 857 153 868 245 848 C335 831 390 772 437 700 C389 818 337 892 237 927 C159 950 66 952 19 944 Q11 942 11 930Z"/>
+  <g id="glass-highlights" fill="none" stroke-linecap="round">
+   <path stroke="#fffbe7" stroke-width="7" d="M22 836 C131 789 185 675 230 569 M441 185 C489 128 542 116 577 139 C622 169 648 239 673 321"/>
+   <path stroke="#eaffed" stroke-width="4" d="M34 846 C172 867 278 845 345 805 M1020 553 C1047 493 1074 466 1107 476"/>
+   <path stroke="#ffd8a8" stroke-width="4" d="M519 624 C617 681 712 772 786 799 M663 919 C712 1038 767 1071 826 1058"/>
+  </g>
+ </g>
+</svg>
