@@ -1,6 +1,6 @@
-// Uygulama simgelerini üretir: `npm run simge`. Bağımlılık yok; PNG elle yazılır.
+// npm run simge, onaylanan Faz PNG dosyalarını web uygulamasına kopyalar.
 import { deflateSync } from 'node:zlib';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -83,7 +83,9 @@ export const CIKTILAR = [
 ];
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const hedef = join(dirname(fileURLToPath(import.meta.url)), '..', 'uygulama', 'simge');
+  const kok = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const kaynak = join(kok, 'marka', 'faz', 'Web', 'simge');
+  const hedef = join(kok, 'uygulama', 'simge');
   mkdirSync(hedef, { recursive: true });
-  for (const [ad, boyut, maske] of CIKTILAR) writeFileSync(join(hedef, ad), simgeCiz(boyut, { maske }));
+  for (const [ad] of CIKTILAR) copyFileSync(join(kaynak, ad), join(hedef, ad));
 }
