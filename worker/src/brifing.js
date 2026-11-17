@@ -119,6 +119,7 @@ export async function herkeseGonder({ db, env, yuk, simdiMs, fetch, gonder, abon
           vapid,
           fetch,
           simdiSn: Math.floor(simdiMs / 1000),
+          gunluk: (asama) => console.warn(`push-asama: ${asama}`),
         });
       } catch {
         return { durum: 'hata', kod: null };

@@ -269,3 +269,13 @@ test('pushGonder: geçersiz uç nokta hata, istek yok', async () => {
   }
   assert.equal(o.cagrilar.length, 0);
 });
+
+test('HTTP kodu olmayan gönderim hatasında yalnızca aşama bildirilir', async () => {
+  const { girdi } = await ortam();
+  const asamalar = [];
+  const gunluk = (asama) => asamalar.push(asama);
+  await pushGonder({ ...girdi, gunluk, abonelik: { ...girdi.abonelik, auth: 'gecersiz' } });
+  await pushGonder({ ...girdi, gunluk, vapid: { ...girdi.vapid, gizli: 'gecersiz' } });
+  await pushGonder({ ...girdi, gunluk, fetch: async () => { throw new Error('kişisel veri'); } });
+  assert.deepEqual(asamalar, ['sifreleme', 'imza', 'ag']);
+});

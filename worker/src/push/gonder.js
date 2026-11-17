@@ -22,16 +22,24 @@ export function ucNoktaGecerli(url) {
 
 const HATA = (kod = null) => ({ durum: 'hata', kod });
 
-export async function pushGonder({ abonelik, yuk, vapid, fetch: fetchFn, simdiSn, ttl = 43200, aciliyet = 'normal' }) {
+export async function pushGonder({ abonelik, yuk, vapid, fetch: fetchFn, simdiSn, ttl = 43200, aciliyet = 'normal', gunluk }) {
+  let asama = 'abonelik';
+  const hata = () => {
+    gunluk?.(asama);
+    return HATA();
+  };
   try {
-    if (!abonelik || !ucNoktaGecerli(abonelik.endpoint)) return HATA();
+    if (!abonelik || !ucNoktaGecerli(abonelik.endpoint)) return hata();
+    asama = 'sifreleme';
     const duz = new TextEncoder().encode(JSON.stringify(yuk));
     const govde = await pushSifrele({ yuk: duz, p256dh: abonelik.p256dh, auth: abonelik.auth });
-    if (govde.length > EN_BUYUK_GOVDE) return HATA();
+    if (govde.length > EN_BUYUK_GOVDE) return hata();
+    asama = 'imza';
     const yetki = await vapidBaslik({
       ucNokta: abonelik.endpoint, acikAnahtar: vapid.acik, gizliAnahtar: vapid.gizli,
       konu: vapid.konu, simdiSn,
     });
+    asama = 'ag';
     const yanit = await fetchFn(abonelik.endpoint, {
       method: 'POST',
       redirect: 'error',
@@ -49,6 +57,6 @@ export async function pushGonder({ abonelik, yuk, vapid, fetch: fetchFn, simdiSn
     if (GITTI.has(kod)) return { durum: 'gitti', kod };
     return HATA(kod);
   } catch {
-    return HATA();
+    return hata();
   }
 }

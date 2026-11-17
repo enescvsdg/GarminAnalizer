@@ -835,7 +835,7 @@ $('bilDene').addEventListener('click', async () => {
   bil.deneme = true; bilGoster('Gönderiliyor…');
   let r = null; try { r = await CANLI.denemeBildirimi(); } catch (e) { r = null; }
   bil.deneme = false;
-  bilGoster(r && r.bekle ? 'Az önce gönderildi. Birkaç saniye bekle.' : !r ? 'Gönderilemedi.' : r.gonderilen === 0 ? 'Kayıtlı cihaz yok.' : r.basarili > 0 ? 'Gönderildi. Birkaç saniye içinde gelmeli.' : 'Gönderilemedi.');
+  bilGoster(r && r.bekle ? 'Son denemeden sonra 10 saniye bekle.' : !r ? 'Gönderilemedi.' : r.gonderilen === 0 ? 'Kayıtlı cihaz yok.' : r.basarili > 0 ? 'Bildirim servisi isteği kabul etti.' : 'Gönderilemedi.');
   $('bilDene').focus({ preventScroll: true });
 });
 (async () => {
