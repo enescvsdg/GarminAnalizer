@@ -32,12 +32,14 @@ globalThis.document = sahteDoc;
 
 const {
   turAdi, sureBicim, mesafeBicim, gunBaslik, haftaDurum, saatBicim, insanAdi, bugunTarih, ornekUret, ORNEK, AKTIVITE_ANAHTARLARI,
-  aktiviteKur, yanitDuzenle, haftalikGrafik,
+  aktiviteKur, yanitDuzenle, haftalikGrafik, bolgeOzet, bolgeDakika, etkiEtiketi, simgeTuru, turGrubu,
 } = await import('./aktiviteler.js');
 
 function hepsi(d, f, cikti = []) { f(d) && cikti.push(d); d.childNodes.forEach((c) => hepsi(c, f, cikti)); return cikti; }
 const tick = () => new Promise((r) => setTimeout(r, 0));
 const KOTU = /NaN|undefined|null|Infinity|\[object/;
+// Ayrıntıyı açanlar: kahraman kartın düğmesi (en son antrenman) ve listedeki kartlar, belge sırasıyla
+const acanMi = (d) => d.tag === 'button' && /akt-oge|akt-kAc/.test(d.className);
 
 /* ---- saf yardımcılar ---- */
 test('turAdi: bilinen, bilinmeyen, boş', () => {
@@ -150,7 +152,7 @@ test('aktiviteKur: ORNEK çizilir, metinde NaN/undefined/null yok, stil bir kez 
   assert.match(kap.textContent, /Aktiviteler/);
   assert.match(kap.textContent, /antrenman yükü/);
   assert.equal(sahteDoc.head.childNodes.filter((c) => c.attrs['data-modul'] === 'aktivite').length, 1);
-  const dugmeler = hepsi(kap, (d) => d.tag === 'button' && d.className.includes('akt-oge'));
+  const dugmeler = hepsi(kap, acanMi);
   assert.equal(dugmeler.length, ORNEK.aktiviteler.length);
   const gr = hepsi(kap, (d) => d.attrs.role === 'img' && d.attrs.class === 'akt-grafik');
   assert.equal(gr.length, 1);
@@ -160,7 +162,7 @@ test('aktiviteKur: ORNEK çizilir, metinde NaN/undefined/null yok, stil bir kez 
 
 test('ayrıntı: her örnek aktivite için açılır, temiz metin, Esc kapatır ve odağı geri verir', async () => {
   const { kap, m } = await kur(ORNEK);
-  const dugmeler = hepsi(kap, (d) => d.tag === 'button' && d.className.includes('akt-oge'));
+  const dugmeler = hepsi(kap, acanMi);
   for (const d of dugmeler) {
     d.tikla();
     const kok = kap.childNodes[0];
@@ -177,7 +179,7 @@ test('ayrıntı: her örnek aktivite için açılır, temiz metin, Esc kapatır 
 
 test('ayrıntı: kuvvette set listesi, koşuda bölgeler; null alan satırı yok', async () => {
   const { kap, m } = await kur(ORNEK);
-  const dugmeler = hepsi(kap, (d) => d.tag === 'button' && d.className.includes('akt-oge'));
+  const dugmeler = hepsi(kap, acanMi);
   const kuvvet = dugmeler[ORNEK.aktiviteler.findIndex((a) => a.tur === 'strength_training')];
   kuvvet.tikla();
   let t = kap.childNodes[0].childNodes[1].textContent;
@@ -199,7 +201,7 @@ test('tamamen null aktivite: kart ve ayrıntı temiz', async () => {
   const { kap, m } = await kur({ aktiviteler: [bos, { ...bos, id: 'y', tur: 'weird_thing', setler: [{}, { tur: null }] }], haftalar: [{ bas: '2026-11-16', yuk: null, sure_s: 0, adet: 0 }], yukBant: null });
   assert.doesNotMatch(kap.textContent, KOTU);
   assert.match(kap.textContent, /Antrenman/);
-  const dugmeler = hepsi(kap, (d) => d.tag === 'button' && d.className.includes('akt-oge'));
+  const dugmeler = hepsi(kap, acanMi);
   assert.equal(dugmeler.length, 2);
   for (const d of dugmeler) {
     d.tikla();
@@ -298,4 +300,138 @@ test('haftalikGrafik: adet>0 ama yük yok -> "yük verisi yok"; adet 0 -> "antre
   assert.match(g.aria, /9 Kas[^,]* haftası antrenman yok/);
   assert.match(g.aria, /120/);
   assert.doesNotMatch(g.aria, /NaN|undefined|null/);
+});
+
+/* ---- kahraman kart, bölge halkası, etki kadranları ---- */
+test('bolgeOzet, bolgeDakika, etkiEtiketi, simgeTuru', () => {
+  assert.deepEqual(bolgeOzet([60, 600, 1200, 300, 0]), { s: [60, 600, 1200, 300, 0], toplam: 2160, baskin: 2 });
+  assert.deepEqual(bolgeOzet([null, NaN, -5, 120]).s, [0, 0, 0, 120, 0]);
+  assert.equal(bolgeOzet([0, 0, 0, 0, 0]), null);
+  assert.equal(bolgeOzet(null), null);
+  assert.equal(bolgeDakika(1080), '18 dk');
+  assert.equal(bolgeDakika(20), '<1 dk');
+  assert.equal(bolgeDakika(0), '–');
+  assert.equal(bolgeDakika(null), '–');
+  assert.equal(etkiEtiketi(0.4), 'Etkisiz');
+  assert.equal(etkiEtiketi(1.96), 'Koruyor');
+  assert.equal(etkiEtiketi(3.4), 'Geliştiriyor');
+  assert.equal(etkiEtiketi(4.2), 'Çok geliştiriyor');
+  assert.equal(etkiEtiketi(5), 'Aşırı yüklenme');
+  assert.equal(etkiEtiketi(null), null);
+  assert.equal(simgeTuru(turGrubu('running')), 'kosu');
+  assert.equal(simgeTuru(turGrubu('hiking')), 'dag');
+  assert.equal(simgeTuru(turGrubu('walking')), 'ayak');
+  assert.equal(simgeTuru(turGrubu('yoga')), 'nefes');
+  assert.equal(simgeTuru(turGrubu('pilates')), 'nefes');
+  assert.equal(simgeTuru(turGrubu('quidditch')), 'nabiz');
+  assert.equal(simgeTuru('constructor'), 'nabiz');
+});
+
+test('kahraman: en son antrenman üstte; halka 5 dilimli, kadranlar değer metniyle; liste kalanları gösterir', async () => {
+  const { kap, m } = await kur(ORNEK);
+  const son = ORNEK.aktiviteler[0];
+  const k = hepsi(kap, (d) => d.className === 'akt-kahraman');
+  assert.equal(k.length, 1);
+  assert.equal(k[0].attrs['aria-label'], 'Son antrenman');
+  assert.match(k[0].textContent, new RegExp(turAdi(son.tur)));
+  const halka = hepsi(k[0], (d) => d.attrs.class === 'akt-halka');
+  assert.equal(halka.length, 1);
+  assert.match(halka[0].attrs['aria-label'], /^Nabız bölgeleri: Çok hafif .*Azami .*En çok/);
+  assert.equal(hepsi(k[0], (d) => /akt-ljS/.test(d.className)).length, 5);
+  const kadran = hepsi(k[0], (d) => d.className === 'akt-kadran');
+  assert.equal(kadran.length, [son.aerobik, son.anaerobik].filter(Number.isFinite).length);
+  assert.match(kadran[0].attrs['aria-label'], /^Aerobik etki \d,\d \/ 5, /);
+  assert.equal(hepsi(kap, (d) => d.tag === 'button' && /akt-oge/.test(d.className)).length, ORNEK.aktiviteler.length - 1);
+  assert.match(kap.textContent, /Önceki antrenmanlar/);
+  assert.doesNotMatch(kap.textContent, KOTU);
+  m.yokEt();
+});
+
+test('kahraman: seyrek son antrenman (yalnız süre) halka/kadran/yük çizmez', async () => {
+  const yoga = { ...TAM_BOS, id: 'y', tarih: bugunTarih(), tur: 'yoga', sure_s: 1800, kalori: 80 };
+  const { kap, m } = await kur({ aktiviteler: [yoga], haftalar: [], yukBant: null });
+  const k = hepsi(kap, (d) => d.className === 'akt-kahraman')[0];
+  assert.match(k.textContent, /Yoga/);
+  assert.match(k.textContent, /30 dk/);
+  assert.doesNotMatch(k.textContent, /Yük|Mesafe|nabız|Aerobik/);
+  assert.equal(hepsi(k, (d) => d.attrs.class === 'akt-halka' || d.className === 'akt-kadran').length, 0);
+  assert.doesNotMatch(kap.textContent, KOTU);
+  assert.doesNotMatch(kap.textContent, /Önceki antrenmanlar/);
+  m.yokEt();
+});
+
+/* ---- hareket motoru: IntersectionObserver, rAF, gizle/yokEt temizliği, azaltılmış hareket ---- */
+function sahteOrtam() {
+  const o = { kuyruk: [], iptal: 0, gozlemciler: [] };
+  globalThis.requestAnimationFrame = (f) => { o.kuyruk.push(f); return o.kuyruk.length; };
+  globalThis.cancelAnimationFrame = () => { o.iptal++; };
+  globalThis.IntersectionObserver = class {
+    constructor(cb) { this.cb = cb; this.izlenen = new Set(); this.kopuk = false; o.gozlemciler.push(this); }
+    observe(e) { this.izlenen.add(e); }
+    unobserve(e) { this.izlenen.delete(e); }
+    disconnect() { this.izlenen.clear(); this.kopuk = true; }
+  };
+  o.kare = (t) => { const q = o.kuyruk; o.kuyruk = []; q.forEach((f) => f(t)); };
+  o.temizle = () => { delete globalThis.requestAnimationFrame; delete globalThis.cancelAnimationFrame; delete globalThis.IntersectionObserver; };
+  return o;
+}
+const KOTU_OZ = /NaN|undefined|Infinity|null/;
+const ozBozuk = (kap) => hepsi(kap, (d) => Object.values(d.attrs).some((v) => KOTU_OZ.test(v)));
+
+test('canlı simgeler: yalnız görünür olan oynar; gizle döngüyü durdurur; yokEt gözlemciyi koparır', async () => {
+  const o = sahteOrtam();
+  try {
+    const turler = ['running', 'walking', 'hiking', 'cycling', 'swimming', 'strength_training', 'yoga', 'pilates', 'hiit', 'cardio', 'rowing', 'elliptical', 'other', 'weird'];
+    const aktiviteler = turler.map((tur, i) => ({ ...ORNEK.aktiviteler[0], id: `t${i}`, tur, baslangic: 1e12 - i * 1e6 }));
+    const { kap, m } = await kur({ ...ORNEK, aktiviteler });
+    const io = o.gozlemciler[0];
+    assert.equal(io.izlenen.size, turler.length, 'her kartın simgesi gözlenir');
+    assert.equal(ozBozuk(kap).length, 0, 'statik ilk kare temiz');
+    // kahraman halka/kadran dolum animasyonu döngüyü başlatır
+    assert.ok(o.kuyruk.length > 0);
+    for (let t = 0; t <= 2000; t += 40) o.kare(t);
+    assert.equal(o.kuyruk.length, 0, 'tween bitti, görünen simge yok: döngü uyur');
+    // iki simge görünür olur: döngü yeniden başlar ve her karede sürer
+    const ilk = [...io.izlenen].slice(0, 3);
+    const onceki = JSON.stringify(ilk[0].childNodes[0].childNodes[0].childNodes.map((c) => c.attrs));
+    io.cb(ilk.map((target) => ({ target, isIntersecting: true })));
+    assert.equal(o.kuyruk.length, 1);
+    for (let t = 3000; t <= 9000; t += 37) o.kare(t);
+    assert.equal(o.kuyruk.length, 1, 'görünür simge varken döngü sürer');
+    assert.notEqual(JSON.stringify(ilk[0].childNodes[0].childNodes[0].childNodes.map((c) => c.attrs)), onceki, 'simge hareket etti');
+    assert.equal(ozBozuk(kap).length, 0, 'hareket kareleri temiz');
+    // ayrıntı simgesi de gözlenir, kapanınca bırakılır
+    hepsi(kap, acanMi)[1].tikla();
+    assert.equal(io.izlenen.size, turler.length + 1);
+    sahteDoc.tus('Escape');
+    assert.equal(io.izlenen.size, turler.length);
+    // gizle: döngü durur, sıradaki kare yeniden kurmaz
+    m.gizle();
+    assert.ok(o.iptal > 0);
+    o.kare(9100);
+    assert.equal(o.kuyruk.length, 0, 'gizliyken kare istenmez');
+    m.goster();
+    assert.equal(o.kuyruk.length, 1, 'yeniden gösterince sürer');
+    m.yokEt();
+    assert.equal(io.kopuk, true);
+    o.kare(9200);
+    assert.equal(o.kuyruk.length, 0, 'yokEt sonrası döngü yok');
+    assert.equal((sahteDoc.dinleyici.visibilitychange || []).length, 0, 'görünürlük dinleyicisi kaldırıldı');
+    assert.equal((sahteDoc.dinleyici.keydown || []).length, 0);
+  } finally { o.temizle(); }
+});
+
+test('canlı simgeler: baglam.rm altında döngü hiç kurulmaz, halka/kadran doğrudan son hâlinde', async () => {
+  const o = sahteOrtam();
+  try {
+    const { kap, m } = await kur(ORNEK, { rm: true });
+    const io = o.gozlemciler[0];
+    io.cb([...io.izlenen].map((target) => ({ target, isIntersecting: true })));
+    assert.equal(o.kuyruk.length, 0);
+    const dolgu = hepsi(kap, (d) => d.tag === 'path' && d.attrs['stroke-width'] === '6' && d.attrs['stroke-dasharray']);
+    assert.ok(dolgu.length >= 1);
+    assert.ok(dolgu.every((d) => Number(d.attrs['stroke-dasharray'].split(' ')[0]) > 0), 'kadran değeri kadar dolu');
+    assert.equal(ozBozuk(kap).length, 0);
+    m.yokEt();
+  } finally { o.temizle(); }
 });
