@@ -216,3 +216,29 @@ test('gunEtiketi / degerMetni', () => {
   assert.equal(degerMetni({ birim: '' }, { v: null }), '–');
   assert.equal(degerMetni({ birim: '' }, undefined), '–');
 });
+
+test('takvimKur: 5 dakikadan taze veri varken yeniden alınmaz ve açık kart kapanmaz; bayatlayınca yenilenir', async () => {
+  const gunler = tamAy(2026, 10, 0.7);
+  let cagri = 0;
+  const { kap, t } = await kurVeGoster({ gunler }, { getir: async () => { cagri += 1; return { gunler }; } });
+  assert.equal(cagri, 1);
+  kap.all((e) => e.tagName === 'button' && e.className.includes('tkv-gun'))[1].fire('click');
+  assert.ok(kap.all((e) => e.className === 'tkv-kart')[0]);
+  t.gizle(); // gizlemek kartı kapatır; yeniden gösterimde veri tazeyse yine yeniden alınmaz
+  await t.goster();
+  assert.equal(cagri, 1);
+  const gercek = Date.now;
+  try {
+    Date.now = () => gercek() + 5 * 60 * 1000 + 1000;
+    await t.goster();
+  } finally { Date.now = gercek; }
+  assert.equal(cagri, 2);
+});
+
+test('takvimKur: açık kartlı sayfa yeniden gösterilince (taze veri) kart açık kalır', async () => {
+  const gunler = tamAy(2026, 10, 0.7);
+  const { kap, t } = await kurVeGoster({ gunler });
+  kap.all((e) => e.tagName === 'button' && e.className.includes('tkv-gun'))[1].fire('click');
+  await t.goster();
+  assert.ok(kap.all((e) => e.className === 'tkv-kart')[0], 'kart hâlâ açık');
+});

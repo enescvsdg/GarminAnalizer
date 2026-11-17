@@ -1,4 +1,4 @@
-import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, menuToplan, gunSirasi, modulKur, kayanMi } from './duzen.js';
+import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, modulKur, kayanMi } from './duzen.js';
 import { simgeKur } from './simgeler.js';
 import { ACIKLAMA } from './aciklama.js';
 const $ = (id) => document.getElementById(id);
@@ -731,11 +731,12 @@ const KAYAN = {
   takvim: { kap: $('takvim'), ice: () => import('./takvim.js'), kur: 'takvimKur', api: 'takvimGetir', gun: 400, c: null, yuk: null },
 };
 const menu = tel.querySelector('.sekme');
-// Takvimden bir güne dokunuş: son 28 gündeyse Bugün'e geçip o günü seçer ve true döner; değilse false
+// Takvimden bir güne dokunuş: son 7 günlük şerittelerse Bugün'e geçip o günü seçer ve true döner; daha eskiyse ya da yoksa false (Takvim kendi gün kartını açar)
 function gunAc(tarih) {
-  const gi = gunSirasi(tarih, GUNLER);
-  if (gi < 0 || mesgul) return false;
-  sec(gi - G0, true);
+  const si = gunAcKarar(tarih, GUNLER, G0);
+  if (si < 0 || mesgul) return false;
+  const gi = G0 + si;
+  sec(si, true);
   if (GENIS) { genisKayan(null); git(gi, carkSure(Math.abs(gi - st.P))); return true; }
   st.P = hedef = gi; pA = gi;
   return kayanMi(ekran) ? ekranGit('bugun') : true;
@@ -760,8 +761,16 @@ function kayanHazir(ad) {
   }
   return k.yuk;
 }
+// Telefonda menüden kayan ekrana geçince odak ekranın başlığına taşınır (kaydırmadan); geçiş bitmeden ya da modül gelmeden denemez
+let odakIste = null;
+function kayanOdak() {
+  const ad = odakIste;
+  if (!ad || mesgul || ekran !== ad) return;
+  const h = KAYAN[ad].kap.querySelector('h1, h2');
+  if (h) { h.focus({ preventScroll: true }); odakIste = null; }
+}
 function kayanGoster(ad) {
-  kayanHazir(ad).then((c) => { if (c && (GENIS ? kayanAcik : ekran) === ad) { try { c.goster(); } catch (e) { /* modül hatası uygulamayı durdurmaz */ } } });
+  kayanHazir(ad).then((c) => { if (c && (GENIS ? kayanAcik : ekran) === ad) { try { c.goster(); } catch (e) { /* modül hatası uygulamayı durdurmaz */ } kayanOdak(); } });
 }
 function kayanGizle(ad) { const c = KAYAN[ad].c; if (c) { try { c.gizle(); } catch (e) { /* aynı */ } } }
 let sonKay = 0;
@@ -798,13 +807,13 @@ function ekranGit(hedefEkran) {
   if (g.tur === 'ac') {
     altEkran = g.alt; if (onceki === 'trend' && simge) simge.durdur();
     ekran = hedefEkran; sekmeGuncelle(); mesgul = true; anaPasif(true);
-    kayanAc(hedefEkran, () => { mesgul = false; });
+    kayanAc(hedefEkran, () => { mesgul = false; kayanOdak(); });
     return true;
   }
   if (g.tur === 'degis') {
     ekran = hedefEkran; sekmeGuncelle(); mesgul = true;
     KAYAN[onceki].kap.style.zIndex = '3';
-    kayanAc(hedefEkran, () => { kayanKapat(onceki, null, true); mesgul = false; });
+    kayanAc(hedefEkran, () => { kayanKapat(onceki, null, true); mesgul = false; kayanOdak(); });
     return true;
   }
   ekran = g.alt; sekmeGuncelle(); anaPasif(false); menu.classList.remove('toplandi');
@@ -827,11 +836,11 @@ function genisKayan(ad) {
   $('wAktivite').setAttribute('aria-pressed', kayanAcik === 'aktivite'); $('wTakvim').setAttribute('aria-pressed', kayanAcik === 'takvim');
   $('wTrend').hidden = !kayanAcik;
 }
-for (const [e, id] of Object.entries(SEKME)) $(id).addEventListener('click', () => { ayarKapat(); ekranGit(e); });
+for (const [e, id] of Object.entries(SEKME)) $(id).addEventListener('click', () => { ayarKapat(); odakIste = null; if (ekranGit(e) && KAYAN[e]) odakIste = e; });
 if (GENIS) {
   $('wAktivite').addEventListener('click', () => genisKayan('aktivite'));
   $('wTakvim').addEventListener('click', () => genisKayan('takvim'));
-  $('wTrend').addEventListener('click', () => genisKayan(null));
+  $('wTrend').addEventListener('click', () => { genisKayan(null); $('tSimge').focus({ preventScroll: true }); }); // düğme kendini gizler: odak Trend'in ilk denetimine geçer
 }
 
 /* ================= Ses ve ayarlar ================= */

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, menuToplan, gunSirasi, tarihAnahtari, modulKur, kayanMi } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi } from './duzen.js';
 
 const hepsiSonlu = (o) => Object.entries(o).every(([, v]) => typeof v === 'number' && Number.isFinite(v));
 
@@ -330,4 +330,15 @@ test('modulKur: başarıda denetleyiciyi verir; yükleme, kurucu ya da biçim ha
   assert.equal(await modulKur(async () => ({ aktiviteKur: () => { throw new Error('kurulum'); } }), 'aktiviteKur', {}, {}), null);
   assert.equal(await modulKur(async () => ({ aktiviteKur: () => ({ goster() {} }) }), 'aktiviteKur', {}, {}), null);
   assert.equal(await modulKur(async () => null, 'aktiviteKur', {}, {}), null);
+});
+
+test('gunAcKarar: yalnız 7 günlük şeritteki günler Bugün\'e geçer; eski gün ve bilinmeyen gün -1', () => {
+  const gunler = Array.from({ length: 28 }, (_, i) => ({ tarih: new Date(2026, 9, 20 + i) }));
+  const G0 = 21;
+  assert.equal(gunAcKarar(tarihAnahtari(gunler[27].tarih), gunler, G0), 6);
+  assert.equal(gunAcKarar(tarihAnahtari(gunler[21].tarih), gunler, G0), 0);
+  assert.equal(gunAcKarar(tarihAnahtari(gunler[20].tarih), gunler, G0), -1); // şeritten eski: Takvim kendi kartını açar
+  assert.equal(gunAcKarar(tarihAnahtari(gunler[0].tarih), gunler, G0), -1);
+  assert.equal(gunAcKarar('2020-01-01', gunler, G0), -1);
+  assert.equal(gunAcKarar(null, gunler, G0), -1);
 });

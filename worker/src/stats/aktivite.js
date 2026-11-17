@@ -117,7 +117,7 @@ export function aktiviteYaniti(satirlar, bugun, gun) {
   if (yukler.length >= BANT_EN_AZ) {
     const yari = 1.5 * mad(yukler) * 1.4826;
     const med = medyan(yukler);
-    yukBant = { min: yuvarla1(med - yari), max: yuvarla1(med + yari) };
+    yukBant = { min: Math.max(0, yuvarla1(med - yari)), max: yuvarla1(med + yari) };
   }
 
   const aktiviteler = hepsi

@@ -241,7 +241,9 @@ export function takvimKur(kap, baglam = {}) {
   const kok = ek('div', 'tkv' + (rm ? ' rm' : ''));
   kok.hidden = true;
   const ust = ek('div', 'tkv-ust');
-  ust.appendChild(ek('h2', null, 'Takvim'));
+  const baslikEl = ek('h2', null, 'Takvim');
+  baslikEl.setAttribute('tabindex', '-1'); // menüden gelince odak buraya taşınır
+  ust.appendChild(baslikEl);
   const etiket = ek('span', 'tkv-etiket', 'Örnek veri');
   etiket.hidden = !baglam.ornek;
   ust.appendChild(etiket);
@@ -385,14 +387,15 @@ export function takvimKur(kap, baglam = {}) {
     icerik.appendChild(kapAylar);
   }
 
+  let sonYukleme = 0;
   async function yukle() {
     const b = ++belirteç;
-    if (baglam.ornek) { veri = ORNEK; ciz(); return; }
+    if (baglam.ornek) { veri = ORNEK; sonYukleme = Date.now(); ciz(); return; }
     if (!veri) durumGoster('Yükleniyor…');
     let yanit = null;
     try { yanit = typeof baglam.getir === 'function' ? await baglam.getir() : null; } catch (_) { yanit = null; }
     if (yok || b !== belirteç) return;
-    if (yanit && Array.isArray(yanit.gunler)) { veri = yanit; ciz(); }
+    if (yanit && Array.isArray(yanit.gunler)) { veri = yanit; sonYukleme = Date.now(); ciz(); }
     else if (!veri) durumGoster('Takvim şu an alınamadı.');
   }
 
@@ -403,6 +406,8 @@ export function takvimKur(kap, baglam = {}) {
   return {
     goster() {
       kok.hidden = false; gorunur = true;
+      // Veri 5 dakikadan tazeyse yeniden alınmaz ve çizilmez; açık gün kartı bir ziyaretle kapanmaz
+      if (veri && Date.now() - sonYukleme < 5 * 60 * 1000) return Promise.resolve();
       return yukle();
     },
     gizle() { kok.hidden = true; gorunur = false; kartKapat(false); },

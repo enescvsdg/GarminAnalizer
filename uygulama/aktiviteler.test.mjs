@@ -245,3 +245,57 @@ test('haftalikGrafik: 9 haftadan en yeni 8, bantsız da çizer', () => {
   assert.match(g.aria, /antrenman yok/);
   assert.doesNotMatch(g.aria, /Normal aralık|NaN|undefined/);
 });
+
+/* ---- süren hafta ve yük verisi yok ---- */
+function pazartesi(bugun) {
+  const [y, m, d] = bugun.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
+  return t.toISOString().slice(0, 10);
+}
+const gunOnce = (tarih, n) => { const t = new Date(`${tarih}T00:00:00Z`); t.setUTCDate(t.getUTCDate() - n); return t.toISOString().slice(0, 10); };
+
+test('haftaDurum: süren hafta banda göre yargılanmaz, tamamlanan hafta yargılanır', () => {
+  const bant = { min: 200, max: 400 };
+  const bugun = '2026-11-18'; // Çarşamba
+  assert.equal(pazartesi(bugun), '2026-11-16');
+  const suren = haftaDurum({ bas: '2026-11-16', yuk: 50 }, bant, bugun);
+  assert.equal(suren.durum, null);
+  assert.equal(suren.suruyor, true);
+  assert.equal(suren.metin, 'Hafta sürüyor');
+  assert.deepEqual(haftaDurum({ bas: '2026-11-09', yuk: 50 }, bant, bugun), { durum: 'lo', metin: 'normalin altında' });
+  assert.equal(haftaDurum({ bas: '2026-11-09', yuk: 300 }, bant, bugun).durum, 'ok');
+});
+
+test('ozetKart: bu hafta sürüyor notu (ok ve lo/hi rengi yok); geçmiş hafta durumu korunur', async () => {
+  const bugun = bugunTarih();
+  const bas = pazartesi(bugun);
+  const haf = (b, yuk) => ({ bas: b, yuk, sure_s: 3600, adet: 2 });
+  const yanit = { aktiviteler: [], haftalar: [haf(bas, 40), haf(gunOnce(bas, 7), 300)], yukBant: { min: 200, max: 400 } };
+  const { kap, m } = await kur(yanit);
+  assert.match(kap.textContent, /Hafta sürüyor/);
+  assert.match(kap.textContent, /40/);
+  assert.match(kap.textContent, /2 antrenman/);
+  assert.equal(hepsi(kap, (d) => /akt-durum/.test(d.className || '')).length, 0);
+  assert.doesNotMatch(kap.textContent, /normalin altında|normal aralıkta|normalin üstünde/);
+  m.yokEt();
+  // Geçmiş hafta en yeni gibi gelirse (örn. eski veri) durum pili görünür
+  const eski = { ...yanit, haftalar: [haf(gunOnce(bas, 7), 50)] };
+  const k2 = await kur(eski);
+  assert.match(k2.kap.textContent, /normalin altında/);
+  assert.doesNotMatch(k2.kap.textContent, /Hafta sürüyor/);
+  k2.m.yokEt();
+});
+
+test('haftalikGrafik: adet>0 ama yük yok -> "yük verisi yok"; adet 0 -> "antrenman yok"', () => {
+  const haf = [
+    { bas: '2026-11-16', yuk: null, sure_s: 600, adet: 2 },
+    { bas: '2026-11-09', yuk: null, sure_s: 0, adet: 0 },
+    { bas: '2026-11-02', yuk: 120, sure_s: 600, adet: 1 },
+  ];
+  const g = haftalikGrafik(haf, null);
+  assert.match(g.aria, /16 Kas[^,]* haftası yük verisi yok/);
+  assert.match(g.aria, /9 Kas[^,]* haftası antrenman yok/);
+  assert.match(g.aria, /120/);
+  assert.doesNotMatch(g.aria, /NaN|undefined|null/);
+});

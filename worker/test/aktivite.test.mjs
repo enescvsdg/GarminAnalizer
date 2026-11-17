@@ -157,6 +157,14 @@ test('yukBant: 12 tamamlanmış haftanın medyan ∓ 1.5×MAD×1.4826; en az 6 h
   assert.ok(Math.abs(y.yukBant.max - Math.round((med + yarim) * 10) / 10) < 1e-9);
 });
 
+test('yukBant: min asla negatif olmaz (çok değişken yükte 0\'a kenetlenir)', () => {
+  const yuklar = [10, 400, 20, 500, 5, 450, 15, 600];
+  const satirlar = yuklar.map((y, i) => satir({ id: `v${i}`, date: gunEkle('2026-11-02', -7 * i), training_load: y }));
+  const b = aktiviteYaniti(satirlar, BUGUN, 56).yukBant;
+  assert.equal(b.min, 0);
+  assert.ok(b.max > 0);
+});
+
 test('yukBant: 6 hafta tamam, 5 hafta null; yalnız yükü olan haftalar sayılır', () => {
   const yap = (n) => Array.from({ length: n }, (_, i) => satir({ id: `h${i}`, date: gunEkle('2026-11-02', -7 * i), training_load: 100 + i }));
   assert.equal(aktiviteYaniti(yap(5), BUGUN, 56).yukBant, null);

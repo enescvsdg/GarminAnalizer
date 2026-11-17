@@ -285,3 +285,13 @@ test('Ayarlar ölçü satırı #surum altında gizli başlar; iosTam sınıfı s
   assert.match(html, /html\.iosTam \.tel\.mob\{position:absolute\}/);
   assert.match(html, /html\.iosTam,html\.iosTam body\{[^}]*overflow:hidden[^}]*overscroll-behavior:none/);
 });
+
+test('odak: kayan ekran başlıkları odaklanabilir; menü geçişi başlığa, Trend düğmesi Trend\'e odak verir; gunAc eski günü reddeder', () => {
+  assert.match(oku('aktiviteler.js'), /h\.setAttribute\('tabindex', '-1'\)/);
+  assert.match(oku('takvim.js'), /baslikEl\.setAttribute\('tabindex', '-1'\)/);
+  const u = oku('uygulama.js');
+  assert.match(u, /kayanOdak\(\)/);
+  assert.match(u, /querySelector\('h1, h2'\)/);
+  assert.match(u, /\$\('wTrend'\)\.addEventListener\('click', \(\) => \{ genisKayan\(null\); \$\('tSimge'\)\.focus/);
+  assert.match(u, /gunAcKarar\(tarih, GUNLER, G0\)/);
+});

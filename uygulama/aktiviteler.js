@@ -109,10 +109,21 @@ export function gunBaslik(tarih, bugun = bugunTarih()) {
   return `${p[2]} ${AY[p[1] - 1]} ${GUN_UZUN[dow]}`;
 }
 
+// 'YYYY-MM-DD' gününün Pazartesi'si (haftanın başı); geçersizse null.
+function haftaBasiTarih(tarih) {
+  const p = tarihParca(tarih);
+  if (!p) return null;
+  const t = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+  t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7));
+  return t.toISOString().slice(0, 10);
+}
+
 // Haftanın yükü, kişisel normal banda göre. Bant ya da yük yoksa durum null (renk/ok uydurulmaz).
-export function haftaDurum(hafta, bant) {
+// Süren (bu) hafta henüz tamamlanmadığı için banda göre yargılanmaz: durum null, suruyor true.
+export function haftaDurum(hafta, bant, bugun = bugunTarih()) {
   const yok = { durum: null, metin: null };
   if (!hafta || !sonlu(hafta.yuk)) return yok;
+  if (typeof hafta.bas === 'string' && hafta.bas === haftaBasiTarih(bugun)) return { durum: null, metin: 'Hafta sürüyor', suruyor: true };
   if (!bant || !sonlu(bant.min) || !sonlu(bant.max)) return yok;
   if (hafta.yuk < bant.min) return { durum: 'lo', metin: 'normalin altında' };
   if (hafta.yuk > bant.max) return { durum: 'hi', metin: 'normalin üstünde' };
@@ -354,6 +365,7 @@ const STIL = `
 .akt-buyuk b{font-size:50px;font-weight:600;letter-spacing:-.03em;line-height:1}
 .akt-buyuk span{font-size:13.5px;color:var(--a-sol)}
 .akt-durum{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 11px 5px 9px;border-radius:999px;font-size:13px;font-weight:600;line-height:1.2;border:1px solid currentColor;background:rgba(12,8,18,.28)}
+.akt-suruyor{margin-top:8px;font-size:13px;font-weight:600;line-height:1.2;color:rgba(255,246,236,.72)}
 .akt-durum svg{width:11px;height:11px;stroke:currentColor;stroke-width:1.9;flex:none}
 .akt-durum.lo{color:var(--a-mor)}.akt-durum.ok{color:var(--a-iyi)}.akt-durum.hi{color:var(--a-i)}
 .akt-alt{margin-top:8px;font-size:13.5px;color:rgba(255,246,236,.88)}
@@ -521,6 +533,8 @@ function sayiBlogu(cift, sinif = 'akt-say') {
 /* ================= Haftalık grafik ================= */
 
 let grafikSayac = 0;
+// Antrenman var ama yük ölçümü yok (adet > 0, yük null ya da 0)
+const veriYok = (h) => sonlu(h.adet) && h.adet > 0 && !(sonlu(h.yuk) && h.yuk > 0);
 
 export function haftalikGrafik(haftalar, bant) {
   const liste = haftalar.slice(0, 8).reverse(); // eskiden yeniye, sağ uç = bu hafta
@@ -558,12 +572,13 @@ export function haftalikGrafik(haftalar, bant) {
       t.textContent = tam(v);
     } else {
       sv('rect', { x: cx - bw / 2, y: taban - 2, width: bw, height: 2, rx: 1, fill: 'rgba(255,246,236,.22)' }, svg);
+      if (veriYok(h)) { const t = sv('text', { x: cx, y: taban - 8, class: 'akt-gv' }, svg); t.textContent = 'yük yok'; }
     }
     const e = sv('text', { x: cx, y: taban + 17, class: bu ? 'akt-ge bu' : 'akt-ge' }, svg);
     e.textContent = kisaTarih(h.bas);
   });
 
-  const parcalar = liste.map((h) => `${kisaTarih(h.bas)} haftası ${sonlu(h.yuk) && h.yuk > 0 ? tam(h.yuk) : 'antrenman yok'}`);
+  const parcalar = liste.map((h, i) => `${kisaTarih(h.bas)} haftası ${yukler[i] != null ? tam(yukler[i]) : (veriYok(h) ? 'yük verisi yok' : 'antrenman yok')}`);
   let aria = `Haftalık antrenman yükü, son ${n} hafta: ${parcalar.join(', ')}.`;
   if (bant) aria += ` Normal aralık ${tam(bant.min)} ile ${tam(bant.max)} arası.`;
   svg.setAttribute('aria-label', aria);
@@ -593,17 +608,27 @@ export function aktiviteKur(kap, baglam = {}) {
   let bugun = bugunTarih();
 
   const bosalt = (e) => { while (e.firstChild) e.removeChild(e.firstChild); };
+  // Ana alanı temizleyip başlığı yeniden koyar; odak başlıktaysa yeni başlığa taşınır (yüklenince body'ye düşmez)
+  function anaBaslikla() {
+    const eski = ana.firstChild && ana.firstChild.firstChild;
+    const odakta = !!eski && typeof document !== 'undefined' && document.activeElement === eski;
+    bosalt(ana);
+    const b = baslik();
+    ana.appendChild(b);
+    if (odakta) b.firstChild.focus({ preventScroll: true });
+  }
 
   function baslik() {
     const b = el('div', 'akt-bas');
-    b.appendChild(el('h1', null, 'Aktiviteler'));
+    const h = el('h1', null, 'Aktiviteler');
+    h.setAttribute('tabindex', '-1'); // menüden gelince odak buraya taşınır
+    b.appendChild(h);
     if (baglam.ornek) b.appendChild(el('span', 'akt-etiket', 'Örnek veri'));
     return b;
   }
 
   function cizYukleniyor() {
-    bosalt(ana);
-    ana.appendChild(baslik());
+    anaBaslikla();
     const k = el('div', 'akt-iskelet');
     k.setAttribute('role', 'status');
     k.setAttribute('aria-busy', 'true');
@@ -613,8 +638,7 @@ export function aktiviteKur(kap, baglam = {}) {
   }
 
   function cizMesaj(metin, alt, tekrarDugmesi) {
-    bosalt(ana);
-    ana.appendChild(baslik());
+    anaBaslikla();
     const m = el('div', 'akt-mesaj');
     m.setAttribute('role', 'status');
     m.appendChild(el('p', null, metin));
@@ -642,7 +666,9 @@ export function aktiviteKur(kap, baglam = {}) {
       b.appendChild(el('span', null, 'antrenman yükü'));
       sol.appendChild(b);
       const d = haftaDurum(bu, yukBant);
-      if (d.durum) {
+      if (d.suruyor) {
+        sol.appendChild(el('div', 'akt-suruyor', d.metin));
+      } else if (d.durum) {
         const r = el('div', `akt-durum ${d.durum}`);
         r.appendChild(durumOku(d.durum));
         r.appendChild(el('span', null, d.metin));
@@ -726,8 +752,7 @@ export function aktiviteKur(kap, baglam = {}) {
   }
 
   function cizHazir() {
-    bosalt(ana);
-    ana.appendChild(baslik());
+    anaBaslikla();
     const haftaVar = veri.haftalar.length > 0;
     if (haftaVar) ana.appendChild(ozetKart());
     if (veri.aktiviteler.length) ana.appendChild(listeKur());

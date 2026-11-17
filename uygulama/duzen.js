@@ -201,6 +201,12 @@ export function gunSirasi(tarih, gunler) {
   return gunler.findIndex((g) => g && g.tarih instanceof Date && tarihAnahtari(g.tarih) === tarih);
 }
 
+// Takvimden dokunulan gün 7 günlük şeritte mi: şerit içindeki sıra (0..), şeritten eskiyse ya da yoksa -1 (o zaman Takvim kendi gün kartını açar)
+export function gunAcKarar(tarih, gunler, G0) {
+  const gi = gunSirasi(tarih, gunler);
+  return gi >= G0 ? gi - G0 : -1;
+}
+
 // Kaydırılabilir ekran modülünü yükler ve kurar. Yüklenemezse, kurucu yoksa ya da fırlatırsa null (arayüz "yüklenemedi" der).
 export async function modulKur(ice, kurAdi, kap, baglam) {
   try {
@@ -213,5 +219,5 @@ export async function modulKur(ice, kurAdi, kap, baglam) {
   } catch { return null; }
 }
 
-export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, menuToplan, gunSirasi, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
+export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
 globalThis.DUZEN = DUZEN;
