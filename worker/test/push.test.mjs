@@ -221,7 +221,7 @@ test('pushGonder: durum kodu eşlemesi', async () => {
   const beklenen = [
     [201, 'tamam'], [200, 'tamam'], [202, 'tamam'],
     [404, 'gitti'], [410, 'gitti'],
-    [400, 'hata'], [413, 'hata'], [429, 'hata'], [500, 'hata'], [403, 'hata'], [301, 'hata'],
+    [400, 'hata'], [413, 'hata'], [429, 'hata'], [500, 'hata'], [403, 'hata'], [301, 'hata'], [307, 'hata'], [308, 'hata'],
   ];
   for (const [kod, durum] of beklenen) {
     const o = await ortam(kod);

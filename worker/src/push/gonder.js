@@ -42,7 +42,7 @@ export async function pushGonder({ abonelik, yuk, vapid, fetch: fetchFn, simdiSn
     asama = 'ag';
     const yanit = await fetchFn(abonelik.endpoint, {
       method: 'POST',
-      redirect: 'error',
+      redirect: 'manual', // workerd yanıtı döndürür; aşağıda 3xx hata sayılır.
       headers: {
         Authorization: yetki,
         'Content-Encoding': 'aes128gcm',

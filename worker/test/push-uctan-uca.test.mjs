@@ -59,7 +59,7 @@ test('uçtan uca 201: VAPID JWT doğrulanır, başlıklar doğru, gövde alıcı
   const { url, init } = cagrilar[0];
   assert.equal(url, UC);
   assert.equal(init.method, 'POST');
-  assert.equal(init.redirect, 'error');
+  assert.equal(init.redirect, 'manual');
   assert.equal(init.headers['Content-Encoding'], 'aes128gcm');
   assert.ok(Number(init.headers.TTL) > 0);
 
