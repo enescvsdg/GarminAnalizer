@@ -2,12 +2,13 @@
 // Loga ve yanıta sağlık değeri, abonelik anahtarı ya da uç nokta girmez.
 import { durumOku, durumYaz, abonelikleriOku, abonelikSil } from './db.js';
 import { OLCUMLER, dolu, bant, durum as bandaGore, gunDegerleri } from './stats/baseline.js';
-import { gunEkle } from './zaman.js';
+import { gunEkle, yerelTarih } from './zaman.js';
 
 export const BASLIK_ENFAZLA = 60;
 export const GOVDE_ENFAZLA = 300;
 const KESIM_SAATI = 21; // İstanbul; sonrasında brifing gönderilmez
 const DENEME_SINIRI = 3;
+const UYARI_DENEME_SINIRI = 3;
 
 export function istanbulSaati(ms) {
   const parcalar = new Intl.DateTimeFormat('en-GB', {
@@ -92,44 +93,65 @@ async function varsayilanGonder() {
 }
 
 export function vapidAyari(env) {
-  if (!env?.VAPID_PUBLIC_KEY || !env?.VAPID_PRIVATE_KEY) return null;
+  if (!env?.VAPID_PUBLIC_KEY || !env?.VAPID_PRIVATE_KEY || !env?.VAPID_KONU) return null;
   return { acik: env.VAPID_PUBLIC_KEY, gizli: env.VAPID_PRIVATE_KEY, konu: env.VAPID_KONU };
 }
 
+// Tek satırlık gönderim özeti: yalnız sayılar ve HTTP durum kodları (uç nokta, yük, anahtar asla).
+export function pushOzetSatiri(o) {
+  const kodlar = o.kodlar.length ? o.kodlar.join(',') : '-';
+  return `push: tamam=${o.tamam} gitti=${o.gitti} hata=${o.hata} kodlar=${kodlar}`;
+}
+
 // Tüm aboneliklere yük gönderir; 'gitti' dönenleri siler. Asla fırlatmaz (tek abonelik hatası diğerlerini etkilemez).
+// Dönüş: { gonderilen, basarili, tamam, gitti, hata, kodlar } (kodlar: tekil, sıralı HTTP durum kodları).
 export async function herkeseGonder({ db, env, yuk, simdiMs, fetch, gonder, abonelikler }) {
   const liste = abonelikler ?? await abonelikleriOku(db);
   const vapid = vapidAyari(env);
-  const g = gonder ?? await varsayilanGonder();
-  let basarili = 0;
-  const sonuclar = await Promise.all(liste.map(async (a) => {
-    try {
-      return await g({
-        abonelik: { endpoint: a.endpoint, p256dh: a.p256dh, auth: a.auth },
-        yuk,
-        vapid,
-        fetch,
-        simdiSn: Math.floor(simdiMs / 1000),
-      });
-    } catch {
-      return { durum: 'hata', kod: null };
-    }
-  }));
+  let sonuclar;
+  try {
+    const g = gonder ?? await varsayilanGonder();
+    sonuclar = await Promise.all(liste.map(async (a) => {
+      try {
+        return await g({
+          abonelik: { endpoint: a.endpoint, p256dh: a.p256dh, auth: a.auth },
+          yuk,
+          vapid,
+          fetch,
+          simdiSn: Math.floor(simdiMs / 1000),
+        });
+      } catch {
+        return { durum: 'hata', kod: null };
+      }
+    }));
+  } catch {
+    sonuclar = liste.map(() => ({ durum: 'hata', kod: null }));
+  }
+  const ozet = { gonderilen: liste.length, basarili: 0, tamam: 0, gitti: 0, hata: 0, kodlar: [] };
   for (let i = 0; i < sonuclar.length; i += 1) {
     const durum = sonuclar[i]?.durum;
-    if (durum === 'tamam') basarili += 1;
-    else if (durum === 'gitti') {
+    const kod = sonuclar[i]?.kod;
+    if (Number.isInteger(kod) && !ozet.kodlar.includes(kod)) ozet.kodlar.push(kod);
+    if (durum === 'tamam') {
+      ozet.tamam += 1;
+    } else if (durum === 'gitti') {
+      ozet.gitti += 1;
       try {
         await abonelikSil(db, liste[i].endpoint);
       } catch {
         // silinemezse sonraki gönderimde yeniden denenir
       }
+    } else {
+      ozet.hata += 1;
     }
   }
-  return { gonderilen: liste.length, basarili };
+  ozet.kodlar.sort((x, y) => x - y);
+  ozet.basarili = ozet.tamam;
+  return ozet;
 }
 
-export async function brifingGonder({ db, env, yanit, satirlar = null, bugun, simdiMs, fetch, gonder }) {
+// `gunluk(satir)` verilirse gönderim özeti satırı (pushOzetSatiri) ona iletilir.
+export async function brifingGonder({ db, env, yanit, satirlar = null, bugun, simdiMs, fetch, gonder, gunluk }) {
   const metin = brifingMetni(yanit, satirlar);
   if (!metin) return { durum: 'yok', basarili: 0 };
   const abonelikler = await abonelikleriOku(db);
@@ -137,13 +159,14 @@ export async function brifingGonder({ db, env, yanit, satirlar = null, bugun, si
     await durumYaz(db, 'brifing_gun', bugun); // abonelik yokken her tikte yeniden denenmesin
     return { durum: 'abonelik-yok', basarili: 0 };
   }
-  let basarili = 0;
-  if (vapidAyari(env)) {
-    ({ basarili } = await herkeseGonder({
-      db, env, simdiMs, fetch, gonder, abonelikler,
-      yuk: { baslik: metin.baslik, govde: metin.govde, etiket: metin.etiket, url: './' },
-    }));
-  }
+  // Yapılandırma eksikse deneme hakkı harcanmaz, işaret yazılmaz: sır sonradan girilirse aynı gün gider.
+  if (!vapidAyari(env)) return { durum: 'yapilandirma', basarili: 0 };
+  const ozet = await herkeseGonder({
+    db, env, simdiMs, fetch, gonder, abonelikler,
+    yuk: { baslik: metin.baslik, govde: metin.govde, etiket: metin.etiket, url: './' },
+  });
+  gunlukYaz(gunluk, ozet);
+  const { basarili } = ozet;
   if (basarili > 0) {
     await durumYaz(db, 'brifing_gun', bugun);
     return { durum: 'gonderildi', basarili };
@@ -154,8 +177,18 @@ export async function brifingGonder({ db, env, yanit, satirlar = null, bugun, si
   return { durum: 'hata', basarili: 0 };
 }
 
-// Key geçersiz duruma her geçişte bir kez. Durum: 'yok' | 'sifirlandi' | 'abonelik-yok' | 'gonderildi' | 'hata'.
-export async function keyUyarisi({ db, env, simdiMs, fetch, gonder }) {
+function gunlukYaz(gunluk, ozet) {
+  if (typeof gunluk !== 'function') return;
+  try {
+    gunluk(pushOzetSatiri(ozet));
+  } catch {
+    // günlük hatası gönderimi etkilemez
+  }
+}
+
+// Key geçersiz duruma her geçişte bir kez; günde en çok 3 başarısız deneme (sync_state['key_uyari_deneme'] = {tarih, n}).
+// Durum: 'yok' | 'sifirlandi' | 'abonelik-yok' | 'yapilandirma' | 'sinir' | 'gonderildi' | 'hata'.
+export async function keyUyarisi({ db, env, simdiMs, fetch, gonder, gunluk }) {
   const keyDurum = await durumOku(db, 'key_durum');
   const isaret = await durumOku(db, 'key_uyari');
   if (keyDurum !== 'gecersiz') {
@@ -169,16 +202,21 @@ export async function keyUyarisi({ db, env, simdiMs, fetch, gonder }) {
     await durumYaz(db, 'key_uyari', 'gonderildi');
     return { durum: 'abonelik-yok', basarili: 0 };
   }
-  let basarili = 0;
-  if (vapidAyari(env)) {
-    ({ basarili } = await herkeseGonder({
-      db, env, simdiMs, fetch, gonder, abonelikler,
-      yuk: { baslik: 'Garmin bağlantısı koptu', govde: 'Garmin anahtarı kabul edilmiyor. Yenilemen gerekiyor.', etiket: 'key-uyari', url: './' },
-    }));
-  }
+  if (!vapidAyari(env)) return { durum: 'yapilandirma', basarili: 0 };
+  const bugun = yerelTarih(simdiMs);
+  const onceki = await durumOku(db, 'key_uyari_deneme');
+  const n = onceki?.tarih === bugun ? onceki.n : 0;
+  if (n >= UYARI_DENEME_SINIRI) return { durum: 'sinir', basarili: 0 };
+  const ozet = await herkeseGonder({
+    db, env, simdiMs, fetch, gonder, abonelikler,
+    yuk: { baslik: 'Garmin bağlantısı koptu', govde: 'Garmin anahtarı kabul edilmiyor. Yenilemen gerekiyor.', etiket: 'key-uyari', url: './' },
+  });
+  gunlukYaz(gunluk, ozet);
+  const { basarili } = ozet;
   if (basarili > 0) {
     await durumYaz(db, 'key_uyari', 'gonderildi');
     return { durum: 'gonderildi', basarili };
   }
+  await durumYaz(db, 'key_uyari_deneme', { tarih: bugun, n: n + 1 });
   return { durum: 'hata', basarili: 0 };
 }

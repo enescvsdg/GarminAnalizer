@@ -201,6 +201,7 @@ async function istekCoz(yol, { method = 'GET', govde } = {}, isle, fetchFn, depo
       });
       if (!r) return { sonuc: null, neden: 'ag' };
       if (r.status === 401) return { sonuc: null, neden: 'yetki' };
+      if (r.status === 429) return { sonuc: null, neden: 'bekle' };
       if (r.ok !== true || (r.status !== undefined && r.status !== 200)) return { sonuc: null, neden: 'sunucu' };
       try { return { sonuc: isle(await r.json()), neden: null }; } catch { return { sonuc: null, neden: 'sunucu' }; }
     })();
@@ -288,9 +289,11 @@ function denemeCevir(j) {
   return { gonderilen: j.gonderilen, basarili: j.basarili };
 }
 
-// {gonderilen, basarili} ya da null. Push servisleri yavaş olabilir: zaman aşımı diğer isteklerden uzundur.
-export function denemeBildirimi(fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = 15000 } = {}) {
-  return istekYap('/api/deneme-bildirim', { method: 'POST' }, denemeCevir, fetchFn, depo, zamanAsimiMs);
+// {gonderilen, basarili}, bekleme süresindeyse (HTTP 429) {bekle: true}, olmazsa null.
+// Push servisleri yavaş olabilir: zaman aşımı diğer isteklerden uzundur.
+export async function denemeBildirimi(fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = 15000 } = {}) {
+  const { sonuc, neden } = await istekCoz('/api/deneme-bildirim', { method: 'POST' }, denemeCevir, fetchFn, depo, zamanAsimiMs);
+  return neden === 'bekle' ? { bekle: true } : sonuc;
 }
 
 /* ---------- Biçimleme ---------- */

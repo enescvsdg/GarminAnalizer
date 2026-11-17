@@ -619,6 +619,12 @@ test('denemeBildirimi POST /api/deneme-bildirim, gövdesiz, sayıları döndür�
   assert.deepEqual(await denemeBildirimi(async () => yanitCevir({ gonderilen: 0, basarili: 0 }), bagli()), { gonderilen: 0, basarili: 0 });
 });
 
+test('denemeBildirimi HTTP 429 için {bekle: true} döner, diğer hatalar null kalır', async () => {
+  assert.deepEqual(await denemeBildirimi(async () => yanitCevir({ hata: 'bekle' }, 429), bagli()), { bekle: true });
+  assert.equal(await denemeBildirimi(async () => yanitCevir({ hata: 'sunucu' }, 500), bagli()), null);
+  assert.equal(await denemeBildirimi(async () => yanitCevir({ hata: 'yetkisiz' }, 401), bagli()), null);
+});
+
 test('abonelik işlevleri 401, 500, 503, ağ hatası, bozuk JSON ve yanlış biçimde false/null', async () => {
   const bozukJson = async () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('x'); } });
   const kotuler = [

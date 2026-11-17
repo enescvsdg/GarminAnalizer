@@ -76,7 +76,7 @@ async function brifingBolumu(env, simdiMs) {
     const satirlar = await gunleriOku(env.DB, gunEkle(bugun, -60), bugun);
     if (!(await brifingGerekli({ db: env.DB, satirlar, bugun, simdiMs }))) return;
     const yanit = await gunlerYaniti(env, simdiMs, 28);
-    const { durum } = await brifingGonder({ db: env.DB, env, yanit, satirlar, bugun, simdiMs, fetch: (...a) => fetch(...a) });
+    const { durum } = await brifingGonder({ db: env.DB, env, yanit, satirlar, bugun, simdiMs, fetch: (...a) => fetch(...a), gunluk: (l) => console.log(l) });
     console.log(`brifing: ${durum}`);
   } catch (h) {
     hataYaz(h);
@@ -85,7 +85,7 @@ async function brifingBolumu(env, simdiMs) {
 
 async function uyariBolumu(env, simdiMs) {
   try {
-    const { durum } = await keyUyarisi({ db: env.DB, env, simdiMs, fetch: (...a) => fetch(...a) });
+    const { durum } = await keyUyarisi({ db: env.DB, env, simdiMs, fetch: (...a) => fetch(...a), gunluk: (l) => console.log(l) });
     if (durum !== 'yok') console.log(`uyari: ${durum}`);
   } catch (h) {
     hataYaz(h);

@@ -760,8 +760,9 @@ function bilGoster(not) {
 }
 // Service worker hazır olana kadar bekler ama sonsuza dek değil (kayıt hiç olmayabilir).
 function bilKayit() {
-  const bekle = new Promise((coz) => setTimeout(() => coz(null), 4000));
-  return Promise.race([navigator.serviceWorker.ready.catch(() => null), bekle]);
+  let sayac;
+  const bekle = new Promise((coz) => { sayac = setTimeout(() => coz(null), 4000); });
+  return Promise.race([navigator.serviceWorker.ready.catch(() => null), bekle]).finally(() => clearTimeout(sayac));
 }
 async function bilGercekAbone() {
   const kayit = await bilKayit();
@@ -834,7 +835,7 @@ $('bilDene').addEventListener('click', async () => {
   bil.deneme = true; bilGoster('Gönderiliyor…');
   let r = null; try { r = await CANLI.denemeBildirimi(); } catch (e) { r = null; }
   bil.deneme = false;
-  bilGoster(!r ? 'Gönderilemedi.' : r.gonderilen === 0 ? 'Kayıtlı cihaz yok.' : r.basarili > 0 ? 'Gönderildi. Birkaç saniye içinde gelmeli.' : 'Gönderilemedi.');
+  bilGoster(r && r.bekle ? 'Az önce gönderildi. Birkaç saniye bekle.' : !r ? 'Gönderilemedi.' : r.gonderilen === 0 ? 'Kayıtlı cihaz yok.' : r.basarili > 0 ? 'Gönderildi. Birkaç saniye içinde gelmeli.' : 'Gönderilemedi.');
   $('bilDene').focus({ preventScroll: true });
 });
 (async () => {

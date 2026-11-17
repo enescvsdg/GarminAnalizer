@@ -726,3 +726,31 @@ test('POST /api/deneme-bildirim: sayar, yük doğru, gitti dönen silinir', asyn
   assert.deepEqual((await abonelikleriOku(env.DB)).map((a) => a.endpoint), ['https://push.ok/1', 'https://push.ok/3']);
   assert.ok(!JSON.stringify(govde).includes('gizli-vapid'));
 });
+
+test('GET /api/ayar: push_subscriptions tablosu yoksa abone 0, yapayZeka çalışır', async () => {
+  const env = ortam({ VAPID_PUBLIC_KEY: 'AbC' });
+  const db = env.DB;
+  env.DB = { ...db, prepare: (sql) => {
+    if (sql.includes('push_subscriptions')) throw new Error('no such table: push_subscriptions');
+    return db.prepare(sql);
+  } };
+  const r = await istekIsle(istek('/api/ayar'), env, SIMDI);
+  assert.equal(r.status, 200);
+  assert.deepEqual(await json(r), { yapayZeka: true, bildirim: { acikAnahtar: 'AbC', abone: 0 } });
+});
+
+test('POST /api/deneme-bildirim: 10 sn bekleme, sınırın iki yanı', async () => {
+  const env = ortam(VAPID);
+  await abonelikYaz(env.DB, ABONE, 1);
+  const p = sahtePush();
+  const at = (ms) => istekIsle(istek('/api/deneme-bildirim', { yontem: 'POST' }), env, ms, { push: p });
+  assert.equal((await at(SIMDI)).status, 200);
+  assert.equal(await durumOku(env.DB, 'deneme_son'), SIMDI);
+  const hemen = await at(SIMDI + 9999);
+  assert.equal(hemen.status, 429);
+  assert.deepEqual(await json(hemen), { hata: 'bekle' });
+  assert.equal(p.cagrilar.length, 1);
+  assert.equal((await at(SIMDI + 10000)).status, 200);
+  assert.equal(p.cagrilar.length, 2);
+  assert.equal(await durumOku(env.DB, 'deneme_son'), SIMDI + 10000);
+});

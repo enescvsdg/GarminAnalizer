@@ -4,7 +4,7 @@ import { testD1 } from './helpers/d1.mjs';
 import { durumOku, durumYaz, gunUpsert, abonelikYaz, abonelikleriOku } from '../src/db.js';
 import { gunEkle } from '../src/zaman.js';
 import { gunlerYaniti } from '../src/api/router.js';
-import { brifingMetni, brifingGerekli, brifingGonder, keyUyarisi, kisalt } from '../src/brifing.js';
+import { brifingMetni, brifingGerekli, brifingGonder, keyUyarisi, kisalt, herkeseGonder, vapidAyari, pushOzetSatiri } from '../src/brifing.js';
 
 const ENV = { VAPID_PUBLIC_KEY: 'acik', VAPID_PRIVATE_KEY: 'gizli', VAPID_KONU: 'https://ornek.test/' };
 // 12 Kas 2026 08:00 İstanbul
@@ -230,14 +230,24 @@ test('brifingGonder: hepsi gitti ise hata, abonelikler silinir, sonraki çağrı
   assert.equal(g.cagrilar.length, 1);
 });
 
-test('brifingGonder: VAPID özel anahtarı yoksa gönderici çağrılmaz, hata', async () => {
+test('brifingGonder: VAPID eksikse (özel anahtar ya da konu) yapilandirma: çağrı yok, deneme harcanmaz, işaret yazılmaz, sonra aynı gün gider', async () => {
   const db = testD1();
   await abonele(db);
   const g = sahte();
-  const r = await brifingGonder(gonderGirdi(db, g, { env: { ...ENV, VAPID_PRIVATE_KEY: undefined } }));
-  assert.deepEqual(r, { durum: 'hata', basarili: 0 });
+  for (const env of [{ ...ENV, VAPID_PRIVATE_KEY: undefined }, { ...ENV, VAPID_KONU: '' }, { ...ENV, VAPID_KONU: undefined }]) {
+    assert.deepEqual(await brifingGonder(gonderGirdi(db, g, { env })), { durum: 'yapilandirma', basarili: 0 });
+  }
   assert.equal(g.cagrilar.length, 0);
   assert.equal(await durumOku(db, 'brifing_gun'), null);
+  assert.equal(await durumOku(db, 'brifing_deneme'), null);
+  assert.deepEqual(await brifingGonder(gonderGirdi(db, g)), { durum: 'gonderildi', basarili: 1 });
+  assert.equal(await durumOku(db, 'brifing_gun'), BUGUN);
+});
+
+test('vapidAyari: konu boş ya da yoksa null', () => {
+  assert.equal(vapidAyari({ ...ENV, VAPID_KONU: '' }), null);
+  assert.equal(vapidAyari({ ...ENV, VAPID_KONU: undefined }), null);
+  assert.deepEqual(vapidAyari(ENV), { acik: 'acik', gizli: 'gizli', konu: 'https://ornek.test/' });
 });
 
 test('brifingGonder: gönderici fırlatırsa hata sayılır, fırlatmaz', async () => {
@@ -290,4 +300,77 @@ test('keyUyarisi: abonelik yoksa işaretler; hepsi hata ise işaretlemez ve sonr
   assert.equal((await keyUyarisi(uyariGirdi(db2, g))).durum, 'hata');
   assert.equal(await durumOku(db2, 'key_uyari'), null);
   assert.equal((await keyUyarisi(uyariGirdi(db2, sahte()))).durum, 'gonderildi');
+});
+
+// ---- key uyarısı günlük sınırı ----
+const GUN2_MS = SABAH + 24 * 3600 * 1000;
+
+test('keyUyarisi: günde en çok 3 başarısız deneme, 4. tikte gönderici çağrılmaz, ertesi gün yeniden başlar', async () => {
+  const db = testD1();
+  await abonele(db);
+  await durumYaz(db, 'key_durum', 'gecersiz');
+  const g = sahte('hata');
+  for (let i = 1; i <= 3; i += 1) {
+    assert.deepEqual(await keyUyarisi(uyariGirdi(db, g)), { durum: 'hata', basarili: 0 });
+    assert.equal(g.cagrilar.length, i);
+    assert.deepEqual(await durumOku(db, 'key_uyari_deneme'), { tarih: BUGUN, n: i });
+  }
+  for (let i = 0; i < 3; i += 1) {
+    assert.deepEqual(await keyUyarisi(uyariGirdi(db, g, { simdiMs: SABAH + (i + 1) * 15 * 60 * 1000 })), { durum: 'sinir', basarili: 0 });
+  }
+  assert.equal(g.cagrilar.length, 3);
+  assert.equal(await durumOku(db, 'key_uyari'), null);
+  assert.deepEqual(await keyUyarisi(uyariGirdi(db, g, { simdiMs: GUN2_MS })), { durum: 'hata', basarili: 0 });
+  assert.equal(g.cagrilar.length, 4);
+  assert.deepEqual(await durumOku(db, 'key_uyari_deneme'), { tarih: gunEkle(BUGUN, 1), n: 1 });
+});
+
+test('keyUyarisi: VAPID eksikse yapilandirma, deneme harcanmaz', async () => {
+  const db = testD1();
+  await abonele(db);
+  await durumYaz(db, 'key_durum', 'gecersiz');
+  const g = sahte();
+  assert.deepEqual(await keyUyarisi(uyariGirdi(db, g, { env: { ...ENV, VAPID_KONU: '' } })), { durum: 'yapilandirma', basarili: 0 });
+  assert.equal(g.cagrilar.length, 0);
+  assert.equal(await durumOku(db, 'key_uyari_deneme'), null);
+});
+
+// ---- gönderim özeti ----
+function kodluGonder(kodlar) {
+  return async (girdi) => {
+    const kod = kodlar[girdi.abonelik.endpoint.split('/').pop()];
+    return { durum: kod === 201 ? 'tamam' : kod === 410 ? 'gitti' : 'hata', kod };
+  };
+}
+
+test('herkeseGonder: özet yalnız sayı ve durum kodu taşır, satırda uç nokta, yük ve anahtar yok', async () => {
+  const db = testD1();
+  await abonele(db, 3);
+  const yuk = { baslik: 'GIZLI-BASLIK', govde: 'GIZLI-GOVDE', etiket: 'e', url: './' };
+  const env = { VAPID_PUBLIC_KEY: 'ACIK-ANAHTAR-X', VAPID_PRIVATE_KEY: 'OZEL-ANAHTAR-Y', VAPID_KONU: 'https://ornek.test/' };
+  const o = await herkeseGonder({ db, env, yuk, simdiMs: SABAH, fetch: () => {}, gonder: kodluGonder({ 0: 201, 1: 403, 2: 410 }) });
+  assert.deepEqual(o, { gonderilen: 3, basarili: 1, tamam: 1, gitti: 1, hata: 1, kodlar: [201, 403, 410] });
+  const satir = pushOzetSatiri(o);
+  assert.equal(satir, 'push: tamam=1 gitti=1 hata=1 kodlar=201,403,410');
+  for (const yasak of ['fcm.googleapis.com', 'GIZLI', 'ANAHTAR', 'ornek.test']) {
+    assert.equal((JSON.stringify(o) + satir).includes(yasak), false);
+  }
+});
+
+test('brifingGonder ve keyUyarisi: gunluk geri çağrısı özet satırını alır', async () => {
+  const db = testD1();
+  await abonele(db);
+  const satirlar = [];
+  await brifingGonder(gonderGirdi(db, kodluGonder({ 0: 403 }), { gunluk: (l) => satirlar.push(l) }));
+  assert.deepEqual(satirlar, ['push: tamam=0 gitti=0 hata=1 kodlar=403']);
+  await durumYaz(db, 'key_durum', 'gecersiz');
+  await keyUyarisi(uyariGirdi(db, kodluGonder({ 0: 201 }), { gunluk: (l) => satirlar.push(l) }));
+  assert.equal(satirlar[1], 'push: tamam=1 gitti=0 hata=0 kodlar=201');
+});
+
+test('herkeseGonder: varsayılan gönderici ve ağ hatasında fırlatmaz, hepsi hata sayılır', async () => {
+  const db = testD1();
+  await abonele(db, 2);
+  const o = await herkeseGonder({ db, env: ENV, yuk: {}, simdiMs: SABAH, fetch: () => { throw new Error('ağ yok'); } });
+  assert.deepEqual(o, { gonderilen: 2, basarili: 0, tamam: 0, gitti: 0, hata: 2, kodlar: [] });
 });

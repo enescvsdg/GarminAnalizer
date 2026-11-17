@@ -1,7 +1,7 @@
 // HTTP girişi: kimlik, CORS ve rotalar. Gizli değerler loga ve yanıta girmez.
 import { apiYaniti } from '../stats/ozet.js';
-import { gunleriOku, durumOku, abonelikYaz, abonelikSil, abonelikleriOku } from '../db.js';
-import { herkeseGonder, vapidAyari } from '../brifing.js';
+import { gunleriOku, durumOku, durumYaz, abonelikYaz, abonelikSil, abonelikleriOku } from '../db.js';
+import { herkeseGonder, vapidAyari, pushOzetSatiri } from '../brifing.js';
 import { yerelTarih, gunEkle } from '../zaman.js';
 import { yorumOku, yapayZekaAcik, yapayZekaYaz } from '../yorum/yorum.js';
 import { egilimOku } from '../yorum/egilim.js';
@@ -122,10 +122,14 @@ async function jsonGovde(request, enFazlaBayt) {
 
 async function ayar(request, env, cors) {
   if (request.method === 'GET') {
-    return yanit({
-      yapayZeka: await yapayZekaAcik(env.DB),
-      bildirim: { acikAnahtar: env.VAPID_PUBLIC_KEY || null, abone: (await abonelikleriOku(env.DB)).length },
-    }, 200, cors);
+    const yapayZeka = await yapayZekaAcik(env.DB);
+    let abone = 0;
+    try {
+      abone = (await abonelikleriOku(env.DB)).length;
+    } catch {
+      abone = 0; // tablo henüz yoksa (Worker tablodan önce yayınlandıysa) ayar yine çalışır
+    }
+    return yanit({ yapayZeka, bildirim: { acikAnahtar: env.VAPID_PUBLIC_KEY || null, abone } }, 200, cors);
   }
   const govde = await jsonGovde(request, AYAR_ENFAZLA_BAYT);
   if (!govde || typeof govde.yapayZeka !== 'boolean') return yanit({ hata: 'gecersiz' }, 400, cors);
@@ -158,10 +162,15 @@ async function abonelik(request, env, simdiMs, cors, bag) {
   return yanit({ tamam: true }, 200, cors);
 }
 
+const DENEME_BEKLEME_MS = 10000;
+
 async function denemeBildirimi(env, simdiMs, cors, bag) {
   const abonelikler = await abonelikleriOku(env.DB);
   if (!abonelikler.length) return yanit({ gonderilen: 0, basarili: 0 }, 200, cors);
   if (!vapidAyari(env)) return yanit({ hata: 'yapilandirma' }, 503, cors);
+  const son = await durumOku(env.DB, 'deneme_son');
+  if (Number.isFinite(son) && simdiMs - son < DENEME_BEKLEME_MS) return yanit({ hata: 'bekle' }, 429, cors);
+  await durumYaz(env.DB, 'deneme_son', simdiMs);
   const { pushGonder } = await pushModulu(bag);
   const sonuc = await herkeseGonder({
     db: env.DB, env, simdiMs, abonelikler,
@@ -169,7 +178,8 @@ async function denemeBildirimi(env, simdiMs, cors, bag) {
     gonder: pushGonder,
     yuk: { baslik: 'GarminAnalizer', govde: 'Bildirimler çalışıyor.', etiket: 'deneme', url: './' },
   });
-  return yanit(sonuc, 200, cors);
+  console.log(pushOzetSatiri(sonuc));
+  return yanit({ gonderilen: sonuc.gonderilen, basarili: sonuc.basarili }, 200, cors);
 }
 
 async function durum(env, cors) {
