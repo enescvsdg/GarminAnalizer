@@ -659,14 +659,29 @@ if (GENIS) {
 }
 
 /* ================= Ekran geçişleri ================= */
-// Alt menü: Bugün, Trend, Aktiviteler, Takvim. Her sekmenin kendi aktif zemini ve rengi var (CSS); kayan hap yok.
+// Alt menü: Bugün, Trend, Aktiviteler, Takvim. Seçili sekmenin altında cam kapsül var (CSS); kayan hap yok.
+// Seçili sekmenin simgesi yavaşça yaşar; yeni seçilen sekme bir kez giriş hareketi (.gir, ≤ 600 ms) yapar, sonra döngüye geçer.
+// Döngü ve giriş yalnız .oynar varken: azaltılmış hareket yok, telefon düzeni ve ekran görünür.
 const SEKME = { bugun: 'sBugun', trend: 'sTrend', aktivite: 'sAktivite', takvim: 'sTakvim' };
+const SEKME_SIRA = Object.keys(SEKME);
+let sekmeSon = ekran, girZaman = 0;
 function sekmeGuncelle() {
   for (const [e, id] of Object.entries(SEKME)) {
     if (e === ekran) $(id).setAttribute('aria-current', 'page'); else $(id).removeAttribute('aria-current');
   }
+  if (ekran === sekmeSon || !SEKME[ekran]) return;
+  sekmeSon = ekran;
+  for (const id of Object.values(SEKME)) $(id).classList.remove('gir');
+  if (RM || GENIS) return;
+  const b = $(SEKME[ekran]);
+  void b.offsetWidth; // aynı sınıf hemen yeniden eklenirse giriş baştan oynasın
+  b.classList.add('gir'); clearTimeout(girZaman);
+  girZaman = setTimeout(() => b.classList.remove('gir'), 600);
 }
-function trendeGec(oi, kaynak, anlik) {
+const menuOynar = () => tel.querySelector('.sekme').classList.toggle('oynar', !RM && !GENIS && !document.hidden);
+document.addEventListener('visibilitychange', menuOynar);
+menuOynar();
+function trendeGec(oi, kaynak, anlik, menuden) { // menuden: menü kendi rüzgâr sesini çalar, geçişin tık ve süpürme sesi çalmaz
   if (mesgul || ekran === 'trend' || GENIS) return; // geniş ekranda ekran geçişi yok: Trend hep açık
   dokunBirak(); ekran = 'trend'; sekmeGuncelle();
   st.P = hedef = G0 + sel7; pA = st.P;
@@ -678,12 +693,13 @@ function trendeGec(oi, kaynak, anlik) {
     st.yuk = st.yukA = 1; st.flat = 1; st.cy = ufuk;
     gsap.set(trend, { autoAlpha: 1 }); gsap.set([cv, '#bugun'], { autoAlpha: 0 }); return;
   }
-  mesgul = true; SES.tik(); st.yuk = st.yukA = 0;
+  mesgul = true; if (!menuden) SES.tik();
+  st.yuk = st.yukA = 0;
   gsap.set('#balon', { autoAlpha: kaynak ? 0 : 1 });
   const z = gsap.timeline({ onComplete: () => (mesgul = false) });
   z.to(L, { r: 0, duration: 0.42, stagger: 0.03, ease: 'power2.in' }, 0)
     .to('#bugunUst', { autoAlpha: 0, duration: 0.3 }, 0)
-    .add(() => SES.gecis(true), 0.12)
+    .add(() => { if (!menuden) SES.gecis(true); }, 0.12)
     .to(st, { flat: 1, cy: ufuk, duration: 0.62, ease: 'power3.inOut' }, 0.12)
     .to(trend, { autoAlpha: 1, duration: 0.45 }, 0.58)
     .to(cv, { autoAlpha: 0, duration: 0.5 }, 0.72)
@@ -702,7 +718,7 @@ function trendeGec(oi, kaynak, anlik) {
       .fromTo('#balon .dr', { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 1.1);
   }
 }
-function bugunGec(anlik) {
+function bugunGec(anlik, menuden) {
   if (mesgul || ekran === 'bugun') return;
   aciklamaKapat(false); if (simge) simge.durdur();
   ekran = 'bugun'; sekmeGuncelle();
@@ -712,7 +728,7 @@ function bugunGec(anlik) {
     st.flat = 0; st.cy = lay.cy; L.forEach((l) => (l.r = 1));
     gsap.set(trend, { autoAlpha: 0 }); gsap.set([cv, '#bugun', '#bugunUst'], { autoAlpha: 1 }); return;
   }
-  mesgul = true; SES.gecis(false);
+  mesgul = true; if (!menuden) SES.gecis(false);
   gsap.timeline({ onComplete: () => (mesgul = false) })
     .to(st, { yuk: 0, duration: 0.5, ease: 'power3.in' }, 0)
     .to(st, { yukA: 0, duration: 0.5, ease: 'power3.in' }, 0.06)
@@ -797,13 +813,13 @@ for (const k of Object.values(KAYAN)) {
 }
 const anaPasif = (p) => { $('bugun').inert = p; trend.inert = p; }; // örtülen ana ekran odak ve erişilebilirlik ağacından çıkar
 // Telefon: dört ekran arasında geçiş. Bugün ↔ Trend eski geçişlerini (uçan sayı dahil) kullanır; yeni ekranlar solarak gelir.
-function ekranGit(hedefEkran) {
+function ekranGit(hedefEkran, menuden) {
   if (mesgul) return false;
   const g = ekranGecisi(ekran, hedefEkran, altEkran);
   if (!g) return false;
   dokunBirak(); aciklamaKapat(false);
   const onceki = ekran;
-  if (g.tur === 'ana') { if (hedefEkran === 'trend') trendeGec(null, null); else bugunGec(); return true; }
+  if (g.tur === 'ana') { if (hedefEkran === 'trend') trendeGec(null, null, false, menuden); else bugunGec(false, menuden); return true; }
   if (g.tur === 'ac') {
     altEkran = g.alt; if (onceki === 'trend' && simge) simge.durdur();
     ekran = hedefEkran; sekmeGuncelle(); mesgul = true; anaPasif(true);
@@ -836,7 +852,14 @@ function genisKayan(ad) {
   $('wAktivite').setAttribute('aria-pressed', kayanAcik === 'aktivite'); $('wTakvim').setAttribute('aria-pressed', kayanAcik === 'takvim');
   $('wTrend').hidden = !kayanAcik;
 }
-for (const [e, id] of Object.entries(SEKME)) $(id).addEventListener('click', () => { ayarKapat(); odakIste = null; if (ekranGit(e) && KAYAN[e]) odakIste = e; });
+// Gerçek bir sekme değişiminde (seçili sekmeye dokunmak ya da geçiş sürerken dokunmak değil) kısa rüzgâr sesi; yönü sekmelerin sırasından
+for (const [e, id] of Object.entries(SEKME)) $(id).addEventListener('click', () => {
+  ayarKapat(); odakIste = null;
+  const once = ekran;
+  if (!ekranGit(e, true)) return;
+  SES.ruzgar(SEKME_SIRA.indexOf(e) > SEKME_SIRA.indexOf(once) ? 1 : -1);
+  if (KAYAN[e]) odakIste = e;
+});
 if (GENIS) {
   $('wAktivite').addEventListener('click', () => genisKayan('aktivite'));
   $('wTakvim').addEventListener('click', () => genisKayan('takvim'));
