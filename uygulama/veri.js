@@ -12,6 +12,12 @@
     { id: 'derin', ad: 'Derin uyku', birim: ' dk', min: 50, max: 110, iyi: 1, kisisel: true, kart: false },
     { id: 'spo2', ad: 'SpO₂', birim: '%', min: 94, max: 99, iyi: 1, kisisel: true, kart: false },
     { id: 'solunum', ad: 'Solunum', birim: '/dk', min: 12, max: 17, iyi: -1, kisisel: true, kart: false },
+    // Günlük hareket ölçümleri: yalnız Trend'de; enerji ve hükme girmez. maxnabiz'in iyi/kötü yönü yok (iyi: 0).
+    { id: 'adim', ad: 'Adım', birim: '', min: 6200, max: 11800, iyi: 1, kisisel: true, kart: false },
+    { id: 'kat', ad: 'Kat', birim: '', min: 4, max: 14, iyi: 1, kisisel: true, kart: false },
+    { id: 'kalori', ad: 'Aktif kalori', birim: ' kcal', min: 320, max: 780, iyi: 1, kisisel: true, kart: false },
+    { id: 'yogun', ad: 'Yoğun dakika', birim: ' dk', min: 15, max: 55, iyi: 1, kisisel: true, kart: false },
+    { id: 'maxnabiz', ad: 'En yüksek nabız', birim: '', min: 118, max: 166, iyi: 0, kisisel: true, kart: false },
   ];
   const KOTU_IYI = { uyku: [52, 88], bb: [34, 88], hrv: [40, 62], nabiz: [58, 49], stres: [47, 23] };
   const KOTU_IYI_EK = { derin: [42, 105], spo2: [92, 98], solunum: [18, 13] };
@@ -38,6 +44,7 @@
   }
   const r = rng(11);
   const r2 = rng(23); // ek ölçümler için ayrı akış: mevcut altı ölçümün değerleri değişmez
+  const r3 = rng(37); // günlük hareket ölçümleri ve yeni ek alanları için ayrı akış: önceki değerler değişmez
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -64,6 +71,20 @@
     return `${dis.length} ölçümün normal aralığının dışında: ${adlar.join(', ')} ve ${son}.`;
   }
 
+  // Günlük hareket: önceki günün yükü bugünkü yürüyüşle ilişkili değil; dünkü yük = dün yapılan antrenman, bu yüzden
+  // hareket o günün "aktif" olmasından (h: 0..1) türetilir. Adım 0 ve en yüksek nabız 0 gelmez (Worker'da null).
+  function hareketUret(h, saatYok) {
+    if (saatYok) return { adim: null, kat: 0, kalori: 0, yogun: 0, maxnabiz: null };
+    const adim = Math.round(lerp(3800, 14500, h) + (r3() - 0.5) * 1600);
+    return {
+      adim,
+      kat: Math.max(0, Math.round(lerp(2, 18, h * 0.8 + r3() * 0.2))),
+      kalori: Math.round(adim * 0.045 + lerp(40, 380, h) + (r3() - 0.5) * 60),
+      yogun: Math.max(0, Math.round(lerp(4, 78, h * h) + (r3() - 0.5) * 10)),
+      maxnabiz: Math.round(lerp(112, 178, h) + (r3() - 0.5) * 8),
+    };
+  }
+
   // Günlük ek ayrıntılar (Worker'daki apiYaniti.ek biçimi); evre dakikaları uyku süresiyle tutarlı.
   function ekUret(d, toplam) {
     const rem = Math.round(toplam * 0.22), uyanik = Math.round(toplam * 0.05);
@@ -79,6 +100,18 @@
     };
   }
 
+  // Yeni ek alanları ayrı akıştan: şekerleme çoğu gün yok, uykudaki stres gün stresine yakın, SpO₂ en düşüğü ortalamanın altında.
+  function ekEkle(ek, d) {
+    const sek = r3() < 0.22 ? Math.round(15 + r3() * 35) : null;
+    const y = {
+      uyku: { sekerleme: sek, stres: Math.max(5, Math.round(d.stres * 0.55 + (r3() - 0.5) * 8)) },
+      spo2: { en_dusuk: d.spo2 === null ? null : Math.round(d.spo2 - 3 - r3() * 3) },
+      kalori: { toplam: d.kalori === null ? null : Math.round(1720 + d.kalori + (r3() - 0.5) * 40) },
+    };
+    Object.assign(ek.uyku, y.uyku);
+    return { ...ek, spo2: y.spo2, kalori: y.kalori };
+  }
+
   const N = 28;
   const bugun = new Date(2026, 10, 12);
   const GUNLER = [];
@@ -87,7 +120,7 @@
     let e, d = {}, g, uykuDk;
     const s = SON7[i - (N - 7)];
     if (s) {
-      e = s.e; OLCUMLER.forEach((o, j) => (d[o.id] = s.v[j])); g = s.g; uykuDk = s.dk;
+      e = s.e; s.v.forEach((v, j) => (d[OLCUMLER[j].id] = v)); g = s.g; uykuDk = s.dk;
     } else {
       e = clamp(0.6 + 0.2 * Math.sin(i * 0.62) + 0.14 * Math.sin(i * 0.27 + 1.3) + (r() - 0.5) * 0.22, 0.12, 0.95);
       for (const id in KOTU_IYI) {
@@ -102,9 +135,10 @@
       uykuDk = Math.round(300 + d.uyku * 2.3 + (r2() - 0.5) * 30);
       g = gerekceUret(d);
     }
+    Object.assign(d, hareketUret(clamp(0.25 + 0.5 * e + (r3() - 0.5) * 0.5, 0, 1), i === 9));
     GUNLER.push({
       tarih: t, gunKisa: GUN_KISA[t.getDay()], gunUzun: GUN_UZUN[t.getDay()],
-      gun: t.getDate(), ay: AY[t.getMonth()], e, d, hukum: hukum(e), gerekce: g, ek: ekUret(d, uykuDk),
+      gun: t.getDate(), ay: AY[t.getMonth()], e, d, hukum: hukum(e), gerekce: g, ek: ekEkle(ekUret(d, uykuDk), d),
     });
   }
 

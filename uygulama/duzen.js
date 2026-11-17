@@ -14,10 +14,14 @@ const SOL_PAY = 64, SAG_PAY = 56; // grafiğin ilk/son günü ile bölge kenarı
 const sonlu = (v) => typeof v === 'number' && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+const SABIT_ARALIK = { adim: [0, 15000], kat: [0, 25], kalori: [0, 1200], yogun: [0, 90], maxnabiz: [90, 190] };
+
 export function simgeOrani(id, deger, bant) {
   if (!sonlu(deger)) return null;
   if (id === 'spo2') return clamp((deger - 88) / 12, 0, 1);
   if (['uyku', 'bb', 'stres'].includes(id)) return clamp(deger / 100, 0, 1);
+  // Günlük hareket ölçümleri sabit aralıkta: Takvim kişisel bant olmadan da aynı simgeyi çizer.
+  if (Object.hasOwn(SABIT_ARALIK, id)) { const [a, b] = SABIT_ARALIK[id]; return clamp((deger - a) / (b - a), 0, 1); }
   if (!['hrv', 'nabiz', 'yuk', 'derin', 'solunum'].includes(id)) return null;
   const { min, max } = bant ?? {};
   if (!sonlu(min) || !sonlu(max) || min >= max) return null;

@@ -44,4 +44,29 @@ export const ACIKLAMA = {
     metin: 'Garmin’in kaydettiği günlük ortalama solunum hızıdır. Bir dakikada kaç nefes alındığını gösterir.',
     yon: 'Değişimi yorumlarken tek günle birlikte kendi aralığına da bak.',
   },
+  adim: {
+    soru: 'Adım sayısı nedir?',
+    metin: 'Saatin gün boyunca saydığı adımların toplamıdır. Saat takılı değilken atılan adımlar sayılmaz.',
+    yon: 'Günü kendi adım aralığınla ve hafta içindeki değişimle karşılaştır.',
+  },
+  kat: {
+    soru: 'Kat sayısı nedir?',
+    metin: 'Saatin yükseklik ölçerine göre gün içinde çıktığın katların sayısıdır. Yaklaşık üç metrelik tırmanış bir kat sayılır.',
+    yon: 'Merdiven ve yokuşlu günlerde yükselir; kendi aralığınla karşılaştır.',
+  },
+  kalori: {
+    soru: 'Aktif kalori nedir?',
+    metin: 'Garmin’in hareket ve antrenmanla harcandığını tahmin ettiği enerjidir. Dinlenirken harcanan kalori bu sayıya girmez.',
+    yon: 'Hareketli günlerde yükselir; kendi aralığınla birlikte oku.',
+  },
+  yogun: {
+    soru: 'Yoğun dakika nedir?',
+    metin: 'Orta ya da yüksek tempoda hareket ettiğin dakikaların günlük toplamıdır. Tempolu yürüyüş, koşu ve benzeri hareketler bu süreye girer.',
+    yon: 'Haftalık toplamı ve günler arasındaki dağılımı birlikte düşün.',
+  },
+  maxnabiz: {
+    soru: 'En yüksek nabız nedir?',
+    metin: 'Saatin gün içinde kaydettiği en yüksek kalp hızıdır. Değer dakikadaki atım sayısıdır ve çoğunlukla antrenmanda görülür.',
+    yon: 'İyi ya da kötü yönü yok; günün ne kadar zorlu geçtiğini gösterir.',
+  },
 };

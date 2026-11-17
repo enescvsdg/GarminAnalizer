@@ -1,4 +1,4 @@
-// Canlı simgeler önizlemesi: dokuz simge, ortak denetimler, Trend başlığı yerleşimi.
+// Canlı simgeler önizlemesi: on dört simge (dokuz sabah + beş günlük hareket), ortak denetimler, Trend başlığı yerleşimi.
 import { simgeKur } from './simgeler.js';
 
 const gsap = window.gsap;
@@ -15,6 +15,11 @@ const OLC = [
   { id: 'derin', ad: 'Derin uyku', alt: 0, ust: 140, min: 50, max: 110, br: ' dk', acik: 'Işık derin uyku süresi kadar derine iner; dalgalar uzar ve yavaşlar.' },
   { id: 'spo2', ad: 'SpO₂', alt: 88, ust: 100, min: 94, max: 99, br: '%', acik: 'Halka oksijen doygunluğu kadar kapanır, damlada kabarcıklar yükselir.' },
   { id: 'solunum', ad: 'Solunum', alt: 8, ust: 24, min: 12, max: 17, br: '/dk', acik: 'Çiçek dakikadaki nefes sayısı hızında açılır ve kapanır.' },
+  { id: 'adim', ad: 'Adım', alt: 0, ust: 15000, min: 6200, max: 11800, br: '', acik: 'Ayak izleri birer birer basılır; adım arttıkça tempo hızlanır, iz uzar.' },
+  { id: 'kat', ad: 'Kat', alt: 0, ust: 25, min: 4, max: 14, br: '', acik: 'Basamaklar kat sayısı kadar aydınlanır; ışık topu tırmanır, tepede parlar.' },
+  { id: 'kalori', ad: 'Aktif kalori', alt: 0, ust: 1200, min: 320, max: 780, br: ' kcal', acik: 'Kor maytap gibi yanar; kalori arttıkça kıvılcımlar çoğalır ve uzar.' },
+  { id: 'yogun', ad: 'Yoğun dakika', alt: 0, ust: 90, min: 15, max: 55, br: ' dk', acik: 'On iki çentik dakika kadar dolar; şimşek yoğunluk arttıkça sık çakar.' },
+  { id: 'maxnabiz', ad: 'En yüksek nabız', alt: 90, ust: 190, min: 118, max: 166, br: '', acik: 'Atımlar tepeye doğru yükselir; ışık izi nabız hızında koşar, tepede parlar.' },
 ];
 const DURUM_YAZI = { lo: '↓ normalin altında', ok: 'normalde', hi: '↑ normalin üstünde' };
 
@@ -25,6 +30,13 @@ const GUNLER = [
   [54, 37, 41, 53, 35, 170, 45, 93, 17], [61, 29, 44, 57, 52, 0, 38, 95, 18], [88, 92, 66, 49, 19, 0, 118, 98, 12],
   [70, 58, 49, 54, 41, 124, 58, 96, 15], [null, 45, 46, 55, null, 210, null, 95, 16], [81, 79, 57, 51, 29, 40, 92, 99, 13],
 ];
+// Günlük hareket ölçümleri (adım, kat, kalori, yoğun dakika, en yüksek nabız) aynı günler için; null = saat takılı değil.
+const HAREKET = [
+  [8720, 9, 590, 20, 134], [11548, 14, 835, 54, 163], [10115, 11, 726, 29, 151], [9521, 10, 673, 20, 145],
+  [8847, 10, 590, 26, 147], [7526, 8, 496, 16, 135], [4728, 5, 277, 7, 118], [null, 0, 0, 0, null],
+  [14210, 22, 1110, 86, 184], [6100, 3, 380, 12, 126], [2950, 1, 150, 0, 104], [12030, 17, 905, 61, 172],
+];
+GUNLER.forEach((g, i) => g.push(...HAREKET[i]));
 
 const oranDen = (o, v) => Math.max(0, Math.min(1, (v - o.alt) / (o.ust - o.alt)));
 const hamDen = (o, r) => Math.round(o.alt + r * (o.ust - o.alt));
