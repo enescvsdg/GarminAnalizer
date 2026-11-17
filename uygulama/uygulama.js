@@ -1,4 +1,4 @@
-import { duzenModu, gorunumYuksekligi, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani } from './duzen.js';
+import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani } from './duzen.js';
 import { simgeKur } from './simgeler.js';
 import { ACIKLAMA } from './aciklama.js';
 const $ = (id) => document.getElementById(id);
@@ -50,6 +50,14 @@ function olcuYuksekligi() {
   }
   return Math.max(olcuKutu.getBoundingClientRect().height, olcuKutu.firstChild.getBoundingClientRect().height);
 }
+// iosTam: iOS ana ekranında sahne position:fixed yerine belge akışında (html.iosTam) ekran yüksekliğinde durur.
+// Doğrulama başarısız olursa iosVazgec kalıcı olur ve eski yola dönülür.
+let iosVazgec = false, iosAktif = false;
+function iosTamDurum() {
+  const sy = typeof screen !== 'undefined' ? screen : null;
+  const w = sy ? sy.width || 0 : 0, h = sy ? sy.height || 0 : 0;
+  return iosTamMi({ iosAnaEkran: navigator.standalone === true, ekranW: w, ekranH: h, iw: innerWidth, vazgec: iosVazgec }) && innerWidth <= innerHeight;
+}
 function gercekYukseklik() {
   const ih = innerHeight, iw = innerWidth;
   const sy = typeof screen !== 'undefined' ? screen : null;
@@ -59,7 +67,49 @@ function gercekYukseklik() {
   return gorunumYuksekligi({
     ic: ih, dvh: olcuYuksekligi(), gorsel: window.visualViewport ? window.visualViewport.height : 0,
     kok: document.documentElement.clientHeight, ekran, standalone,
-    iosTam: navigator.standalone === true && ekran > 0 && iw === Math.min(sy.width || 0, sy.height || 0),
+    iosTam: ekran > 0 && iosTamDurum(),
+  });
+}
+// html.iosTam: belge ekran kadar uzar, sahne mutlak konumlanır; sahne alta kadar boyanır (kırpılan sabit kutu yok)
+function iosSinifi(ac, ekranH) {
+  const k = document.documentElement;
+  iosAktif = ac;
+  k.classList.toggle('iosTam', ac);
+  if (ac) k.style.setProperty('--ekran-h', ekranH + 'px'); else k.style.removeProperty('--ekran-h');
+}
+function iosKaydirmaSabitle() { if (document.documentElement.classList.contains('iosTam') && (scrollX || scrollY)) scrollTo(0, 0); }
+addEventListener('scroll', iosKaydirmaSabitle, { passive: true });
+function iosDogrula() {
+  if (!iosAktif) return;
+  const vv = window.visualViewport;
+  const ok = iosTamGecerli({ sahneAlt: telKok.getBoundingClientRect().bottom, ekran: screen.height, kaydirma: scrollY, gorselUst: vv ? vv.offsetTop : 0 });
+  if (ok) return;
+  iosVazgec = true; iosSinifi(false, 0);
+  (olcekKanca || telOlcek)();
+}
+// Ayarlar'daki tanı satırı (yalnız telefon kipi): cihazdaki gerçek ölçüleri sahibi telefondan bildirebilsin diye
+let guvenKutu = null;
+function guvenliAlan() {
+  if (!guvenKutu) {
+    guvenKutu = document.createElement('div'); guvenKutu.setAttribute('aria-hidden', 'true');
+    guvenKutu.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;box-sizing:content-box';
+    document.body.appendChild(guvenKutu);
+  }
+  const c = getComputedStyle(guvenKutu);
+  return { ust: parseFloat(c.paddingTop), alt: parseFloat(c.paddingBottom) };
+}
+function olcuYaz() {
+  const p = $('olcu'); if (!p) return;
+  const tel = !GENIS && telKok.classList.contains('mob');
+  p.hidden = !tel;
+  if (!tel) return;
+  olcuYuksekligi();
+  const g = guvenliAlan();
+  p.textContent = olcuSatiri({
+    ic: innerHeight, ekran: typeof screen !== 'undefined' ? screen.height : NaN,
+    gorsel: window.visualViewport ? window.visualViewport.height : NaN, kok: document.documentElement.clientHeight,
+    sabit: olcuKutu.getBoundingClientRect().height, dvh: olcuKutu.firstChild.getBoundingClientRect().height,
+    ust: g.ust, alt: g.alt, sahne: telKok.getBoundingClientRect().height, tam: iosAktif,
   });
 }
 function telOlcek() {
@@ -70,12 +120,14 @@ function telOlcek() {
   const mob = iw <= 520, S = mob ? iw / 390 : Math.max(0.1, Math.min(1, (ih - 32) / 844)), H = mob ? ih / S : 844;
   telKok.classList.toggle('mob', mob); telKok.style.height = H + 'px'; telKok.style.transform = `scale(${S})`;
   document.documentElement.classList.toggle('mob', mob);
+  iosSinifi(mob && iosTamDurum(), ih);
   sonOlcu = iw + 'x' + ih;
   return { S, H };
 }
 // iOS ana ekranında yükseklik ilk çizimden sonra oturabilir ve resize gelmeyebilir: bu olaylarda ve yüklemeden kısa süre sonra ölçü değiştiyse yeniden yerleştir
 function olcuKontrol() {
   if (GENIS || !innerWidth || !innerHeight) return;
+  iosDogrula();
   const iw = innerWidth, ih = gercekYukseklik();
   if (sonOlcu === iw + 'x' + ih) return;
   (olcekKanca || telOlcek)();
@@ -603,10 +655,35 @@ if (GENIS) {
 }
 
 /* ================= Ekran geçişleri ================= */
+// Kapsül menü: etkin parça kayan bir "hap" ile vurgulanır; etkin olan simge kısa bir kıpırtı yapar (döngü yok).
+let hapSon = 'sBugun';
+function simgeOyna(id) {
+  if (RM) return;
+  const d = $(id), q = (c) => d.querySelector(c);
+  if (id === 'sBugun') {
+    gsap.fromTo(q('.halka'), { rotation: 0 }, { rotation: 120, duration: 0.6, ease: 'power3.out', overwrite: 'auto' });
+    gsap.fromTo(q('.cekirdek'), { scale: 0.78 }, { scale: 1, duration: 0.55, ease: 'elastic.out(1,0.5)', transformOrigin: '50% 50%', overwrite: 'auto' });
+  } else if (id === 'sTrend') {
+    gsap.fromTo(q('.sirt'), { strokeDasharray: 1, strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.5, ease: 'power2.out', overwrite: 'auto', onComplete: () => gsap.set(q('.sirt'), { clearProps: 'strokeDasharray,strokeDashoffset' }) });
+    gsap.fromTo(q('.nokta'), { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: 0.45, delay: 0.3, ease: 'back.out(2.4)', overwrite: 'auto' });
+  } else {
+    gsap.fromTo(q('.k1'), { x: -4 }, { x: 0, duration: 0.55, ease: 'elastic.out(1,0.55)', overwrite: 'auto' });
+    gsap.fromTo(q('.k2'), { x: 4 }, { x: 0, duration: 0.55, ease: 'elastic.out(1,0.55)', overwrite: 'auto' });
+  }
+}
+function hapGit(id) {
+  const b = $(id);
+  const x = b.offsetLeft - 5;
+  if (RM || !b.offsetWidth) gsap.set('#sekmeHap', { x }); else gsap.to('#sekmeHap', { x, duration: 0.5, ease: 'back.out(1.5)', overwrite: 'auto' });
+  if (hapSon !== id) simgeOyna(id);
+  hapSon = id;
+}
 function sekmeGuncelle() {
+  let aktif = '';
   [['sBugun', !ayarAcik && ekran === 'bugun'], ['sTrend', !ayarAcik && ekran === 'trend'], ['sAyar', ayarAcik]].forEach(([id, a]) => {
-    if (a) $(id).setAttribute('aria-current', 'page'); else $(id).removeAttribute('aria-current');
+    if (a) { $(id).setAttribute('aria-current', 'page'); aktif = id; } else $(id).removeAttribute('aria-current');
   });
+  if (aktif) hapGit(aktif);
 }
 function trendeGec(oi, kaynak) {
   if (mesgul || ekran === 'trend' || GENIS) return; // geniş ekranda ekran geçişi yok: Trend hep açık
@@ -686,7 +763,7 @@ function ayarAc() {
     gsap.fromTo('#ayar', { y: 14, scale: 0.98, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: RM ? 0 : 0.34, ease: 'power3.out', overwrite: 'auto' });
   } else gsap.fromTo('#ayar', { yPercent: 110, autoAlpha: 1 }, { yPercent: 0, duration: RM ? 0 : 0.5, ease: 'power4.out' });
   $('aSes').focus({ preventScroll: true });
-  yzOku(); bilOku();
+  yzOku(); bilOku(); olcuYaz();
 }
 function ayarKapat() {
   if (!ayarAcik) return; ayarAcik = false; sekmeGuncelle();
