@@ -443,7 +443,7 @@ export function ekSatiri(olcumId, ek) {
   } else if (olcumId === 'hrv' && ek.hrv) {
     if (sonlu(ek.hrv.haftalik)) metin = `Haftalık ortalama ${ek.hrv.haftalik} ms`;
   } else if (olcumId === 'spo2' && ek.spo2) {
-    if (sonlu(ek.spo2.en_dusuk)) metin = `En düşük %${Math.round(ek.spo2.en_dusuk)}`;
+    if (sonlu(ek.spo2.en_dusuk) && ek.spo2.en_dusuk > 0) metin = `En düşük %${Math.round(ek.spo2.en_dusuk)}`;
   } else if (olcumId === 'kalori' && ek.kalori) {
     if (sonlu(ek.kalori.toplam)) metin = `Toplam ${binlik(ek.kalori.toplam)} kcal`;
   }

@@ -225,3 +225,16 @@ export async function modulKur(ice, kurAdi, kap, baglam) {
 
 export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
 globalThis.DUZEN = DUZEN;
+
+/* ---------- Trend: yönsüz ölçümlerde (iyi 0, ör. en yüksek nabız) sapma nötrdür ---------- */
+// "normalin üstünde" yön yargısı taşır; iyi/kötü yönü olmayan ölçümde yalnız "aralığın üstünde" denir ve vurgu yapılmaz.
+export const sapmaVurgusu = (iyi, du) => iyi !== 0 && (du === 'lo' || du === 'hi');
+export function sapmaMetni(iyi, du) {
+  if (du === 'ok') return iyi === 0 ? 'her zamanki aralıkta' : 'normal aralıkta';
+  return (iyi === 0 ? 'aralığın ' : 'normalin ') + (du === 'lo' ? 'altında' : 'üstünde');
+}
+// 28 günlük özetin ilk cümlesi (ortalama cümlesi çağıranda eklenir)
+export function ozetCumlesi(iyi, dis, n) {
+  if (iyi === 0) return dis === 0 ? `Son ${n} günde hep her zamanki aralığında kaldın.` : `Son ${n} günde ${dis} gün her zamankinden farklıydı.`;
+  return dis === 0 ? `Son ${n} günde hep normal aralığında kaldın.` : `Son ${n} günde ${dis} gün normal aralığının dışında.`;
+}

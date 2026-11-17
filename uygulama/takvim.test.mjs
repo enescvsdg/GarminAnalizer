@@ -354,3 +354,20 @@ test('ORNEK günlük alanı Trend ile aynı sırada ve takvim kartında çizilir
   assert.match(m, /Günlük/);
   assert.doesNotMatch(m, /NaN|undefined|null/);
 });
+
+test('takvimKur: ay başlığı simgeleri ekran dışındayken durur (tek IntersectionObserver); ciz/gizle/yokEt bırakır', async (t) => {
+  const eski = globalThis.IntersectionObserver; const kopyalar = [];
+  globalThis.IntersectionObserver = class { constructor(f) { this.f = f; this.hedef = []; this.kesildi = false; kopyalar.push(this); } observe(e) { this.hedef.push(e); } disconnect() { this.kesildi = true; } };
+  t.after(() => { if (eski) globalThis.IntersectionObserver = eski; else delete globalThis.IntersectionObserver; });
+  const { kap, t: tk } = await kurVeGoster({ gunler: [...tamAy(2026, 9), ...tamAy(2026, 10)] }, { rm: false });
+  assert.equal(kopyalar.length, 1);
+  const io = kopyalar[0]; assert.equal(io.hedef.length, 2, 'her ay başlığı gözlenir');
+  assert.ok(io.hedef.every((e) => /tkv-ayba/.test(e.className)));
+  io.f([{ target: io.hedef[0], isIntersecting: false }, { target: io.hedef[1], isIntersecting: true }]);
+  assert.match(io.hedef[0].className, /\bdur\b/); assert.doesNotMatch(io.hedef[1].className, /\bdur\b/);
+  io.f([{ target: io.hedef[0], isIntersecting: true }]);
+  assert.doesNotMatch(io.hedef[0].className, /\bdur\b/);
+  tk.gizle(); assert.equal(io.kesildi, true);
+  await tk.goster(); assert.equal(kopyalar.length, 2, 'taze veriyle yeniden gösterilince yeniden gözlenir');
+  tk.yokEt(); assert.equal(kopyalar[1].kesildi, true);
+});

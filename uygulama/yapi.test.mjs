@@ -284,16 +284,16 @@ test('menü: dört sekmenin her birinde kendi hareketli simge parçaları var (2
   assert.match(html, /@media \(prefers-reduced-motion:reduce\)\{\.sekme \.sm \*,\.sekme button::before\{animation:none!important\}\}/);
 });
 
-test('menü: seçili sekmenin kapsülü cam yüzeydir; iki backdrop-filter öneki, iç kenar ışığı ve desteklenmeyen tarayıcı için tint', () => {
+test('menü: seçili sekmenin kapsülü cam yüzeydir; kendi backdrop-filter yok (dış çubukta iki önek var), iç kenar ışığı ve tint', () => {
   const html = oku('index.html');
   const cam = cssKural(html, '.sekme button::before');
-  assert.match(cam, /(^|;)\s*-webkit-backdrop-filter:blur\(\d+px\) saturate\(/);
-  assert.match(cam, /(^|;)\s*backdrop-filter:blur\(\d+px\) saturate\(/);
+  assert.doesNotMatch(cam, /backdrop-filter/); // dış çubuk zaten backdrop kökü; iç içe filtre yalnız maliyet
+  assert.match(cssKural(html, '.sekme'), /-webkit-backdrop-filter:blur/);
+  assert.match(cssKural(html, '.sekme'), /(^|[;\s])backdrop-filter:blur/);
   assert.match(cam, /inset 0 1px 0 rgba\(255,255,255,\.\d+\)/); // üstte ince ışık çizgisi
   assert.match(cam, /inset 0 0 0 1px rgba\(255,255,255/); // 1px parlak iç kenar
   assert.match(cam, /rgb\(var\(--akr\)/); // sekmenin rengi cama hafifçe yansır
   assert.match(html, /\.sekme button\[aria-current=page\]::before\{opacity:1;transform:none\}/);
-  assert.match(html, /@supports not \(\(backdrop-filter:blur\(1px\)\) or \(-webkit-backdrop-filter:blur\(1px\)\)\)\{\.sekme button::before\{background:[^}]*rgb\(var\(--akr\) \/ \.\d+\)\}\}/);
   assert.match(cssKural(html, '.sekme button::after'), /mask-composite:exclude/);
   assert.match(html, /\.genis \.sekme\{display:none\}/);
 });

@@ -1004,3 +1004,8 @@ test('ekSatiri: uykuda şekerleme ve stres, SpO₂ en düşük, toplam kalori; n
   for (const id of ['adim', 'kat', 'yogun', 'maxnabiz']) assert.equal(ekSatiri(id, ek), null);
   for (const id of ['uyku', 'spo2', 'kalori']) assert.doesNotMatch(JSON.stringify(ekSatiri(id, ek)), /NaN|undefined/);
 });
+
+test('ekSatiri: spo2.en_dusuk 0 eksik sayılır ("%0" yazılmaz), gerçek değer yazılır', () => {
+  assert.equal(ekSatiri('spo2', { spo2: { en_dusuk: 0 } }), null);
+  assert.equal(ekSatiri('spo2', { spo2: { en_dusuk: 91 } }).metin, 'En düşük %91');
+});

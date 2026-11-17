@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
 
 const hepsiSonlu = (o) => Object.entries(o).every(([, v]) => typeof v === 'number' && Number.isFinite(v));
 
@@ -341,4 +341,25 @@ test('gunAcKarar: yalnız 7 günlük şeritteki günler Bugün\'e geçer; eski g
   assert.equal(gunAcKarar(tarihAnahtari(gunler[0].tarih), gunler, G0), -1);
   assert.equal(gunAcKarar('2020-01-01', gunler, G0), -1);
   assert.equal(gunAcKarar(null, gunler, G0), -1);
+});
+
+test('sapmaMetni / ozetCumlesi: yönlü ölçümde "normalin", yönsüz (iyi 0) ölçümde nötr "aralığın" ve "her zamankinden"', () => {
+  for (const iyi of [1, -1]) {
+    assert.equal(sapmaMetni(iyi, 'hi'), 'normalin üstünde');
+    assert.equal(sapmaMetni(iyi, 'lo'), 'normalin altında');
+    assert.equal(sapmaMetni(iyi, 'ok'), 'normal aralıkta');
+    assert.equal(ozetCumlesi(iyi, 0, 28), 'Son 28 günde hep normal aralığında kaldın.');
+    assert.equal(ozetCumlesi(iyi, 5, 28), 'Son 28 günde 5 gün normal aralığının dışında.');
+    assert.equal(sapmaVurgusu(iyi, 'hi'), true);
+    assert.equal(sapmaVurgusu(iyi, 'ok'), false);
+  }
+  assert.equal(sapmaMetni(0, 'hi'), 'aralığın üstünde');
+  assert.equal(sapmaMetni(0, 'lo'), 'aralığın altında');
+  assert.equal(sapmaMetni(0, 'ok'), 'her zamanki aralıkta');
+  assert.equal(ozetCumlesi(0, 0, 28), 'Son 28 günde hep her zamanki aralığında kaldın.');
+  assert.equal(ozetCumlesi(0, 5, 28), 'Son 28 günde 5 gün her zamankinden farklıydı.');
+  assert.doesNotMatch(ozetCumlesi(0, 5, 28), /normal/);
+  assert.equal(sapmaVurgusu(0, 'hi'), false);
+  assert.equal(sapmaVurgusu(0, 'lo'), false);
+  assert.equal(sapmaVurgusu(1, null), false);
 });

@@ -211,6 +211,7 @@ const STIL = `
 .tkv-ayik .sv{transform:translateY(calc((1 - var(--o,.5)) * 16px))}
 .tkv-ayik .dl{animation:tkv-dalga 3.6s linear infinite}
 .tkv-ayik .yr{transform-box:view-box;transform-origin:50% 50%;animation:tkv-yor 11s linear infinite}
+.tkv-ayba.dur .tkv-ayik *{animation-play-state:paused}
 .tkv-ayik.bos .hl,.tkv-ayik.bos .sv,.tkv-ayik.bos .yr{display:none}
 .tkv-ayik.bos .cr{stroke-dasharray:1.6 2.4}
 @keyframes tkv-nefes{0%,100%{opacity:.42;transform:scale(.92)}50%{opacity:.78;transform:scale(1.06)}}
@@ -231,7 +232,7 @@ const STIL = `
 .tkv-d::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;opacity:0}
 .tkv-d.atis{animation:tkv-atis .62s cubic-bezier(.3,.7,.3,1)}
 .tkv-d.atis::after{animation:tkv-halka .7s cubic-bezier(.2,.7,.3,1)}
-@keyframes tkv-atis{0%{transform:scale(1)}16%{transform:scale(1.2)}32%{transform:scale(1)}48%{transform:scale(1.13)}100%{transform:scale(1.08)}}
+@keyframes tkv-atis{0%{transform:scale(1)}16%{transform:scale(1.2)}32%{transform:scale(1)}48%{transform:scale(1.13)}}
 @keyframes tkv-halka{0%{opacity:.95;box-shadow:0 0 0 0 var(--c,rgba(255,246,236,.6))}100%{opacity:0;box-shadow:0 0 0 13px var(--c,rgba(255,246,236,.6))}}
 .tkv-gun.bos .tkv-d{background:transparent;box-shadow:none;border:1.5px solid rgba(255,246,236,.28);color:rgba(255,246,236,.5);font-weight:500}
 .tkv-gun.bugun .tkv-d{outline-color:rgba(255,246,236,.9)}
@@ -445,7 +446,7 @@ export function takvimKur(kap, baglam = {}) {
     if (renk) daire.style.setProperty('--c', renk);
     d.appendChild(daire);
     if (!rm) {
-      daire.addEventListener('animationend', (ev) => { if (!ev || ev.animationName === 'tkv-atis') daire.className = 'tkv-d'; });
+      daire.addEventListener('animationend', (ev) => { if (!ev || ev.animationName === 'tkv-halka') daire.className = 'tkv-d'; });
     }
     d.addEventListener('click', () => {
       if (acik && acik.dugme === d) { kartKapat(true); return; }
@@ -459,10 +460,23 @@ export function takvimKur(kap, baglam = {}) {
     return d;
   }
 
+  // Ekran dışındaki ay başlığının simgesi durur (pil/GPU); görünür olunca sürer. Tek gözlemci, ciz/gizle/yokEt'te bırakılır.
+  let gozlem = null; const basliklar = [];
+  function gozlemBirak() { if (gozlem) { try { gozlem.disconnect(); } catch (_) { /* yok say */ } gozlem = null; } }
+  function gozlemKur() {
+    gozlemBirak();
+    const IO = globalThis.IntersectionObserver;
+    if (rm || typeof IO !== 'function') return;
+    try {
+      gozlem = new IO((es) => es.forEach((e) => { e.target.className = e.isIntersecting ? 'tkv-ayba' : 'tkv-ayba dur'; }), { rootMargin: '60px 0px' });
+      basliklar.forEach((b) => gozlem.observe(b));
+    } catch (_) { gozlem = null; }
+  }
+
   function ayKur(ay, bugun) {
     const sec = ek('section', 'tkv-ay');
     sec.setAttribute('aria-label', `${ay.ad} ${ay.yil}`);
-    const ba = ek('div', 'tkv-ayba');
+    const ba = ek('div', 'tkv-ayba'); basliklar.push(ba);
     const oz = ayOzeti(ay.gunler);
     const ik = ek('span', null);
     ik.innerHTML = ayikSvg(++ayikSayac); // sabit şablon; veri yalnız CSS değişkeniyle gelir
@@ -502,6 +516,7 @@ export function takvimKur(kap, baglam = {}) {
 
   function ciz() {
     kartKapat(false);
+    gozlemBirak(); basliklar.length = 0;
     const aylar = aylaraBol(veri && veri.gunler);
     if (!aylar.length) { durumGoster('Henüz veri yok.'); return; }
     icerik.textContent = '';
@@ -509,6 +524,7 @@ export function takvimKur(kap, baglam = {}) {
     const bugun = bugunTarih();
     aylar.forEach((ay) => kapAylar.appendChild(ayKur(ay, bugun)));
     icerik.appendChild(kapAylar);
+    gozlemKur();
   }
 
   let sonYukleme = 0;
@@ -531,13 +547,13 @@ export function takvimKur(kap, baglam = {}) {
     goster() {
       kok.hidden = false; gorunur = true;
       // Veri 5 dakikadan tazeyse yeniden alınmaz ve çizilmez; açık gün kartı bir ziyaretle kapanmaz
-      if (veri && Date.now() - sonYukleme < 5 * 60 * 1000) return Promise.resolve();
+      if (veri && Date.now() - sonYukleme < 5 * 60 * 1000) { if (!gozlem && basliklar.length) gozlemKur(); return Promise.resolve(); }
       return yukle();
     },
-    gizle() { kok.hidden = true; gorunur = false; kartKapat(false); },
+    gizle() { kok.hidden = true; gorunur = false; kartKapat(false); gozlemBirak(); },
     yokEt() {
       yok = true; gorunur = false;
-      kartKapat(false);
+      kartKapat(false); gozlemBirak();
       if (kok.parentNode) kok.parentNode.removeChild(kok);
     },
     get gorunur() { return gorunur; },

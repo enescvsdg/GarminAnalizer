@@ -164,10 +164,9 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 #sAktivite{--ak:#ff8f7a;--akr:255 143 122}
 #sTakvim{--ak:#9fe8c7;--akr:159 232 199}
 .sekme button[aria-current=page]{color:var(--ak);font-weight:700}
-/* Seçili sekmenin cam kapsülü: buzlu açık tint, alttan sekme renginde hafif yansıma, üstte ince ışık çizgisi, 1px parlak iç kenar, iç derinlik ve dışta yumuşak gölge */
+/* Seçili sekmenin cam kapsülü (dış çubuk zaten bulanıkladığı için kendi backdrop-filter'ı yok): buzlu açık tint, alttan sekme renginde hafif yansıma, üstte ince ışık çizgisi, 1px parlak iç kenar, iç derinlik ve dışta yumuşak gölge */
 .sekme button::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transform:scale(.92);transition:opacity .22s,transform .34s cubic-bezier(.32,.72,0,1);
-  background:radial-gradient(130% 90% at 50% 118%,rgb(var(--akr) / .26),rgb(var(--akr) / 0) 68%),linear-gradient(180deg,rgba(255,250,244,.2),rgba(255,250,244,.055) 46%,rgba(255,250,244,.1));
-  -webkit-backdrop-filter:blur(12px) saturate(1.9) brightness(1.1);backdrop-filter:blur(12px) saturate(1.9) brightness(1.1);
+  background:radial-gradient(130% 90% at 50% 118%,rgb(var(--akr) / .34),rgb(var(--akr) / 0) 70%),linear-gradient(180deg,rgba(255,250,244,.32),rgba(255,250,244,.1) 46%,rgba(255,250,244,.18)),rgb(var(--akr) / .1);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.13),inset 0 9px 12px -11px rgba(255,255,255,.55),inset 0 -7px 12px -9px rgb(var(--akr) / .5),0 6px 14px -5px rgba(5,3,10,.6),0 0 22px -8px rgb(var(--akr) / .65)}
 /* Işık kıran kenar: sol üstte parlayan, altta sekme rengine dönen 1px halka (maske ile yalnız kenar boyanır) */
 .sekme button::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;opacity:0;transition:opacity .22s;
@@ -176,7 +175,6 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .sekme button[aria-current=page]::before{opacity:1;transform:none}
 .sekme button[aria-current=page]::after{opacity:1}
 .sekme button[aria-current=page] svg.sm{filter:drop-shadow(0 0 3.5px rgb(var(--akr) / .55))}
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.sekme button::before{background:linear-gradient(180deg,rgba(255,250,244,.24),rgba(255,250,244,.1)),rgb(var(--akr) / .2)}}
 /* Menü simgeleri. Durağan hâl ilk karedir; döngü yalnız .oynar (JS: azaltılmış hareket yok, ekran görünür, telefon) ve seçili sekmede, giriş hareketi .gir sırasında */
 .sekme .sm *{transform-box:fill-box;transform-origin:50% 50%}
 .sekme .m-nefes,.sekme .m-kuyruk{opacity:0}
