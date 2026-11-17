@@ -14,6 +14,8 @@ const KABUK = [
   './aciklama.js',
   './kabuk.js',
   './bildirim.js',
+  './aktiviteler.js',
+  './takvim.js',
   './vendor/gsap.min.js',
   './manifest.webmanifest',
   './simge/simge-180.png',

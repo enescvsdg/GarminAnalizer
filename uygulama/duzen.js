@@ -167,5 +167,57 @@ export function olcuSatiri(o = {}) {
   return `Ölçü: ic ${n(o.ic)} · ekran ${n(o.ekran)} · gorsel ${n(o.gorsel)} · kok ${n(o.kok)} · sabit ${n(o.sabit)} · dvh ${n(o.dvh)} · üst ${n(o.ust)} · alt ${n(o.alt)} · sahne ${n(o.sahne)} · tam ${o.tam === true ? 'evet' : 'hayır'}`;
 }
 
-export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
+/* ---------- Ekran yönlendirme (Bugün, Trend, Aktiviteler, Takvim) ---------- */
+export const EKRANLAR = ['bugun', 'trend', 'aktivite', 'takvim'];
+export const kayanMi = (e) => e === 'aktivite' || e === 'takvim';
+
+// Bir ekrandan ötekine geçişin türü. alt: kaydırılabilir ekranın altında kalan ana ekran (bugun | trend).
+// ana: Bugün ↔ Trend (bugünkü uçan sayı geçişi) · ac: ana → kaydırılabilir · degis: kaydırılabilir → kaydırılabilir
+// kapat: kaydırılabilir → altındaki ana ekran · kapatGec: kaydırılabilir → öbür ana ekran (kısa, anlık ana geçiş + solma)
+export function ekranGecisi(ekran, hedef, alt = 'bugun') {
+  if (!EKRANLAR.includes(ekran) || !EKRANLAR.includes(hedef) || ekran === hedef) return null;
+  const altE = alt === 'trend' ? 'trend' : 'bugun';
+  if (!kayanMi(ekran) && !kayanMi(hedef)) return { tur: 'ana', alt: ekran };
+  if (!kayanMi(ekran)) return { tur: 'ac', alt: ekran };
+  if (kayanMi(hedef)) return { tur: 'degis', alt: altE };
+  return { tur: hedef === altE ? 'kapat' : 'kapatGec', alt: altE };
+}
+
+// Kaydırılabilir ekranda menü: aşağı kaydırınca daralır, yukarı kaydırınca ya da en üstte açılır; küçük oynamalar durumu korur.
+export function menuToplan(onceki, simdi, toplu, esik = 8) {
+  if (!sonlu(onceki) || !sonlu(simdi)) return !!toplu;
+  if (simdi <= esik) return false;
+  const fark = simdi - onceki;
+  if (fark > esik / 2) return true;
+  if (fark < -esik / 2) return false;
+  return !!toplu;
+}
+
+const iki = (n) => String(n).padStart(2, '0');
+export const tarihAnahtari = (d) => `${d.getFullYear()}-${iki(d.getMonth() + 1)}-${iki(d.getDate())}`;
+// 'YYYY-MM-DD' -> gunler (tarih alanı Date olan günler) içindeki sırası; yoksa -1
+export function gunSirasi(tarih, gunler) {
+  if (typeof tarih !== 'string' || !Array.isArray(gunler)) return -1;
+  return gunler.findIndex((g) => g && g.tarih instanceof Date && tarihAnahtari(g.tarih) === tarih);
+}
+
+// Takvimden dokunulan gün 7 günlük şeritte mi: şerit içindeki sıra (0..), şeritten eskiyse ya da yoksa -1 (o zaman Takvim kendi gün kartını açar)
+export function gunAcKarar(tarih, gunler, G0) {
+  const gi = gunSirasi(tarih, gunler);
+  return gi >= G0 ? gi - G0 : -1;
+}
+
+// Kaydırılabilir ekran modülünü yükler ve kurar. Yüklenemezse, kurucu yoksa ya da fırlatırsa null (arayüz "yüklenemedi" der).
+export async function modulKur(ice, kurAdi, kap, baglam) {
+  try {
+    const mod = await ice();
+    const kur = mod && mod[kurAdi];
+    if (typeof kur !== 'function') return null;
+    const c = kur(kap, baglam);
+    if (!c || typeof c.goster !== 'function' || typeof c.gizle !== 'function' || typeof c.yokEt !== 'function') return null;
+    return c;
+  } catch { return null; }
+}
+
+export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
 globalThis.DUZEN = DUZEN;

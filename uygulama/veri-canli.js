@@ -4,6 +4,8 @@
 
 const BAGLANTI_ANAHTARI = 'gk-baglanti';
 const SON_VERI_ANAHTARI = 'gk-son-veri';
+const SON_AKTIVITE_ANAHTARI = 'gk-son-aktivite';
+const SON_TAKVIM_ANAHTARI = 'gk-son-takvim';
 const SON_VERI_SINIR = 400 * 1024;
 const GUN_SAYISI = 28;
 const EN_AZ_GUN = 7;
@@ -143,14 +145,14 @@ export function baglantiYaz({ adres, anahtar } = {}, depo = varsayilanDepo()) {
   const onceki = baglantiOku(depo);
   try { depo.setItem(BAGLANTI_ANAHTARI, JSON.stringify({ adres: a, anahtar: k })); } catch { return false; }
   // Başka bir Worker başka veridir: adres değiştiyse eski adresin son verisi kalmaz.
-  if (!onceki || adresDuzelt(onceki.adres) !== a) sonVeriSil(depo);
+  if (!onceki || adresDuzelt(onceki.adres) !== a) tumOnbellekSil(depo);
   return true;
 }
 
 // Bağlantıyı kaldırınca cihazda sağlık verisi de kalmaz.
 export function baglantiSil(depo = varsayilanDepo()) {
   try { depo?.removeItem(BAGLANTI_ANAHTARI); } catch { /* depo yok ya da erişilemiyor */ }
-  sonVeriSil(depo);
+  tumOnbellekSil(depo);
 }
 
 /* ---------- Son veri önbelleği (localStorage['gk-son-veri'] = {zaman, yanit}) ---------- */
@@ -179,6 +181,14 @@ export function sonVeriOku(depo = varsayilanDepo()) {
 
 export function sonVeriSil(depo = varsayilanDepo()) {
   try { depo?.removeItem(SON_VERI_ANAHTARI); } catch { /* depo yok ya da erişilemiyor */ }
+}
+
+// Gün verisi, aktiviteler ve takvim önbelleklerinin hepsi: bağlantı kalkınca ya da Worker değişince cihazda sağlık verisi kalmaz.
+export function tumOnbellekSil(depo = varsayilanDepo()) {
+  sonVeriSil(depo);
+  for (const k of [SON_AKTIVITE_ANAHTARI, SON_TAKVIM_ANAHTARI]) {
+    try { depo?.removeItem(k); } catch { /* depo yok ya da erişilemiyor */ }
+  }
 }
 
 // Ortak istek. Sonuç {sonuc, neden}: sonuc isle(json) çıktısı ya da null; neden başarısızlığın türü:
@@ -242,6 +252,62 @@ export async function veriYukle(fetchFn = globalThis.fetch, depo = varsayilanDep
   } catch { return yok('ag'); }
 }
 
+/* ---------- Aktiviteler ve Takvim (ayrı ekranlar; modüller kendi örnek verisini taşır) ---------- */
+// İkisi de yanıt nesnesi ya da null döner, fırlatmaz. Başarılı son yanıt localStorage'a yazılır (gk-son-aktivite / gk-son-takvim);
+// ağ, yetki ya da sunucu hatasında oradan dönülür. Bağlantı hiç yoksa null (modül örnek veri gösterir).
+
+function tamGun(gun, varsayilan, en, cok) {
+  return Number.isInteger(gun) && gun >= en && gun <= cok ? gun : varsayilan;
+}
+
+function aktiviteCevir(j) {
+  if (!j || typeof j !== 'object' || !Array.isArray(j.aktiviteler) || !Array.isArray(j.haftalar)) throw new TypeError('aktivite yanıtı geçersiz');
+  const b = j.yukBant;
+  const yukBant = b && typeof b === 'object' && sonlu(b.min) && sonlu(b.max) ? { min: b.min, max: b.max } : null;
+  return { aktiviteler: j.aktiviteler, haftalar: j.haftalar, yukBant };
+}
+
+function takvimCevir(j) {
+  if (!j || typeof j !== 'object' || !Array.isArray(j.gunler)) throw new TypeError('takvim yanıtı geçersiz');
+  return { gunler: j.gunler };
+}
+
+function onbellekYaz(anahtar, yanit, simdiMs, depo) {
+  if (!depo) return false;
+  try {
+    const dizgi = JSON.stringify({ zaman: simdiMs, yanit });
+    const bayt = typeof TextEncoder === 'function' ? new TextEncoder().encode(dizgi).length : dizgi.length;
+    if (bayt > SON_VERI_SINIR) return false;
+    depo.setItem(anahtar, dizgi);
+    return true;
+  } catch { return false; }
+}
+
+function onbellekOku(anahtar, cevir, depo) {
+  try {
+    const s = depo?.getItem(anahtar);
+    if (!s) return null;
+    const o = JSON.parse(s);
+    return o && o.yanit ? cevir(o.yanit) : null;
+  } catch { return null; }
+}
+
+async function listeGetir(yol, anahtar, cevir, fetchFn, depo, zamanAsimiMs) {
+  try {
+    const { sonuc, neden } = await istekCoz(yol, {}, cevir, fetchFn, depo, zamanAsimiMs);
+    if (sonuc) { onbellekYaz(anahtar, sonuc, Date.now(), depo); return sonuc; }
+    if (neden === null) return null; // bağlantı hiç yok
+    return onbellekOku(anahtar, cevir, depo);
+  } catch { return null; }
+}
+
+export function aktiviteGetir(gun = 56, fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
+  return listeGetir(`/api/aktiviteler?gun=${tamGun(gun, 56, 7, 400)}`, SON_AKTIVITE_ANAHTARI, aktiviteCevir, fetchFn, depo, zamanAsimiMs);
+}
+
+export function takvimGetir(gun = 400, fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
+  return listeGetir(`/api/takvim?gun=${tamGun(gun, 400, 28, 400)}`, SON_TAKVIM_ANAHTARI, takvimCevir, fetchFn, depo, zamanAsimiMs);
+}
 
 function ayarCevir(j) {
   if (!j || typeof j !== 'object' || Array.isArray(j) || typeof j.yapayZeka !== 'boolean') throw new TypeError('ayar geçersiz');
@@ -368,7 +434,7 @@ export function ekSatiri(olcumId, ek) {
 }
 
 export const CANLI = {
-  veriCevir, durum, veriGetir, veriYukle, sonVeriYaz, sonVeriOku, sonVeriSil, ayarGetir, ayarYaz, abonelikKaydet, abonelikSil, denemeBildirimi, baglantiOku, baglantiYaz, baglantiSil, baglantiKarar, adresDuzelt,
+  veriCevir, durum, veriGetir, veriYukle, aktiviteGetir, takvimGetir, tumOnbellekSil, sonVeriYaz, sonVeriOku, sonVeriSil, ayarGetir, ayarYaz, abonelikKaydet, abonelikSil, denemeBildirimi, baglantiOku, baglantiYaz, baglantiSil, baglantiKarar, adresDuzelt,
   sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, OK, DURUM_METIN,
 };
 globalThis.CANLI = CANLI;

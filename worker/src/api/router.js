@@ -1,6 +1,8 @@
 // HTTP girişi: kimlik, CORS ve rotalar. Gizli değerler loga ve yanıta girmez.
 import { apiYaniti } from '../stats/ozet.js';
-import { gunleriOku, durumOku, durumYaz, abonelikYaz, abonelikSil, abonelikleriOku } from '../db.js';
+import { aktiviteYaniti, okumaBasi as aktiviteOkumaBasi } from '../stats/aktivite.js';
+import { takvimYaniti, okumaBasi as takvimOkumaBasi } from '../stats/takvim.js';
+import { gunleriOku, aktiviteleriOku, durumOku, durumYaz, abonelikYaz, abonelikSil, abonelikleriOku } from '../db.js';
 import { herkeseGonder, vapidAyari, pushOzetSatiri } from '../brifing.js';
 import { yerelTarih, gunEkle } from '../zaman.js';
 import { yorumOku, yapayZekaAcik, yapayZekaYaz } from '../yorum/yorum.js';
@@ -71,6 +73,27 @@ export async function gunlerYaniti(env, simdiMs, n) {
     govde.egilim = null;
   }
   return govde;
+}
+
+// gun parametresi: tam sayı değilse varsayılan, aksi halde [en az, en çok] aralığına sıkıştırılır.
+function sinirliGun(deger, enAz, enCok, varsayilan) {
+  const n = Number.parseInt(deger ?? '', 10);
+  if (!Number.isFinite(n)) return varsayilan;
+  return Math.min(enCok, Math.max(enAz, n));
+}
+
+async function aktiviteler(url, env, simdiMs, cors) {
+  const gun = sinirliGun(url.searchParams.get('gun'), 7, 400, 56);
+  const bugun = yerelTarih(simdiMs);
+  const satirlar = await aktiviteleriOku(env.DB, aktiviteOkumaBasi(bugun, gun), bugun);
+  return yanit(aktiviteYaniti(satirlar, bugun, gun), 200, cors);
+}
+
+async function takvim(url, env, simdiMs, cors) {
+  const gun = sinirliGun(url.searchParams.get('gun'), 28, 400, 400);
+  const bugun = yerelTarih(simdiMs);
+  const satirlar = await gunleriOku(env.DB, takvimOkumaBasi(bugun, gun), bugun);
+  return yanit(takvimYaniti(satirlar, bugun, gun), 200, cors);
 }
 
 async function gunler(url, env, simdiMs, cors) {
@@ -178,7 +201,7 @@ async function denemeBildirimi(env, simdiMs, cors, bag) {
     fetch: (...a) => fetch(...a),
     gonder: pushGonder,
     asamaBildir: (ad) => { asama = ad; },
-    yuk: { baslik: 'GarminAnalizer', govde: 'Bildirimler çalışıyor.', etiket: 'deneme', url: './' },
+    yuk: { baslik: 'Deneme bildirimi', govde: 'Bildirimler çalışıyor.', etiket: 'deneme', url: './' },
   });
   console.log(pushOzetSatiri(sonuc));
   return yanit({ gonderilen: sonuc.gonderilen, basarili: sonuc.basarili, asama: sonuc.basarili ? undefined : asama }, 200, cors);
@@ -220,6 +243,8 @@ export async function istekIsle(request, env, simdiMs, bag = null) {
     }
     if (url.pathname === '/api/ayar') return await ayar(request, env, cors);
     if (url.pathname === '/api/gunler') return await gunler(url, env, simdiMs, cors);
+    if (url.pathname === '/api/aktiviteler') return await aktiviteler(url, env, simdiMs, cors);
+    if (url.pathname === '/api/takvim') return await takvim(url, env, simdiMs, cors);
     if (url.pathname === '/api/durum') return await durum(env, cors);
     if (url.pathname === '/api/abonelik') return await abonelik(request, env, simdiMs, cors, bag);
     if (url.pathname === '/api/deneme-bildirim') return await denemeBildirimi(env, simdiMs, cors, bag);

@@ -28,14 +28,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 ::selection{background:#ffc9a6;color:#1a0d14}
 :focus-visible{outline:2px solid var(--isaret);outline-offset:2px}
 .sahne{height:100dvh;display:grid;place-items:center}
-.tel{--st:40px;--sb:0px;--tb:calc(max(var(--sb),10px) - var(--sb) + 76px);width:390px;height:844px;position:relative;overflow:hidden;border-radius:46px;background:#0c0812;flex:none;box-shadow:0 40px 120px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.07);user-select:none;-webkit-user-select:none}
-.tel.mob{--st:env(safe-area-inset-top);--sb:env(safe-area-inset-bottom);--tb:calc(max(var(--sb),10px) - var(--sb) + 76px);position:fixed;left:0;top:0;border-radius:0;transform-origin:0 0;box-shadow:none}
+.tel{--st:40px;--sb:0px;--tb:calc(max(var(--sb),10px) - var(--sb) + 84px);width:390px;height:844px;position:relative;overflow:hidden;border-radius:46px;background:#0c0812;flex:none;box-shadow:0 40px 120px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.07);user-select:none;-webkit-user-select:none}
+.tel.mob{--st:env(safe-area-inset-top);--sb:env(safe-area-inset-bottom);--tb:calc(max(var(--sb),10px) - var(--sb) + 84px);position:fixed;left:0;top:0;border-radius:0;transform-origin:0 0;box-shadow:none}
 .tam{position:absolute;inset:0;width:100%;height:100%}
 svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 
 /* başlık */
 .bas{position:absolute;left:24px;right:24px;top:calc(var(--st) + 14px)}
-.bas .tarih{font-size:13px;font-weight:500;color:rgba(255,246,236,.78);padding-right:44px}
+.bas .tarih{font-size:13px;font-weight:500;color:rgba(255,246,236,.78);padding-right:92px}
 .bas h1{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100,'opsz' 144;font-weight:430;font-size:42px;line-height:1.03;letter-spacing:-.025em;margin-top:6px;min-height:43px;text-wrap:balance}
 .bas .ger{font-size:15px;line-height:1.42;margin-top:8px;color:rgba(255,246,236,.9);text-wrap:pretty}
 .kel{display:inline-block;white-space:nowrap}.h{display:inline-block;will-change:transform}
@@ -84,7 +84,7 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 #yildiz i{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff}
 #gunes{position:absolute;left:0;top:0;width:132px;height:132px;margin:-66px 0 0 -66px;border-radius:50%;will-change:transform}
 #trend .bas{pointer-events:none;text-shadow:0 1px 16px rgba(10,6,20,.5)}
-.secici{display:flex;gap:6px;margin:0 22px 12px -24px;padding:2px 24px;overflow-x:auto;pointer-events:auto;scrollbar-width:none;touch-action:pan-x;-webkit-overflow-scrolling:touch;
+.secici{display:flex;gap:6px;margin:0 74px 12px -24px;padding:2px 24px;overflow-x:auto;pointer-events:auto;scrollbar-width:none;touch-action:pan-x;-webkit-overflow-scrolling:touch;
   mask-image:linear-gradient(90deg,transparent,#000 22px,#000 calc(100% - 22px),transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 22px,#000 calc(100% - 22px),transparent)}
 .secici::-webkit-scrollbar{display:none}
 .secici button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;font-size:13.5px;font-weight:500;white-space:nowrap;color:rgba(255,246,236,.86);background:rgba(12,8,18,.32);border:1px solid rgba(255,246,236,.2);text-shadow:none;transition:background .2s,color .2s,border-color .2s}
@@ -142,27 +142,34 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 
 /* uçan sayı, sekmeler, ses, ayarlar */
 .ucan{position:absolute;left:0;top:0;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1;pointer-events:none;z-index:7;text-shadow:0 0 18px rgba(255,220,190,.7)}
-.sekme{position:absolute;left:calc(50% - 132px);width:264px;height:60px;bottom:calc(max(var(--sb),10px) + 8px);padding:5px;display:flex;z-index:5;border-radius:999px;
+.sekme{position:absolute;left:12px;right:12px;max-width:540px;margin:0 auto;height:64px;bottom:calc(max(var(--sb),10px) + 10px);padding:0 6px;display:flex;align-items:center;z-index:5;border-radius:32px;
   background:linear-gradient(180deg,rgba(255,246,236,.1),rgba(255,246,236,0) 46%),rgba(26,16,42,.74);
   border:1px solid rgba(255,246,236,.2);
   -webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);
-  box-shadow:0 12px 32px rgba(5,3,10,.5),0 2px 8px rgba(5,3,10,.35),inset 0 1px 0 rgba(255,255,255,.26),inset 0 -1px 0 rgba(255,255,255,.04)}
+  box-shadow:0 12px 32px rgba(5,3,10,.5),0 2px 8px rgba(5,3,10,.35),inset 0 1px 0 rgba(255,255,255,.26),inset 0 -1px 0 rgba(255,255,255,.04);
+  transition:max-width .34s cubic-bezier(.32,.72,0,1),height .34s cubic-bezier(.32,.72,0,1)}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.sekme{background:rgba(26,16,42,.95)}}
-.sekme .hap{position:absolute;left:5px;top:5px;width:calc((100% - 10px)/3);height:calc(100% - 10px);border-radius:999px;pointer-events:none;
-  background:radial-gradient(120% 140% at 50% 0%,rgba(255,201,166,.34),rgba(181,151,255,.2) 62%,rgba(181,151,255,.12));
-  border:1px solid rgba(255,214,186,.38);box-shadow:0 0 20px rgba(255,201,166,.26),inset 0 1px 0 rgba(255,255,255,.3)}
-.sekme button{position:relative;z-index:1;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:500;letter-spacing:.01em;color:rgba(255,246,236,.74);border-radius:999px;transition:color .25s}
+/* Aşağı kaydırılan ekranlarda (Aktiviteler, Takvim) kapsül daralır, etiketler silinir; yukarıda açılır. 4 x 50 px hedef, 44 px sınırının üstünde. */
+.sekme.toplandi{max-width:272px;height:56px}
+.sekme button{flex:1;min-width:0;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:26px;font-size:10.5px;font-weight:500;letter-spacing:.01em;color:rgba(255,246,236,.72);transition:color .2s,background .2s,opacity .15s}
+.sekme button:active{opacity:.6}
 .sekme button:focus-visible{outline:2px solid var(--isaret);outline-offset:-2px}
-.sekme svg.sm{width:24px;height:24px;overflow:visible;stroke:currentColor;stroke-width:1.5}
-.sekme .isik{stroke:none;opacity:0;transition:opacity .35s}
-.sekme .cekirdek,.sekme .nokta,.sekme .topuz{fill:rgba(26,16,42,.9)}
-.sekme .kivilcim{fill:currentColor;stroke:none}
-.sekme .halka,.sekme .sirt{transform-box:fill-box;transform-origin:center}
-.sekme button[aria-current=page]{color:var(--metin);font-weight:600}
-.sekme button[aria-current=page] .isik{opacity:.85}
-.sekme button[aria-current=page] .cekirdek,.sekme button[aria-current=page] .nokta,.sekme button[aria-current=page] .topuz{fill:var(--isaret);stroke:var(--metin)}
-#sesBtn{position:absolute;right:12px;top:calc(var(--st) + 2px);width:44px;height:44px;display:grid;place-items:center;z-index:5;border-radius:50%;color:rgba(255,246,236,.85)}
-#sesBtn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.6}
+.sekme svg.sm{width:24px;height:24px;flex:none;stroke:currentColor;stroke-width:1.6}
+.sekme span{max-height:14px;overflow:hidden;white-space:nowrap;transition:opacity .18s,max-height .3s}
+.sekme.toplandi span{opacity:0;max-height:0}
+.sekme.toplandi button{gap:0}
+/* Her sekmenin kendi rengi ve aktif zemini; kayan hap yok */
+#sBugun{--ak:#ffc9a6;--akz:rgba(255,201,166,.17)}
+#sTrend{--ak:#b9a2ff;--akz:rgba(185,162,255,.19)}
+#sAktivite{--ak:#ff8f7a;--akz:rgba(255,143,122,.18)}
+#sTakvim{--ak:#9fe8c7;--akz:rgba(159,232,199,.16)}
+.sekme button[aria-current=page]{color:var(--ak);background:var(--akz);font-weight:700}
+#sesBtn,#ayarBtn{position:absolute;top:calc(var(--st) + 2px);width:44px;height:44px;display:grid;place-items:center;z-index:5;border-radius:50%;color:rgba(255,246,236,.85)}
+#sesBtn{right:54px}#ayarBtn{right:10px}
+#sesBtn svg,#ayarBtn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.6}
+#ayarBtn svg{width:21px;height:21px;stroke-width:1.5}
+#ayarBtn[aria-expanded=true]{color:var(--metin)}
+.ayarYazi{display:none}
 #sesBtn .dalga{transition:opacity .2s}#sesBtn .cizik{opacity:0;transition:opacity .2s}
 #sesBtn[aria-pressed=false] .dalga{opacity:0}#sesBtn[aria-pressed=false] .cizik{opacity:1}
 #perde{position:absolute;inset:0;background:rgba(5,3,8,.55);z-index:6;visibility:hidden;opacity:0}
@@ -191,9 +198,9 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .bag [hidden]{display:none}
 
 /* uyarı şeridi (Bugün başlığının üstünde, akış içinde: başlık aşağı itilir) */
-.serit{display:flex;gap:8px;align-items:flex-start;margin:0 44px 10px 0;padding:8px 12px;border-radius:14px;background:rgba(255,201,166,.14);border:1px solid rgba(255,201,166,.5);font-size:12.5px;line-height:1.4;color:var(--metin);text-wrap:pretty}
+.serit{display:flex;gap:8px;align-items:flex-start;margin:0 92px 10px 0;padding:8px 12px;border-radius:14px;background:rgba(255,201,166,.14);border:1px solid rgba(255,201,166,.5);font-size:12.5px;line-height:1.4;color:var(--metin);text-wrap:pretty}
 .serit[hidden]{display:none}
-button.serit{width:calc(100% - 44px);min-height:44px;margin-right:0;align-items:center;text-align:left;pointer-events:auto}
+button.serit{width:calc(100% - 92px);min-height:44px;margin-right:0;align-items:center;text-align:left;pointer-events:auto}
 button.serit svg{margin-top:0}
 button.serit span{flex:1}
 button.serit svg.ok{width:10px;height:10px;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
@@ -257,16 +264,25 @@ html.genis,html.genis body{background:#08050c}
 .genis .secici button:not([aria-pressed=true]):hover{border-color:rgba(255,246,236,.42);color:var(--metin)}
 .genis #ekSatir{max-width:560px}
 #arac{position:absolute;top:var(--st);right:16px;z-index:5;display:flex;gap:8px;align-items:center}
-.genis #sesBtn,#ayarBtn{position:static;height:40px;border:1px solid rgba(255,246,236,.2);background:rgba(12,8,18,.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:border-color .2s,color .2s}
+.genis #sesBtn,.genis #ayarBtn,.genis .aracDugme{position:static;height:40px;border:1px solid rgba(255,246,236,.2);background:rgba(12,8,18,.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:border-color .2s,color .2s}
 .genis #sesBtn{width:40px}
+.genis #ayarBtn,.genis .aracDugme{display:flex;align-items:center;gap:7px;width:auto;padding:0 16px 0 12px;border-radius:999px;font-size:14px;font-weight:500;color:rgba(255,246,236,.88)}
+.genis .aracDugme{padding:0 16px}
+.genis .aracDugme[hidden]{display:none}
+.genis .ayarYazi{display:inline}
+.genis .aracDugme[aria-pressed=true]{border-color:rgba(255,246,236,.5);color:var(--metin)}
 @media(any-pointer:coarse){
   .genis .secici button{min-width:var(--dok-temas,44px);min-height:max(var(--dok,40px),var(--dok-temas,44px))}
-  .genis #sesBtn,.genis #ayarBtn{height:44px}
+  .genis #sesBtn,.genis #ayarBtn,.genis .aracDugme{height:44px}
   .genis #sesBtn{width:44px}
 }
-#ayarBtn{display:flex;align-items:center;gap:7px;padding:0 16px 0 12px;border-radius:999px;font-size:14px;font-weight:500;color:rgba(255,246,236,.88)}
-#ayarBtn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.6}
-.genis #sesBtn:hover,#ayarBtn:hover,#ayarBtn[aria-expanded=true]{border-color:rgba(255,246,236,.45);color:var(--metin)}
+.genis #sesBtn:hover,.genis #ayarBtn:hover,.genis .aracDugme:hover,.genis #ayarBtn[aria-expanded=true]{border-color:rgba(255,246,236,.45);color:var(--metin)}
+/* Aktiviteler ve Takvim: sayfa değil kapsayıcı kayar. Telefonda tüm sahneyi, geniş ekranda Trend bölgesini kaplar; üstte güvenli alan ve sağ üst düğmeler, altta kapsül menü kadar boşluk bırakılır. */
+.ekran{position:absolute;inset:0;z-index:3;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:none;background:#0c0812;padding:calc(var(--st) + 52px) 16px calc(var(--tb) + var(--sb) + 20px);user-select:text;-webkit-user-select:text}
+.ekran::-webkit-scrollbar{display:none}
+.ekran[hidden]{display:none}
+.ekranHata{margin-top:28vh;text-align:center;font-size:15px;line-height:1.45;color:rgba(255,246,236,.7)}
+.genis .ekran{background:#08050c;padding-left:24px;padding-right:24px}
 .genis #perde{background:rgba(5,3,8,.62)}
 .genis #ayar{left:50%;top:50%;right:auto;bottom:auto;width:min(440px,calc(100% - 32px));max-height:calc(100% - 48px);border-radius:24px;box-shadow:0 30px 90px rgba(0,0,0,.6)}
 </style>
@@ -309,34 +325,24 @@ html.genis,html.genis body{background:#08050c}
       <div id="etiketler"></div>
     </section>
 
+    <section id="aktivite" class="ekran" aria-label="Aktiviteler" hidden></section>
+    <section id="takvim" class="ekran" aria-label="Takvim" hidden></section>
+
     <button id="sesBtn" type="button" aria-pressed="true" aria-label="Ses efektleri">
       <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3.5v-11L6 8z"/><path class="dalga" d="M13 7.5a3.5 3.5 0 010 5M15.2 5.3a6.5 6.5 0 010 9.4"/><path class="cizik" d="M13.5 8l4 4M17.5 8l-4 4"/></svg>
     </button>
+    <button id="ayarBtn" type="button" aria-label="Ayarlar" aria-haspopup="dialog" aria-controls="ayar" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="ayarYazi">Ayarlar</span>
+    </button>
     <nav class="sekme" aria-label="Ekranlar">
-      <span class="hap" id="sekmeHap" aria-hidden="true"></span>
       <button type="button" id="sBugun" aria-current="page">
-        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true">
-          <defs><radialGradient id="kmIsik"><stop offset="0" stop-color="currentColor" stop-opacity=".7"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></radialGradient></defs>
-          <circle class="isik" cx="12" cy="12" r="9" fill="url(#kmIsik)"/>
-          <circle class="halka" cx="12" cy="12" r="8.2" stroke-dasharray="1.6 3.1"/>
-          <circle class="cekirdek" cx="12" cy="12" r="3.9"/>
-          <circle class="kivilcim" cx="16.2" cy="7.8" r=".9"/>
-        </svg><span>Bugün</span></button>
+        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" stroke-dasharray="1.6 3.1"/><circle cx="12" cy="12" r="3.6"/></svg><span>Bugün</span></button>
       <button type="button" id="sTrend">
-        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true">
-          <circle class="isik" cx="15" cy="13" r="6.5" fill="url(#kmIsik)"/>
-          <path class="sirt" pathLength="1" d="M2.8 17.5C5.5 17.5 6.4 11.2 9 11.8S12.4 16.8 15 13S18.6 6.6 21.2 7.6"/>
-          <path class="taban" d="M3 21h18" opacity=".35"/>
-          <circle class="nokta" cx="15" cy="13" r="1.9"/>
-        </svg><span>Trend</span></button>
-      <button type="button" id="sAyar">
-        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true">
-          <circle class="isik" cx="9" cy="8" r="5" fill="url(#kmIsik)"/>
-          <circle class="isik" cx="15.5" cy="16" r="5" fill="url(#kmIsik)"/>
-          <path d="M3 8h3.2M11.8 8H21M3 16h8.7M17.3 16H21"/>
-          <circle class="topuz k1" cx="9" cy="8" r="2.6"/>
-          <circle class="topuz k2" cx="15.5" cy="16" r="2.6"/>
-        </svg><span>Ayarlar</span></button>
+        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.8 17.5C5.5 17.5 6.4 11.2 9 11.8S12.4 16.8 15 13S18.6 6.6 21.2 7.6"/><path d="M3 21h18" opacity=".35"/></svg><span>Trend</span></button>
+      <button type="button" id="sAktivite">
+        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12.5h4l2.4-6.5 4.2 12 2.4-5.5H21"/></svg><span>Aktiviteler</span></button>
+      <button type="button" id="sTakvim">
+        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3.5"/><path d="M4 10.5h16M8.5 3.5v3.5M15.5 3.5v3.5"/><circle cx="9" cy="14.5" r=".6"/><circle cx="12" cy="14.5" r=".6"/><circle cx="15" cy="14.5" r=".6"/></svg><span>Takvim</span></button>
     </nav>
     <div id="bekle" role="status" hidden><div><i aria-hidden="true"></i><p>Veriler alınıyor…</p></div></div>
     <div id="perde"></div>
