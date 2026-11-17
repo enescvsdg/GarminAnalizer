@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { testD1 } from './helpers/d1.mjs';
 import { istekIsle } from '../src/api/router.js';
-import { durumYaz, durumOku, gunUpsert } from '../src/db.js';
+import { durumYaz, durumOku, gunUpsert, aktiviteUpsert, gunleriOku } from '../src/db.js';
 import { gunEkle } from '../src/zaman.js';
 import { apiYaniti } from '../src/stats/ozet.js';
 import { bant, OLCUMLER } from '../src/stats/baseline.js';
@@ -761,4 +761,136 @@ test('deneme gönderimindeki imza hatası telefona aşama adıyla döner', async
   const p = sahtePush((g) => { g.gunluk('imza'); return 'hata'; });
   const r = await push(env, '/api/deneme-bildirim', 'POST', undefined, { push: p });
   assert.deepEqual(await json(r), { gonderilen: 1, basarili: 0, asama: 'imza' });
+});
+
+// ---- /api/aktiviteler ve /api/takvim ----
+const AKT = (id, date, ek = {}) => ({
+  id, date, type: 'running', start_ts: Date.UTC(2026, 10, 10, 5, 0), duration_s: 1800, distance_m: 5000, avg_hr: 140,
+  training_load: 100, aerobic_te: 3, calories: 300, max_hr: 170, hr_zones_json: '[1,2,3,4,5]',
+  raw_json: '{"gizli":"sir"}', ...ek,
+});
+
+test('aktiviteler ve takvim: anahtar olmadan 401, yanlış yöntem 405, OPTIONS kimliksiz 204', async () => {
+  for (const yol of ['/api/aktiviteler', '/api/takvim']) {
+    const r = await istekIsle(istek(yol, { anahtar: null }), ortam(), SIMDI);
+    assert.equal(r.status, 401);
+    assert.deepEqual(await json(r), { hata: 'yetkisiz' });
+    const p = await istekIsle(istek(yol, { yontem: 'POST' }), ortam(), SIMDI);
+    assert.equal(p.status, 405);
+    assert.deepEqual(await json(p), { hata: 'yontem' });
+    const o = await istekIsle(istek(yol, { yontem: 'OPTIONS', anahtar: null, basliklar: { Origin: ORIGIN } }), ortam(), SIMDI);
+    assert.equal(o.status, 204);
+  }
+});
+
+test('aktiviteler ve takvim: CORS, Vary, no-store, JSON başlıkları', async () => {
+  for (const yol of ['/api/aktiviteler', '/api/takvim']) {
+    const r = await istekIsle(istek(yol, { basliklar: { Origin: ORIGIN } }), ortam(), SIMDI);
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get('Access-Control-Allow-Origin'), ORIGIN);
+    assert.equal(r.headers.get('Vary'), 'Origin');
+    assert.equal(r.headers.get('Cache-Control'), 'no-store');
+    assert.equal(r.headers.get('Content-Type'), 'application/json; charset=utf-8');
+  }
+});
+
+test('/api/aktiviteler: veri, raw_json yok, JSON gidiş-dönüşü eşit', async () => {
+  const env = ortam();
+  await aktiviteUpsert(env.DB, AKT('a1', '2026-11-10'));
+  await aktiviteUpsert(env.DB, AKT('a2', '2026-11-11', { type: 'strength_training', distance_m: null, hr_zones_json: null, total_sets: 10, total_reps: 100,
+    sets_json: JSON.stringify([{ category: 'SQUAT', reps: 10, sets: 2, duration: 60000, maxWeight: 0 }]) }));
+  const r = await istekIsle(istek('/api/aktiviteler'), env, SIMDI);
+  const metin = await r.text();
+  assert.ok(!metin.includes('raw_json'));
+  assert.ok(!metin.includes('sir'));
+  const g = JSON.parse(metin);
+  assert.deepEqual(Object.keys(g).sort(), ['aktiviteler', 'haftalar', 'yukBant']);
+  assert.deepEqual(g.aktiviteler.map((a) => a.id), ['a2', 'a1']);
+  assert.equal(g.aktiviteler[0].mesafe_m, null);
+  assert.equal(g.aktiviteler[0].setler[0].tur, 'SQUAT');
+  assert.equal(g.aktiviteler[1].tarih, '2026-11-10');
+  assert.deepEqual(g.aktiviteler[1].bolgeler, [1, 2, 3, 4, 5]);
+  assert.equal(g.haftalar.length, 9); // varsayılan 56 gün
+  assert.equal(g.haftalar[0].bas, '2026-11-09');
+  assert.equal(g.haftalar[0].adet, 2);
+  assert.equal(g.yukBant, null);
+  assert.equal(metin, JSON.stringify(JSON.parse(metin)));
+});
+
+test('/api/aktiviteler: gun 7-400 arasına sıkıştırılır, sayı değilse 56', async () => {
+  const env = ortam();
+  await aktiviteUpsert(env.DB, AKT('eski', '2026-08-01', { start_ts: 1 }));
+  await aktiviteUpsert(env.DB, AKT('yeni', '2026-11-12'));
+  const al = async (q) => json(await istekIsle(istek(`/api/aktiviteler${q}`), env, SIMDI));
+  assert.deepEqual((await al('')).aktiviteler.map((a) => a.id), ['yeni']); // 56 gün: 18 Eylül'den
+  assert.deepEqual((await al('?gun=abc')).aktiviteler.map((a) => a.id), ['yeni']);
+  assert.deepEqual((await al('?gun=')).aktiviteler.map((a) => a.id), ['yeni']);
+  assert.deepEqual((await al('?gun=400')).aktiviteler.map((a) => a.id), ['yeni', 'eski']);
+  assert.deepEqual((await al('?gun=9999')).aktiviteler.map((a) => a.id), ['yeni', 'eski']);
+  assert.equal((await al('?gun=1')).haftalar.length, 2); // 7'ye çıkar: 6-12 Kas iki hafta
+  assert.equal((await al('?gun=-3')).haftalar.length, 2);
+  assert.equal((await al('?gun=7')).haftalar.length, 2);
+  assert.equal((await al('?gun=0')).haftalar.length, 2);
+});
+
+test('/api/aktiviteler: İstanbul Pazartesi 00:30 (UTC Pazar) yeni haftaya düşer', async () => {
+  const env = ortam();
+  const simdi = Date.UTC(2026, 10, 15, 21, 30); // UTC Pazar 21:30 = İstanbul Pazartesi 16 Kas 00:30
+  await aktiviteUpsert(env.DB, AKT('pazar', '2026-11-15', { start_ts: Date.UTC(2026, 10, 15, 20, 30) }));
+  await aktiviteUpsert(env.DB, AKT('pzt', '2026-11-16', { start_ts: simdi }));
+  const g = await json(await istekIsle(istek('/api/aktiviteler?gun=14'), env, simdi));
+  assert.equal(g.haftalar[0].bas, '2026-11-16');
+  assert.equal(g.haftalar[0].adet, 1);
+  assert.equal(g.haftalar[1].bas, '2026-11-09');
+  assert.equal(g.haftalar[1].adet, 1);
+  assert.deepEqual(g.aktiviteler.map((a) => a.id), ['pzt', 'pazar']);
+});
+
+test('/api/aktiviteler: yukBant 6 haftadan azsa null, 6 haftada dolu (gun=7 iken de)', async () => {
+  const env = ortam();
+  for (let i = 1; i <= 5; i += 1) await aktiviteUpsert(env.DB, AKT(`h${i}`, gunEkle('2026-11-09', -7 * i), { training_load: 100 + i }));
+  assert.equal((await json(await istekIsle(istek('/api/aktiviteler?gun=7'), env, SIMDI))).yukBant, null);
+  await aktiviteUpsert(env.DB, AKT('h6', gunEkle('2026-11-09', -42), { training_load: 90 }));
+  const g = await json(await istekIsle(istek('/api/aktiviteler?gun=7'), env, SIMDI));
+  assert.ok(Number.isFinite(g.yukBant.min) && Number.isFinite(g.yukBant.max));
+  assert.equal(g.aktiviteler.length, 0);
+});
+
+test('/api/takvim: varsayılan 400 gün, eskiden yeniye, her gün şekilli', async () => {
+  const env = ortam();
+  for (let i = 0; i < 40; i += 1) {
+    await gunUpsert(env.DB, { date: gunEkle('2026-11-12', -i), sleep_score: 70 + (i % 9), bb_high: 70, hrv_avg: 50 + (i % 5), resting_hr: 52, stress_avg: 30 });
+  }
+  const r = await istekIsle(istek('/api/takvim'), env, SIMDI);
+  assert.equal(r.status, 200);
+  const metin = await r.text();
+  const g = JSON.parse(metin);
+  assert.deepEqual(Object.keys(g), ['gunler']);
+  assert.equal(g.gunler.length, 400);
+  assert.equal(g.gunler[399].tarih, '2026-11-12');
+  assert.equal(g.gunler[0].tarih, gunEkle('2026-11-12', -399));
+  assert.equal(g.gunler[0].e, null); // veri yok
+  assert.equal(typeof g.gunler[399].e, 'number');
+  assert.deepEqual(Object.keys(g.gunler[399].kartlar).sort(), ['bb', 'hrv', 'nabiz', 'stres', 'uyku', 'yuk']);
+  assert.equal(g.gunler[399].kartlar.uyku.v, 70);
+  assert.ok(!metin.includes('raw_json'));
+  assert.ok(metin.length < 200 * 1024);
+  assert.equal(metin, JSON.stringify(JSON.parse(metin)));
+});
+
+test('/api/takvim: gun 28-400 arasına sıkıştırılır, sayı değilse 400; apiYaniti ile aynı enerji', async () => {
+  const env = ortam();
+  for (let i = 0; i < 60; i += 1) {
+    await gunUpsert(env.DB, { date: gunEkle('2026-11-12', -i), sleep_score: 60 + ((i * 7) % 30), bb_high: 55 + ((i * 3) % 30), hrv_avg: 45 + (i % 11), resting_hr: 50 + (i % 6), stress_avg: 25 + (i % 12), training_load: 40 + ((i * 5) % 90) });
+  }
+  const al = async (q) => json(await istekIsle(istek(`/api/takvim${q}`), env, SIMDI));
+  assert.equal((await al('?gun=1')).gunler.length, 28);
+  assert.equal((await al('?gun=abc')).gunler.length, 400);
+  assert.equal((await al('?gun=99999')).gunler.length, 400);
+  assert.equal((await al('?gun=30')).gunler.length, 30);
+  const t = await al('?gun=40');
+  const satirlar = await gunleriOku(env.DB, gunEkle('2026-11-12', -80), '2026-11-12');
+  const a = apiYaniti(satirlar, '2026-11-12', 40, null);
+  assert.deepEqual(t.gunler.map((g) => g.e), a.gunler.map((g) => g.e));
+  assert.deepEqual(t.gunler.map((g) => g.hukum), a.gunler.map((g) => g.hukum));
 });
