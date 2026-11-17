@@ -1,6 +1,6 @@
 // Bugünün hüküm ve gerekçesini Gemini'ye yazdırma kararı. Gemini yalnız iki metni yazar;
 // enerji, bant ve durumlar şablondan gelir ve Gemini'den etkilenmez.
-import { OLCUMLER, gunDegerleri, bant, durum } from '../stats/baseline.js';
+import { geminiOlcumleri, gunDegerleri, bant, durum } from '../stats/baseline.js';
 import { enerji, hukum } from '../stats/ozet.js';
 import { durumOku, durumYaz } from '../db.js';
 
@@ -33,17 +33,17 @@ export async function karmaHesapla(metin) {
 // Gemini'ye gidecek düz metin: yalnız bugünün özet sayıları. Tarih, ad, aktivite, ham alan yok.
 export async function ozetGirdisi(satirlar, bugun) {
   const d = gunDegerleri(satirlar, bugun);
-  const bantlar = Object.fromEntries(OLCUMLER.map((o) => [o.id, bant(satirlar, o, bugun)]));
+  const bantlar = Object.fromEntries(geminiOlcumleri().map((o) => [o.id, bant(satirlar, o, bugun)]));
   const e = enerji(d, bantlar);
   if (e === null) return null;
   const kademe = hukum(e);
-  const satir = OLCUMLER.map((o) => {
+  const satir = geminiOlcumleri().map((o) => {
     const b = bantlar[o.id];
     const v = d[o.id];
     const aralik = `${b.kisisel ? 'normal' : 'genel'} aralık ${sayiMetni(b.min)}–${sayiMetni(b.max)}`;
-    const yon = o.iyi > 0 ? 'yüksek değer iyi' : 'düşük değer iyi';
-    if (v === null || v === undefined) return `${o.ad}: veri yok; ${aralik}; ${yon}.`;
-    return `${o.ad}: ${sayiMetni(v)}${o.birim}; ${aralik}; ${DURUM_METNI[durum(b, v)]}; ${yon}.`;
+    const yon = o.iyi > 0 ? 'yüksek değer iyi' : o.iyi < 0 ? 'düşük değer iyi' : null;
+    if (v === null || v === undefined) return `${o.ad}: veri yok; ${aralik}${yon ? `; ${yon}` : ''}.`;
+    return `${o.ad}: ${sayiMetni(v)}${o.birim}; ${aralik}; ${DURUM_METNI[durum(b, v)]}${yon ? `; ${yon}` : ''}.`;
   });
   const metin = [
     'Bugünün ölçümleri:',

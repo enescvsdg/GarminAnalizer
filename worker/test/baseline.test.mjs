@@ -92,7 +92,7 @@ test('durum: lo/ok/hi ve null', () => {
   assert.equal(durum(b, 0), 'lo');
 });
 
-const DOKUZ_NULL = { uyku: null, bb: null, hrv: null, nabiz: null, stres: null, yuk: null, derin: null, spo2: null, solunum: null };
+const DOKUZ_NULL = { uyku: null, bb: null, hrv: null, nabiz: null, stres: null, yuk: null, derin: null, spo2: null, solunum: null, adim: null, kat: null, kalori: null, yogun: null, maxnabiz: null };
 
 test('yuk bir önceki günün training_load değeridir', () => {
   const s = [
@@ -117,8 +117,8 @@ test('derin dakikaya çevrilir', () => {
 });
 
 test('OLCUMLER sırası, kart bayrakları ve yeni ölçüm tabloları', () => {
-  assert.deepEqual(OLCUMLER.map((o) => o.id), ['uyku', 'bb', 'hrv', 'nabiz', 'stres', 'yuk', 'derin', 'spo2', 'solunum']);
-  assert.deepEqual(OLCUMLER.map((o) => o.kart), [true, true, true, true, true, true, false, false, false]);
+  assert.deepEqual(OLCUMLER.map((o) => o.id), ['uyku', 'bb', 'hrv', 'nabiz', 'stres', 'yuk', 'derin', 'spo2', 'solunum', 'adim', 'kat', 'kalori', 'yogun', 'maxnabiz']);
+  assert.deepEqual(OLCUMLER.map((o) => o.kart), [true, true, true, true, true, true, false, false, false, false, false, false, false, false]);
   const o = (id) => OLCUMLER.find((x) => x.id === id);
   const sade = (x) => [x.ad, x.birim, x.iyi, x.kaynak, x.tabanSigma, x.varsayilan, x.agirlik];
   assert.deepEqual(sade(o('yuk')), ['Dünkü yük', '', -1, 'training_load', 25, [40, 150], 0.05]);

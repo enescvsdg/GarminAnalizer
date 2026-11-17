@@ -1,7 +1,7 @@
 // Ölçüm eğilim yorumları: son 28 günün ölçüm başına ÖZET sayıları Gemini'ye gider, her ölçüm için
 // 1-2 cümle gelir. Tarih, gün adı, gün gün değer ve aktivite GİTMEZ. Bugünkü hüküm yorumuyla aynı
 // ayar, aynı günlük istek sayacı ve aynı doğrulama kuralları geçerlidir (yorum.js).
-import { OLCUMLER, gunDegerleri, bant, durum, dolu } from '../stats/baseline.js';
+import { geminiOlcumleri, gunDegerleri, bant, durum, dolu } from '../stats/baseline.js';
 import { gunEkle } from '../zaman.js';
 import { durumOku, durumYaz } from '../db.js';
 import {
@@ -64,7 +64,7 @@ function olcumSatiri(o, degerler, b) {
     const yon = Math.abs(fark) < YON_ESIGI * (b.max - b.min) ? 'aynı' : fark > 0 ? 'yükseldi' : 'düştü';
     parcalar.push(`son ${SON_GUN} gün ortalaması ${sayiMetni(s)}, önceki ${PENCERE - SON_GUN} gün ${sayiMetni(e)}, ${yon}`);
   }
-  parcalar.push(o.iyi > 0 ? 'yüksek değer iyi' : 'düşük değer iyi');
+  if (o.iyi !== 0) parcalar.push(o.iyi > 0 ? 'yüksek değer iyi' : 'düşük değer iyi');
   return `[${o.id}] ${parcalar.join('; ')}.`;
 }
 
@@ -74,7 +74,7 @@ export async function egilimOzeti(satirlar, bugun) {
   for (let i = PENCERE - 1; i >= 0; i -= 1) gunler.push(gunDegerleri(satirlar, gunEkle(bugun, -i)));
   const satir = [];
   const olcumler = [];
-  for (const o of OLCUMLER) {
+  for (const o of geminiOlcumleri()) {
     const degerler = gunler.map((d) => d[o.id]);
     if (degerler.filter(dolu).length < EN_AZ_VERI) continue;
     satir.push(olcumSatiri(o, degerler, bant(satirlar, o, bugun)));

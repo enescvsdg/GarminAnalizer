@@ -27,10 +27,22 @@ export const OLCUMLER = [
   { id: 'derin', ad: 'Derin uyku', birim: ' dk', iyi: 1, kaynak: 'sleep_deep_s', donustur: dakika, tabanSigma: 10, varsayilan: [50, 110], agirlik: 0, kart: false },
   { id: 'spo2', ad: 'SpO₂', birim: '%', iyi: 1, kaynak: 'spo2_avg', tabanSigma: 1, varsayilan: [94, 99], agirlik: 0, kart: false },
   { id: 'solunum', ad: 'Solunum', birim: '/dk', iyi: -1, kaynak: 'resp_avg', tabanSigma: 0.6, varsayilan: [12, 17], agirlik: 0, kart: false },
+  // Günlük ölçümler: enerjiye, hükme ve gerekçeye girmez (ağırlık 0, kart false). `iyi: 0` = yön yok (durum var, iyi/kötü yok).
+  // sifirYok: 0 değeri saatin takılı olmadığı günün sahte sıfırıdır, yok sayılır (kat, kalori, yoğun dakika için 0 gerçektir).
+  { id: 'adim', ad: 'Adım', birim: '', iyi: 1, kaynak: 'steps', sifirYok: true, tabanSigma: 1200, varsayilan: [5000, 11000], agirlik: 0, kart: false },
+  { id: 'kat', ad: 'Kat', birim: '', iyi: 1, kaynak: 'floors', tabanSigma: 3, varsayilan: [3, 15], agirlik: 0, kart: false },
+  { id: 'kalori', ad: 'Aktif kalori', birim: ' kcal', iyi: 1, kaynak: 'calories_active', tabanSigma: 120, varsayilan: [250, 800], agirlik: 0, kart: false },
+  { id: 'yogun', ad: 'Yoğun dakika', birim: ' dk', iyi: 1, kaynak: 'intensity_minutes', tabanSigma: 10, varsayilan: [10, 60], agirlik: 0, kart: false },
+  { id: 'maxnabiz', ad: 'En yüksek nabız', birim: '', iyi: 0, kaynak: 'hr_max', sifirYok: true, tabanSigma: 6, varsayilan: [110, 170], agirlik: 0, kart: false },
 ];
 
+// Gemini'ye yalnız bu dokuz ölçüm gider (maliyet ve gizlilik); günlük ölçümler eklenince de değişmez.
+export const GEMINI_OLCUMLERI = ['uyku', 'bb', 'hrv', 'nabiz', 'stres', 'yuk', 'derin', 'spo2', 'solunum'];
+export const geminiOlcumleri = () => OLCUMLER.filter((o) => GEMINI_OLCUMLERI.includes(o.id));
+
 const satirBul = (satirlar, tarih) => satirlar.find((r) => r.date === tarih);
-const deger = (r, o) => (r && dolu(r[o.kaynak]) ? (o.donustur ? o.donustur(r[o.kaynak]) : r[o.kaynak]) : null);
+const geceli = (r, o) => !!r && dolu(r[o.kaynak]) && !(o.sifirYok && r[o.kaynak] === 0);
+const deger = (r, o) => (geceli(r, o) ? (o.donustur ? o.donustur(r[o.kaynak]) : r[o.kaynak]) : null);
 
 export function gunDegerleri(satirlar, tarih) {
   const bugun = satirBul(satirlar, tarih);
@@ -46,7 +58,7 @@ export function bant(satirlar, olcum, tarih) {
   const bas = gunEkle(tarih, -28);
   const son = gunEkle(tarih, -1);
   const degerler = satirlar
-    .filter((r) => r.date >= bas && r.date <= son && dolu(r[olcum.kaynak]))
+    .filter((r) => r.date >= bas && r.date <= son && geceli(r, olcum))
     .map((r) => (olcum.donustur ? olcum.donustur(r[olcum.kaynak]) : r[olcum.kaynak]));
   if (degerler.length >= 14) {
     const med = medyan(degerler);

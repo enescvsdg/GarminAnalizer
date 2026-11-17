@@ -90,14 +90,14 @@ test('apiYaniti tam gunSayisi öğe döner, veri olmayan gün null değerlerle',
     assert.equal(g.e, null);
     assert.equal(g.hukum, 'Bugün için yeterli veri yok.');
     assert.equal(g.gerekce, 'Saat verisi gelmemiş.');
-    assert.deepEqual(g.d, { uyku: null, bb: null, hrv: null, nabiz: null, stres: null, yuk: null, derin: null, spo2: null, solunum: null });
+    assert.deepEqual(g.d, { uyku: null, bb: null, hrv: null, nabiz: null, stres: null, yuk: null, derin: null, spo2: null, solunum: null, adim: null, kat: null, kalori: null, yogun: null, maxnabiz: null });
   }
   // 18. indeks = 4 Kas: ilk dolu gün (yük için bir önceki gün de yok → null)
   assert.equal(y.gunler[18].d.uyku, 80);
   assert.equal(y.gunler[18].d.yuk, null);
   assert.equal(y.gunler[19].d.yuk, 60);
   assert.notEqual(y.gunler[27].e, null);
-  assert.equal(y.olcumler.length, 9);
+  assert.equal(y.olcumler.length, 14);
   assert.deepEqual(Object.keys(y.olcumler[0]), ['id', 'ad', 'birim', 'iyi', 'min', 'max', 'kisisel', 'kart']);
   assert.equal(y.olcumler[0].kisisel, false); // 10 gün < 14
   tara(y);
@@ -115,7 +115,7 @@ test('her gün kendi bandıyla değerlendirilir; bugünün olcumler bandı kişi
 test('apiYanitinda 0 ya da NaN yok', () => {
   const yaniti = JSON.stringify(apiYaniti(gunler('2026-11-13', 10), '2026-11-13', 28, META));
   assert.ok(!yaniti.includes('NaN'));
-  assert.ok(!yaniti.includes(':0,'));
+  assert.ok(!yaniti.replaceAll('"iyi":0,', '').includes(':0,')); // iyi: 0 = yön yok, sahte sıfır değil
   assert.ok(!yaniti.includes('undefined'));
   // boş satır listesi de güvenli
   tara(apiYaniti([], '2026-11-13', 5, META));
@@ -140,26 +140,30 @@ test('gerekçe kart olmayan ölçümleri saymaz', () => {
   assert.equal(gerekce({ ...hepsi(null), spo2: 97 }, BANTLAR), 'Saat verisi gelmemiş.');
 });
 
-test('apiYaniti dokuz ölçüm, kart bayrağı ve ek alanı döner', () => {
+test('apiYaniti ondört ölçüm, kart bayrağı ve ek alanı döner', () => {
   const y = apiYaniti(gunler('2026-11-13', 10), '2026-11-13', 28, META);
-  assert.equal(y.olcumler.length, 9);
+  assert.equal(y.olcumler.length, 14);
   assert.equal(y.olcumler.filter((o) => o.kart).length, 6);
   assert.deepEqual(y.olcumler.map((o) => o.id), OLCUMLER.map((o) => o.id));
   assert.deepEqual(Object.keys(y.gunler[27].d), OLCUMLER.map((o) => o.id));
   const ek = y.gunler[27].ek;
   assert.deepEqual(ek, {
-    uyku: { toplam: 401, derin: 71, hafif: 240, rem: 90, uyanik: 10, ihtiyac: 480 },
+    uyku: { toplam: 401, derin: 71, hafif: 240, rem: 90, uyanik: 10, ihtiyac: 480, sekerleme: null, stres: null },
     bb: { dolan: 70, biten: 45 },
     stres: { dinlenme: 300, dusuk: 200, orta: 100, yuksek: 30 },
     hrv: { durum: 'BALANCED', haftalik: 54 },
+    spo2: { en_dusuk: null },
+    kalori: { toplam: null },
   });
   assert.equal(y.gunler[27].d.derin, 71);
   // satır yoksa ek tam şekilli, yaprakları null
   assert.deepEqual(y.gunler[0].ek, {
-    uyku: { toplam: null, derin: null, hafif: null, rem: null, uyanik: null, ihtiyac: null },
+    uyku: { toplam: null, derin: null, hafif: null, rem: null, uyanik: null, ihtiyac: null, sekerleme: null, stres: null },
     bb: { dolan: null, biten: null },
     stres: { dinlenme: null, dusuk: null, orta: null, yuksek: null },
     hrv: { durum: null, haftalik: null },
+    spo2: { en_dusuk: null },
+    kalori: { toplam: null },
   });
   tara(y);
 });

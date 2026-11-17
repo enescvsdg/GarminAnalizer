@@ -29,7 +29,7 @@ export function takvimYaniti(satirlar, bugun, gun) {
     const e = enerji(d, bantlar);
     const kartlar = {};
     for (const o of KARTLAR) kartlar[o.id] = { v: d[o.id], durum: durum(bantlar[o.id], d[o.id]) };
-    gunler.push({ tarih, e, hukum: hukum(e), kartlar });
+    gunler.push({ tarih, e, hukum: hukum(e), kartlar, gunluk: { adim: d.adim, kat: d.kat, kalori: d.kalori, yogun: d.yogun, maxnabiz: d.maxnabiz } });
   }
   return { gunler };
 }
