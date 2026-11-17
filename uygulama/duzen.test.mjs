@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, DUZEN } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN } from './duzen.js';
 
 const hepsiSonlu = (o) => Object.entries(o).every(([, v]) => typeof v === 'number' && Number.isFinite(v));
 
@@ -246,4 +246,36 @@ test('gorunumYuksekligi: iOS tam ekranda kısa bildirilen yükseklikler yerine e
   assert.equal(gorunumYuksekligi({ ic: 797, dvh: 797, ekran: 852, standalone: true, iosTam: false }), 797);
   assert.equal(gorunumYuksekligi({ ic: 797, ekran: 0, standalone: true, iosTam: true }), 797);
   assert.equal(gorunumYuksekligi({ ic: 797, ekran: NaN, iosTam: true }), 797);
+});
+
+test('iosTamMi: yalnız iOS ana ekranı, dikey ve ekran genişliğinde; vazgeçilince kapalı', () => {
+  const t = { iosAnaEkran: true, ekranW: 393, ekranH: 852, iw: 393 };
+  assert.equal(iosTamMi(t), true);
+  assert.equal(iosTamMi({ ...t, iw: 390 }), false);
+  assert.equal(iosTamMi({ ...t, iosAnaEkran: false }), false);
+  assert.equal(iosTamMi({ ...t, vazgec: true }), false);
+  assert.equal(iosTamMi({ ...t, ekranH: NaN }), false);
+  assert.equal(iosTamMi(), false);
+  assert.equal(iosTamMi({ ...t, ekranW: 852, ekranH: 393 }), true);
+});
+
+test('iosTamGecerli: sahne altı ekrana yakın ve kayma yoksa geçerli; aksi halde eski yola dönülür', () => {
+  const g = { sahneAlt: 852, ekran: 852, kaydirma: 0, gorselUst: 0 };
+  assert.equal(iosTamGecerli(g), true);
+  assert.equal(iosTamGecerli({ ...g, sahneAlt: 851 }), true);
+  assert.equal(iosTamGecerli({ ...g, sahneAlt: 797 }), false);
+  assert.equal(iosTamGecerli({ ...g, kaydirma: 59 }), false);
+  assert.equal(iosTamGecerli({ ...g, gorselUst: 20 }), false);
+  assert.equal(iosTamGecerli({ ...g, sahneAlt: NaN }), false);
+  assert.equal(iosTamGecerli({}), false);
+});
+
+test('olcuSatiri: sayıları yuvarlar, eksik değere ? yazar, NaN/undefined/null yazısı çıkmaz', () => {
+  const tam = olcuSatiri({ ic: 797, ekran: 852, gorsel: 797.4, kok: 797, sabit: 797, dvh: 797, ust: 59, alt: 34, sahne: 852, tam: true });
+  assert.equal(tam, 'Ölçü: ic 797 · ekran 852 · gorsel 797 · kok 797 · sabit 797 · dvh 797 · üst 59 · alt 34 · sahne 852 · tam evet');
+  const bos = olcuSatiri({ ic: NaN, gorsel: undefined, sahne: null });
+  assert.match(bos, /ic \? · ekran \? · gorsel \?/);
+  assert.match(bos, /tam hayır$/);
+  assert.doesNotMatch(bos, /NaN|undefined|null/);
+  assert.match(olcuSatiri(), /^Ölçü: /);
 });

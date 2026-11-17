@@ -144,5 +144,28 @@ export function gorunumYuksekligi({ ic, dvh, gorsel, kok, ekran, standalone, ios
   return y;
 }
 
-export const DUZEN = { gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
+// iOS ana ekran uygulaması, dikey ve pencere ekran genişliğinde mi (tam ekran)? vazgec: doğrulama başarısız olduysa kapalı.
+export function iosTamMi({ iosAnaEkran, ekranW, ekranH, iw, vazgec } = {}) {
+  if (vazgec === true || iosAnaEkran !== true) return false;
+  if (!sonlu(ekranW) || !sonlu(ekranH) || ekranW <= 0 || ekranH <= 0 || !sonlu(iw)) return false;
+  return iw === Math.min(ekranW, ekranH);
+}
+
+// iosTam yerleşimi oturdu mu? Sahnenin altı ekran yüksekliğine yakın, belge ve görsel görünüm kaymamış olmalı.
+// Değilse çağıran eski (position:fixed) yola döner: en kötü ihtimal eski bant, kırpılmış kontrol asla.
+export function iosTamGecerli({ sahneAlt, ekran, kaydirma, gorselUst } = {}) {
+  if (!sonlu(sahneAlt) || !sonlu(ekran) || ekran <= 0) return false;
+  if (Math.abs(sahneAlt - ekran) > 2) return false;
+  if (sonlu(kaydirma) && Math.abs(kaydirma) > 0.5) return false;
+  if (sonlu(gorselUst) && Math.abs(gorselUst) > 0.5) return false;
+  return true;
+}
+
+// Ayarlar'daki tanı satırı. Sonlu olmayan değer "?" olur; NaN/undefined yazısı çıkmaz.
+export function olcuSatiri(o = {}) {
+  const n = (v) => (sonlu(v) ? String(Math.round(v)) : '?');
+  return `Ölçü: ic ${n(o.ic)} · ekran ${n(o.ekran)} · gorsel ${n(o.gorsel)} · kok ${n(o.kok)} · sabit ${n(o.sabit)} · dvh ${n(o.dvh)} · üst ${n(o.ust)} · alt ${n(o.alt)} · sahne ${n(o.sahne)} · tam ${o.tam === true ? 'evet' : 'hayır'}`;
+}
+
+export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
 globalThis.DUZEN = DUZEN;

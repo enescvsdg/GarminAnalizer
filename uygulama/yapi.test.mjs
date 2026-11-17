@@ -229,3 +229,24 @@ test('Ayarlar gizlilik metni 28 günlük özeti anlatır, eski cümle yok', () =
   assert.match(js, /son 28 günlük özeti/);
   assert.doesNotMatch(js, /geçmiş günler gönderilmez/);
 });
+
+test('alt menü yüzen cam kapsüldür: üç düğme, etiket, tam genişlik değil, iki backdrop-filter', () => {
+  const html = oku('index.html');
+  const nav = html.match(/<nav class="sekme" aria-label="Ekranlar">[\s\S]*?<\/nav>/);
+  assert.ok(nav, 'nav.sekme aria-label="Ekranlar" bulunmalı');
+  for (const id of ['sBugun', 'sTrend', 'sAyar']) assert.match(nav[0], new RegExp(`<button type="button" id="${id}"`));
+  assert.match(nav[0], /<button type="button" id="sBugun" aria-current="page"/);
+  const kural = html.match(/\n\.sekme\{([^}]*)\}/);
+  assert.ok(kural, '.sekme kuralı bulunmalı');
+  assert.doesNotMatch(kural[1], /(^|;)\s*(left:0|right:0)\s*(;|$)/);
+  assert.match(kural[1], /(^|[;\s])backdrop-filter:blur/);
+  assert.match(kural[1], /-webkit-backdrop-filter:blur/);
+  assert.match(html, /\.genis \.sekme\{display:none\}/);
+});
+
+test('Ayarlar ölçü satırı #surum altında gizli başlar; iosTam sınıfı sahneyi mutlak konumlar', () => {
+  const html = oku('index.html');
+  assert.match(html, /<p id="surum" hidden><\/p>\s*<p id="olcu" hidden><\/p>/);
+  assert.match(html, /html\.iosTam \.tel\.mob\{position:absolute\}/);
+  assert.match(html, /html\.iosTam,html\.iosTam body\{[^}]*overflow:hidden[^}]*overscroll-behavior:none/);
+});
