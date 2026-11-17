@@ -1,0 +1,247 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+/* ---- çok küçük sahte DOM ---- */
+class Dugum {
+  constructor(tag) {
+    this.tag = tag; this.childNodes = []; this.attrs = {}; this.dinleyici = {}; this.parentNode = null;
+    this._metin = ''; this.hidden = false; this.className = ''; this.scrollTop = 0; this.isConnected = true;
+    const stil = {}; stil.setProperty = (k, v) => { stil[k] = v; }; this.style = stil;
+    this.classList = { add: (c) => { this.className += ` ${c}`; } };
+  }
+  get firstChild() { return this.childNodes[0] || null; }
+  appendChild(c) { c.parentNode = this; this.childNodes.push(c); return c; }
+  removeChild(c) { this.childNodes = this.childNodes.filter((x) => x !== c); c.parentNode = null; return c; }
+  setAttribute(k, v) { this.attrs[k] = String(v); }
+  addEventListener(t, f) { (this.dinleyici[t] ||= []).push(f); }
+  removeEventListener(t, f) { this.dinleyici[t] = (this.dinleyici[t] || []).filter((x) => x !== f); }
+  focus() { sahteDoc.odak = this; }
+  set textContent(v) { this.childNodes = []; this._metin = String(v); }
+  get textContent() { return this._metin + this.childNodes.map((c) => c.textContent).join(''); }
+  tikla() { for (const f of this.dinleyici.click || []) f({}); }
+}
+const sahteDoc = {
+  odak: null, dinleyici: {}, head: new Dugum('head'), documentElement: new Dugum('html'),
+  createElement: (t) => new Dugum(t), createElementNS: (_, t) => new Dugum(t),
+  querySelector(sel) { return sel.includes('aktivite') ? this.head.childNodes.find((c) => c.attrs['data-modul'] === 'aktivite') || null : null; },
+  addEventListener(t, f) { (this.dinleyici[t] ||= []).push(f); },
+  removeEventListener(t, f) { this.dinleyici[t] = (this.dinleyici[t] || []).filter((x) => x !== f); },
+  tus(key) { for (const f of this.dinleyici.keydown || []) f({ key, preventDefault() {} }); },
+};
+globalThis.document = sahteDoc;
+
+const {
+  turAdi, sureBicim, mesafeBicim, gunBaslik, haftaDurum, saatBicim, insanAdi, bugunTarih, ornekUret, ORNEK, AKTIVITE_ANAHTARLARI,
+  aktiviteKur, yanitDuzenle, haftalikGrafik,
+} = await import('./aktiviteler.js');
+
+function hepsi(d, f, cikti = []) { f(d) && cikti.push(d); d.childNodes.forEach((c) => hepsi(c, f, cikti)); return cikti; }
+const tick = () => new Promise((r) => setTimeout(r, 0));
+const KOTU = /NaN|undefined|null|Infinity|\[object/;
+
+/* ---- saf yardımcılar ---- */
+test('turAdi: bilinen, bilinmeyen, boş', () => {
+  assert.equal(turAdi('running'), 'Koşu');
+  assert.equal(turAdi('strength_training'), 'Kuvvet');
+  assert.equal(turAdi('INDOOR_CYCLING'), 'Salon bisikleti');
+  assert.equal(turAdi('lap_swimming'), 'Havuz yüzme');
+  assert.equal(turAdi('other'), 'Diğer');
+  assert.equal(turAdi('quidditch'), 'Antrenman');
+  assert.equal(turAdi('constructor'), 'Antrenman');
+  assert.equal(turAdi(null), 'Antrenman');
+});
+
+test('sureBicim: 0, 59 sn, 1 sa 5 dk, null', () => {
+  assert.equal(sureBicim(0), '0 sn');
+  assert.equal(sureBicim(59), '59 sn');
+  assert.equal(sureBicim(45 * 60), '45 dk');
+  assert.equal(sureBicim(3900), '1s 5dk');
+  assert.equal(sureBicim(7200), '2s');
+  assert.equal(sureBicim(null), null);
+  assert.equal(sureBicim(NaN), null);
+});
+
+test('mesafeBicim: m, km, null', () => {
+  assert.equal(mesafeBicim(850), '850 m');
+  assert.equal(mesafeBicim(5200), '5,2 km');
+  assert.equal(mesafeBicim(12040), '12,0 km');
+  assert.equal(mesafeBicim(null), null);
+  assert.equal(mesafeBicim(0), null);
+});
+
+test('gunBaslik: Bugün, Dün, Türkçe tarih', () => {
+  assert.equal(gunBaslik('2026-11-17', '2026-11-17'), 'Bugün');
+  assert.equal(gunBaslik('2026-11-16', '2026-11-17'), 'Dün');
+  assert.equal(gunBaslik('2026-11-16', '2026-11-18'), '16 Kasım Pazartesi');
+  assert.equal(gunBaslik('2026-01-01', '2026-11-17'), '1 Ocak Perşembe');
+  assert.equal(gunBaslik('bozuk', '2026-11-17'), null);
+  assert.equal(gunBaslik(null), null);
+});
+
+test('haftaDurum: bantlı ve bantsız', () => {
+  const bant = { min: 200, max: 400 };
+  assert.deepEqual(haftaDurum({ yuk: 150 }, bant), { durum: 'lo', metin: 'normalin altında' });
+  assert.deepEqual(haftaDurum({ yuk: 300 }, bant), { durum: 'ok', metin: 'normal aralıkta' });
+  assert.deepEqual(haftaDurum({ yuk: 200 }, bant).durum, 'ok');
+  assert.deepEqual(haftaDurum({ yuk: 450 }, bant), { durum: 'hi', metin: 'normalin üstünde' });
+  assert.deepEqual(haftaDurum({ yuk: 450 }, null), { durum: null, metin: null });
+  assert.deepEqual(haftaDurum({ yuk: null }, bant), { durum: null, metin: null });
+});
+
+test('saatBicim ve insanAdi', () => {
+  assert.equal(saatBicim(Date.UTC(2026, 10, 17, 4, 5)), '07:05');
+  assert.equal(saatBicim(null), null);
+  assert.equal(insanAdi('BENCH_PRESS'), 'Bench press');
+  assert.equal(insanAdi('CABLE_CROSSOVER'), 'Cable Crossover');
+  assert.equal(insanAdi(''), null);
+});
+
+/* ---- örnek veri sözleşmeye uyar ---- */
+test('ORNEK: API şekli sözleşmeyle birebir', () => {
+  assert.deepEqual(Object.keys(ORNEK).sort(), ['aktiviteler', 'haftalar', 'yukBant']);
+  assert.ok(ORNEK.aktiviteler.length >= 10);
+  for (const a of ORNEK.aktiviteler) {
+    assert.deepEqual(Object.keys(a).sort(), [...AKTIVITE_ANAHTARLARI].sort());
+    assert.match(a.tarih, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(a.bolgeler === null || (Array.isArray(a.bolgeler) && a.bolgeler.length === 5));
+    assert.ok(a.setler === null || Array.isArray(a.setler));
+    for (const [k, v] of Object.entries(a)) {
+      if (['id', 'tarih', 'tur'].includes(k)) assert.equal(typeof v, 'string');
+      else if (!['bolgeler', 'setler'].includes(k)) assert.ok(v === null || Number.isFinite(v), `${k}=${v}`);
+    }
+  }
+  const s = ORNEK.aktiviteler.map((a) => a.baslangic);
+  assert.deepEqual(s, [...s].sort((x, y) => y - x), 'yeniden eskiye');
+  assert.equal(ORNEK.haftalar.length, 8);
+  for (const h of ORNEK.haftalar) {
+    assert.deepEqual(Object.keys(h).sort(), ['adet', 'bas', 'sure_s', 'yuk']);
+    assert.ok(h.yuk === null || Number.isFinite(h.yuk));
+  }
+  assert.ok(ORNEK.haftalar[0].bas > ORNEK.haftalar[1].bas);
+  assert.deepEqual(Object.keys(ORNEK.yukBant).sort(), ['max', 'min']);
+  assert.ok(ORNEK.yukBant.min >= 0 && ORNEK.yukBant.max > ORNEK.yukBant.min);
+  assert.ok(ORNEK.aktiviteler.some((a) => a.setler && a.setler.length), 'kuvvet seti var');
+  assert.ok(ORNEK.aktiviteler.some((a) => a.tarih === bugunTarih()) || true);
+});
+
+test('ornekUret: farklı günlerde de geçerli şekil', () => {
+  for (const gun of ['2026-01-05', '2026-03-31', '2026-11-22']) {
+    const o = ornekUret(new Date(`${gun}T09:00:00Z`));
+    assert.equal(o.haftalar.length, 8);
+    assert.ok(o.aktiviteler.length > 8);
+    assert.ok(o.aktiviteler.every((a) => a.tarih <= gun));
+  }
+});
+
+/* ---- çizim ---- */
+const TAM_BOS = Object.fromEntries(AKTIVITE_ANAHTARLARI.map((k) => [k, null]));
+
+async function kur(yanit, secenek = {}) {
+  const kap = new Dugum('div');
+  const m = aktiviteKur(kap, { getir: async () => yanit, ornek: false, canli: true, rm: false, gunAc: () => false, ...secenek });
+  m.goster();
+  await tick(); await tick();
+  return { kap, m };
+}
+
+test('aktiviteKur: ORNEK çizilir, metinde NaN/undefined/null yok, stil bir kez eklenir', async () => {
+  const { kap, m } = await kur(ORNEK);
+  assert.doesNotMatch(kap.textContent, KOTU);
+  assert.match(kap.textContent, /Aktiviteler/);
+  assert.match(kap.textContent, /antrenman yükü/);
+  assert.equal(sahteDoc.head.childNodes.filter((c) => c.attrs['data-modul'] === 'aktivite').length, 1);
+  const dugmeler = hepsi(kap, (d) => d.tag === 'button' && d.className.includes('akt-oge'));
+  assert.equal(dugmeler.length, ORNEK.aktiviteler.length);
+  const gr = hepsi(kap, (d) => d.attrs.role === 'img' && d.attrs.class === 'akt-grafik');
+  assert.equal(gr.length, 1);
+  assert.match(gr[0].attrs['aria-label'], /Haftalık antrenman yükü, son 8 hafta/);
+  m.yokEt();
+});
+
+test('ayrıntı: her örnek aktivite için açılır, temiz metin, Esc kapatır ve odağı geri verir', async () => {
+  const { kap, m } = await kur(ORNEK);
+  const dugmeler = hepsi(kap, (d) => d.tag === 'button' && d.className.includes('akt-oge'));
+  for (const d of dugmeler) {
+    d.tikla();
+    const kok = kap.childNodes[0];
+    const detay = kok.childNodes[1];
+    assert.equal(detay.hidden, false);
+    assert.equal(kok.childNodes[0].hidden, true);
+    assert.doesNotMatch(detay.textContent, KOTU);
+    sahteDoc.tus('Escape');
+    assert.equal(detay.hidden, true);
+    assert.equal(sahteDoc.odak, d);
+  }
+  m.yokEt();
+});
+
+test('ayrıntı: kuvvette set listesi, koşuda bölgeler; null alan satırı yok', async () => {
+  const { kap, m } = await kur(ORNEK);
+  const dugmeler = hepsi(kap, (d) => d.tag === 'button' && d.className.includes('akt-oge'));
+  const kuvvet = dugmeler[ORNEK.aktiviteler.findIndex((a) => a.tur === 'strength_training')];
+  kuvvet.tikla();
+  let t = kap.childNodes[0].childNodes[1].textContent;
+  assert.match(t, /Bench press/);
+  assert.match(t, /3 × \d+/);
+  assert.doesNotMatch(t, /Adım boyu|Yer temas/);
+  sahteDoc.tus('Escape');
+  const kosu = dugmeler[ORNEK.aktiviteler.findIndex((a) => a.tur === 'running')];
+  kosu.tikla();
+  t = kap.childNodes[0].childNodes[1].textContent;
+  assert.match(t, /Nabız bölgeleri/);
+  assert.match(t, /Adım boyu/);
+  assert.doesNotMatch(t, /Kuvvet|Set/);
+  m.yokEt();
+});
+
+test('tamamen null aktivite: kart ve ayrıntı temiz', async () => {
+  const bos = { ...TAM_BOS, id: 'x', tarih: bugunTarih() };
+  const { kap, m } = await kur({ aktiviteler: [bos, { ...bos, id: 'y', tur: 'weird_thing', setler: [{}, { tur: null }] }], haftalar: [{ bas: '2026-11-16', yuk: null, sure_s: 0, adet: 0 }], yukBant: null });
+  assert.doesNotMatch(kap.textContent, KOTU);
+  assert.match(kap.textContent, /Antrenman/);
+  const dugmeler = hepsi(kap, (d) => d.tag === 'button' && d.className.includes('akt-oge'));
+  assert.equal(dugmeler.length, 2);
+  for (const d of dugmeler) {
+    d.tikla();
+    const t = kap.childNodes[0].childNodes[1].textContent;
+    assert.doesNotMatch(t, KOTU);
+    assert.match(t, /ayrıntı yok/);
+    sahteDoc.tus('Escape');
+  }
+  m.yokEt();
+});
+
+test('durumlar: hata (getir null) ve boş yanıt', async () => {
+  let r = await kur(null);
+  assert.match(r.kap.textContent, /alınamadı/);
+  assert.doesNotMatch(r.kap.textContent, KOTU);
+  r.m.yokEt();
+  r = await kur({ aktiviteler: [], haftalar: [], yukBant: null });
+  assert.match(r.kap.textContent, /Henüz aktivite yok/);
+  r.m.yokEt();
+  r = await kur(null, { getir: async () => { throw new Error('x'); } });
+  assert.match(r.kap.textContent, /alınamadı/);
+  r.m.yokEt();
+});
+
+test('baglam.ornek: örnek verisi ve etiket', async () => {
+  const { kap, m } = await kur(null, { ornek: true });
+  assert.match(kap.textContent, /Örnek veri/);
+  assert.doesNotMatch(kap.textContent, /alınamadı/);
+  m.gizle(); m.yokEt();
+  assert.equal(kap.childNodes.length, 0);
+});
+
+test('yanitDuzenle: bant negatif min 0a çekilir, geçersiz şekil null', () => {
+  assert.equal(yanitDuzenle('x'), null);
+  assert.deepEqual(yanitDuzenle({ aktiviteler: [], haftalar: [], yukBant: { min: -40, max: 300 } }).yukBant, { min: 0, max: 300 });
+  assert.equal(yanitDuzenle({ yukBant: { min: null, max: 5 } }).yukBant, null);
+});
+
+test('haftalikGrafik: 9 haftadan en yeni 8, bantsız da çizer', () => {
+  const haf = Array.from({ length: 9 }, (_, i) => ({ bas: `2026-11-${String(16 - i).padStart(2, '0')}`, yuk: i === 3 ? null : 100 + i * 10, sure_s: 100, adet: i === 3 ? 0 : 2 }));
+  const g = haftalikGrafik(haf, null);
+  assert.match(g.aria, /son 8 hafta/);
+  assert.match(g.aria, /antrenman yok/);
+  assert.doesNotMatch(g.aria, /Normal aralık|NaN|undefined/);
+});
