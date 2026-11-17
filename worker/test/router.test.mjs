@@ -721,7 +721,7 @@ test('POST /api/deneme-bildirim: sayar, yük doğru, gitti dönen silinir', asyn
   const govde = await json(r);
   assert.deepEqual(govde, { gonderilen: 3, basarili: 1 });
   assert.equal(p.cagrilar.length, 3);
-  assert.deepEqual(p.cagrilar[0].yuk, { baslik: 'GarminAnalizer', govde: 'Bildirimler çalışıyor.', etiket: 'deneme', url: './' });
+  assert.deepEqual(p.cagrilar[0].yuk, { baslik: 'Deneme bildirimi', govde: 'Bildirimler çalışıyor.', etiket: 'deneme', url: './' });
   assert.deepEqual(p.cagrilar[0].vapid, { acik: 'acik', gizli: 'gizli-vapid', konu: 'https://ornek.test/' });
   assert.deepEqual((await abonelikleriOku(env.DB)).map((a) => a.endpoint), ['https://push.ok/1', 'https://push.ok/3']);
   assert.ok(!JSON.stringify(govde).includes('gizli-vapid'));

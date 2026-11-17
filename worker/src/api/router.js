@@ -178,7 +178,7 @@ async function denemeBildirimi(env, simdiMs, cors, bag) {
     fetch: (...a) => fetch(...a),
     gonder: pushGonder,
     asamaBildir: (ad) => { asama = ad; },
-    yuk: { baslik: 'GarminAnalizer', govde: 'Bildirimler çalışıyor.', etiket: 'deneme', url: './' },
+    yuk: { baslik: 'Deneme bildirimi', govde: 'Bildirimler çalışıyor.', etiket: 'deneme', url: './' },
   });
   console.log(pushOzetSatiri(sonuc));
   return yanit({ gonderilen: sonuc.gonderilen, basarili: sonuc.basarili, asama: sonuc.basarili ? undefined : asama }, 200, cors);
