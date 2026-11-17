@@ -754,3 +754,11 @@ test('POST /api/deneme-bildirim: 10 sn bekleme, sınırın iki yanı', async () 
   assert.equal(p.cagrilar.length, 2);
   assert.equal(await durumOku(env.DB, 'deneme_son'), SIMDI + 10000);
 });
+
+test('deneme gönderimindeki imza hatası telefona aşama adıyla döner', async () => {
+  const env = ortam(VAPID);
+  await abonelikYaz(env.DB, ABONE, 1);
+  const p = sahtePush((g) => { g.gunluk('imza'); return 'hata'; });
+  const r = await push(env, '/api/deneme-bildirim', 'POST', undefined, { push: p });
+  assert.deepEqual(await json(r), { gonderilen: 1, basarili: 0, asama: 'imza' });
+});

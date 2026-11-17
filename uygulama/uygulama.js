@@ -835,7 +835,17 @@ $('bilDene').addEventListener('click', async () => {
   bil.deneme = true; bilGoster('Gönderiliyor…');
   let r = null; try { r = await CANLI.denemeBildirimi(); } catch (e) { r = null; }
   bil.deneme = false;
-  bilGoster(r && r.bekle ? 'Son denemeden sonra 10 saniye bekle.' : !r ? 'Gönderilemedi.' : r.gonderilen === 0 ? 'Kayıtlı cihaz yok.' : r.basarili > 0 ? 'Bildirim servisi isteği kabul etti.' : 'Gönderilemedi.');
+  const neden = {
+    abonelik: 'Cihazın bildirim aboneliği geçersiz.',
+    sifreleme: 'Worker bildirim içeriğini şifreleyemedi.',
+    imza: 'Worker gönderim imzasını oluşturamadı.',
+    ag: 'Worker bildirim servisine bağlanamadı.',
+  };
+  let mesaj = neden[r?.asama] || 'Gönderilemedi.';
+  if (r?.bekle) mesaj = 'Son denemeden sonra 10 saniye bekle.';
+  else if (r?.gonderilen === 0) mesaj = 'Kayıtlı cihaz yok.';
+  else if (r?.basarili > 0) mesaj = 'Bildirim servisi isteği kabul etti.';
+  bilGoster(mesaj);
   $('bilDene').focus({ preventScroll: true });
 });
 (async () => {

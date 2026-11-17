@@ -105,7 +105,7 @@ export function pushOzetSatiri(o) {
 
 // Tüm aboneliklere yük gönderir; 'gitti' dönenleri siler. Asla fırlatmaz (tek abonelik hatası diğerlerini etkilemez).
 // Dönüş: { gonderilen, basarili, tamam, gitti, hata, kodlar } (kodlar: tekil, sıralı HTTP durum kodları).
-export async function herkeseGonder({ db, env, yuk, simdiMs, fetch, gonder, abonelikler }) {
+export async function herkeseGonder({ db, env, yuk, simdiMs, fetch, gonder, abonelikler, asamaBildir }) {
   const liste = abonelikler ?? await abonelikleriOku(db);
   const vapid = vapidAyari(env);
   let sonuclar;
@@ -119,7 +119,10 @@ export async function herkeseGonder({ db, env, yuk, simdiMs, fetch, gonder, abon
           vapid,
           fetch,
           simdiSn: Math.floor(simdiMs / 1000),
-          gunluk: (asama) => console.warn(`push-asama: ${asama}`),
+          gunluk: (asama) => {
+            console.warn(`push-asama: ${asama}`);
+            asamaBildir?.(asama);
+          },
         });
       } catch {
         return { durum: 'hata', kod: null };

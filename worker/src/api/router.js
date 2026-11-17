@@ -172,14 +172,16 @@ async function denemeBildirimi(env, simdiMs, cors, bag) {
   if (Number.isFinite(son) && simdiMs - son < DENEME_BEKLEME_MS) return yanit({ hata: 'bekle' }, 429, cors);
   await durumYaz(env.DB, 'deneme_son', simdiMs);
   const { pushGonder } = await pushModulu(bag);
+  let asama;
   const sonuc = await herkeseGonder({
     db: env.DB, env, simdiMs, abonelikler,
     fetch: (...a) => fetch(...a),
     gonder: pushGonder,
+    asamaBildir: (ad) => { asama = ad; },
     yuk: { baslik: 'GarminAnalizer', govde: 'Bildirimler çalışıyor.', etiket: 'deneme', url: './' },
   });
   console.log(pushOzetSatiri(sonuc));
-  return yanit({ gonderilen: sonuc.gonderilen, basarili: sonuc.basarili }, 200, cors);
+  return yanit({ gonderilen: sonuc.gonderilen, basarili: sonuc.basarili, asama: sonuc.basarili ? undefined : asama }, 200, cors);
 }
 
 async function durum(env, cors) {

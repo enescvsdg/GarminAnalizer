@@ -286,7 +286,9 @@ export async function abonelikSil(endpoint, fetchFn = globalThis.fetch, depo = v
 
 function denemeCevir(j) {
   if (!j || typeof j !== 'object' || !Number.isInteger(j.gonderilen) || !Number.isInteger(j.basarili) || j.gonderilen < 0 || j.basarili < 0) throw new TypeError('yanıt geçersiz');
-  return { gonderilen: j.gonderilen, basarili: j.basarili };
+  const sonuc = { gonderilen: j.gonderilen, basarili: j.basarili };
+  if (['abonelik', 'sifreleme', 'imza', 'ag'].includes(j.asama)) sonuc.asama = j.asama;
+  return sonuc;
 }
 
 // {gonderilen, basarili}, bekleme süresindeyse (HTTP 429) {bekle: true}, olmazsa null.

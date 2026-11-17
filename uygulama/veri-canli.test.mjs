@@ -843,3 +843,12 @@ test('veriYukle fetch yoksa ve bağlantı varsa ag der, fırlatmaz', async () =>
   assert.equal(r.kaynak, 'yok');
   assert.equal(r.neden, 'ag');
 });
+
+test('bildirim tanısı yalnız bilinen aşama adını ekrana taşır', async () => {
+  for (const asama of ['abonelik', 'sifreleme', 'imza', 'ag']) {
+    const cevap = { gonderilen: 1, basarili: 0, asama };
+    assert.deepEqual(await denemeBildirimi(async () => yanitCevir(cevap), bagli()), cevap);
+  }
+  const cevap = { gonderilen: 1, basarili: 0 };
+  assert.deepEqual(await denemeBildirimi(async () => yanitCevir({ ...cevap, asama: 'ayrıntı' }), bagli()), cevap);
+});
