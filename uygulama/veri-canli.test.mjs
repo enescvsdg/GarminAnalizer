@@ -5,7 +5,7 @@ import { gunEkle } from '../worker/src/zaman.js';
 import {
   veriCevir, durum, veriGetir, ayarGetir, ayarYaz, abonelikKaydet, abonelikSil, denemeBildirimi, baglantiOku, baglantiYaz, baglantiSil,
   sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, baglantiKarar,
-  veriYukle, sonVeriYaz, sonVeriOku, sonVeriSil,
+  veriYukle, sonVeriYaz, sonVeriOku, sonVeriSil, aktiviteGetir, takvimGetir, tumOnbellekSil,
 } from './veri-canli.js';
 
 const BUGUN = '2026-11-12';
@@ -851,4 +851,106 @@ test('bildirim tanısı yalnız bilinen aşama adını ekrana taşır', async ()
   }
   const cevap = { gonderilen: 1, basarili: 0 };
   assert.deepEqual(await denemeBildirimi(async () => yanitCevir({ ...cevap, asama: 'ayrıntı' }), bagli()), cevap);
+});
+
+/* ---------- Aktiviteler ve Takvim ---------- */
+
+const AKT = { aktiviteler: [{ id: 1, tarih: '2026-11-10', tur: 'running', sure_s: 1800, mesafe_m: null }], haftalar: [{ bas: '2026-11-09', yuk: 120, sure_s: 1800, adet: 1 }], yukBant: { min: 80, max: 200 } };
+const TKV = { gunler: [{ tarih: '2026-11-10', e: 0.7, hukum: 'İyi', kartlar: { uyku: { v: 80, durum: 'ok' } } }] };
+const SON_AKT = 'gk-son-aktivite';
+const SON_TKV = 'gk-son-takvim';
+
+test('aktiviteGetir: URL gun parametresi, anahtar yalnız başlıkta, varsayılan 56', async () => {
+  const depo = baglantiliDepo();
+  const cagrilar = [];
+  const f = async (url, init) => { cagrilar.push({ url: String(url), init }); return yanitCevir(AKT); };
+  const r = await aktiviteGetir(undefined, f, depo);
+  assert.deepEqual(r, AKT);
+  await aktiviteGetir(120, f, depo);
+  assert.equal(cagrilar[0].url, 'https://w.ornek.dev/api/aktiviteler?gun=56');
+  assert.equal(cagrilar[1].url, 'https://w.ornek.dev/api/aktiviteler?gun=120');
+  assert.equal(cagrilar[0].init.headers['X-Device-Key'], ANAHTAR);
+  assert.ok(!cagrilar[0].url.includes(ANAHTAR));
+  assert.equal(depo.getItem(SON_AKT).includes(ANAHTAR), false);
+});
+
+test('aktiviteGetir ve takvimGetir: geçersiz gün sayısı varsayılana döner', async () => {
+  const depo = baglantiliDepo();
+  const urller = [];
+  const f = async (url) => { urller.push(String(url)); return yanitCevir(AKT); };
+  for (const g of [3, 401, 1.5, '56', NaN]) await aktiviteGetir(g, f, depo);
+  assert.ok(urller.every((u) => u.endsWith('gun=56')));
+  const urller2 = [];
+  const f2 = async (url) => { urller2.push(String(url)); return yanitCevir(TKV); };
+  for (const g of [27, 401, 'x']) await takvimGetir(g, f2, depo);
+  await takvimGetir(undefined, f2, depo); await takvimGetir(28, f2, depo);
+  assert.deepEqual(urller2.map((u) => u.split('gun=')[1]), ['400', '400', '400', '400', '28']);
+  assert.ok(urller2[0].includes('/api/takvim?gun='));
+});
+
+test('aktiviteGetir ve takvimGetir başarıda önbelleğe yazar; ağ hatasında oradan döner', async () => {
+  const depo = baglantiliDepo();
+  assert.deepEqual(await aktiviteGetir(56, async () => yanitCevir(AKT), depo), AKT);
+  assert.deepEqual(await takvimGetir(400, async () => yanitCevir(TKV), depo), TKV);
+  assert.notEqual(depo.getItem(SON_AKT), null);
+  assert.notEqual(depo.getItem(SON_TKV), null);
+  const ag = async () => { throw new TypeError('ağ'); };
+  assert.deepEqual(await aktiviteGetir(56, ag, depo), AKT);
+  assert.deepEqual(await takvimGetir(400, ag, depo), TKV);
+  assert.deepEqual(await aktiviteGetir(56, async () => yanitCevir({}, 401), depo), AKT);
+  assert.deepEqual(await takvimGetir(400, async () => yanitCevir({}, 500), depo), TKV);
+});
+
+test('aktiviteGetir ve takvimGetir: önbellek yoksa, bozuksa ya da bağlantı yoksa null; fırlatmaz', async () => {
+  const depo = baglantiliDepo();
+  const ag = async () => { throw new TypeError('ağ'); };
+  assert.equal(await aktiviteGetir(56, ag, depo), null);
+  assert.equal(await takvimGetir(400, ag, depo), null);
+  assert.equal(await aktiviteGetir(56, async () => yanitCevir({ x: 1 }), depo), null); // 200 ama biçim yanlış
+  assert.equal(await takvimGetir(400, async () => yanitCevir({ gunler: 'x' }), depo), null);
+  depo.setItem(SON_AKT, '{bozuk'); depo.setItem(SON_TKV, JSON.stringify({ zaman: 1, yanit: { gunler: 5 } }));
+  assert.equal(await aktiviteGetir(56, ag, depo), null);
+  assert.equal(await takvimGetir(400, ag, depo), null);
+  let cagri = 0;
+  const bos = sahteDepo();
+  assert.equal(await aktiviteGetir(56, async () => { cagri++; return yanitCevir(AKT); }, bos), null);
+  assert.equal(await takvimGetir(400, async () => { cagri++; return yanitCevir(TKV); }, bos), null);
+  assert.equal(cagri, 0);
+  assert.equal(await aktiviteGetir(56, undefined, depo), null);
+});
+
+test('aktiviteGetir: yukBant geçersizse null olur, liste alanları değişmeden geçer', async () => {
+  const depo = baglantiliDepo();
+  const r = await aktiviteGetir(56, async () => yanitCevir({ ...AKT, yukBant: { min: 'a', max: 5 } }), depo);
+  assert.equal(r.yukBant, null);
+  assert.deepEqual(r.aktiviteler, AKT.aktiviteler);
+  const r2 = await aktiviteGetir(56, async () => yanitCevir({ aktiviteler: [], haftalar: [] }), depo);
+  assert.equal(r2.yukBant, null);
+});
+
+test('baglantiSil ve adres değişimi yeni önbellekleri de siler; tumOnbellekSil hepsini siler', async () => {
+  const depo = baglantiliDepo();
+  const doldur = async () => {
+    sonVeriYaz(yanit(), T0, depo);
+    await aktiviteGetir(56, async () => yanitCevir(AKT), depo);
+    await takvimGetir(400, async () => yanitCevir(TKV), depo);
+  };
+  await doldur();
+  baglantiSil(depo);
+  for (const k of [SON_VERI, SON_AKT, SON_TKV]) assert.equal(depo.getItem(k), null, k);
+  baglantiYaz({ adres: 'https://w.ornek.dev', anahtar: ANAHTAR }, depo);
+  await doldur();
+  assert.equal(baglantiYaz({ adres: 'https://w.ornek.dev', anahtar: ANAHTAR }, depo), true);
+  assert.notEqual(depo.getItem(SON_AKT), null); // aynı adres: kalır
+  assert.equal(baglantiYaz({ adres: 'https://baska.ornek.dev', anahtar: ANAHTAR }, depo), true);
+  for (const k of [SON_VERI, SON_AKT, SON_TKV]) assert.equal(depo.getItem(k), null, k);
+  await doldur(); tumOnbellekSil(depo);
+  for (const k of [SON_VERI, SON_AKT, SON_TKV]) assert.equal(depo.getItem(k), null, k);
+});
+
+test('bozuk gün önbelleği sonVeriSil ile silinir ama aktivite ve takvim önbelleği kalır', async () => {
+  const depo = baglantiliDepo();
+  await aktiviteGetir(56, async () => yanitCevir(AKT), depo);
+  sonVeriSil(depo);
+  assert.notEqual(depo.getItem(SON_AKT), null);
 });

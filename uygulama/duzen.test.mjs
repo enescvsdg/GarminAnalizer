@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, menuToplan, gunSirasi, tarihAnahtari, modulKur, kayanMi } from './duzen.js';
 
 const hepsiSonlu = (o) => Object.entries(o).every(([, v]) => typeof v === 'number' && Number.isFinite(v));
 
@@ -278,4 +278,56 @@ test('olcuSatiri: sayıları yuvarlar, eksik değere ? yazar, NaN/undefined/null
   assert.match(bos, /tam hayır$/);
   assert.doesNotMatch(bos, /NaN|undefined|null/);
   assert.match(olcuSatiri(), /^Ölçü: /);
+});
+
+test('ekranGecisi: ana ↔ ana, açma, değiştirme, kapatma', () => {
+  assert.deepEqual(ekranGecisi('bugun', 'trend'), { tur: 'ana', alt: 'bugun' });
+  assert.deepEqual(ekranGecisi('trend', 'bugun'), { tur: 'ana', alt: 'trend' });
+  assert.deepEqual(ekranGecisi('trend', 'aktivite'), { tur: 'ac', alt: 'trend' });
+  assert.deepEqual(ekranGecisi('bugun', 'takvim'), { tur: 'ac', alt: 'bugun' });
+  assert.deepEqual(ekranGecisi('aktivite', 'takvim', 'trend'), { tur: 'degis', alt: 'trend' });
+  assert.deepEqual(ekranGecisi('takvim', 'bugun', 'bugun'), { tur: 'kapat', alt: 'bugun' });
+  assert.deepEqual(ekranGecisi('aktivite', 'trend', 'bugun'), { tur: 'kapatGec', alt: 'bugun' });
+  assert.deepEqual(ekranGecisi('aktivite', 'bugun', 'trend'), { tur: 'kapatGec', alt: 'trend' });
+  assert.deepEqual(ekranGecisi('aktivite', 'bugun', 'saçma'), { tur: 'kapat', alt: 'bugun' });
+});
+test('ekranGecisi: aynı ya da bilinmeyen ekranda null; kayanMi', () => {
+  assert.equal(ekranGecisi('bugun', 'bugun'), null);
+  assert.equal(ekranGecisi('takvim', 'takvim'), null);
+  assert.equal(ekranGecisi('bugun', 'ayar'), null);
+  assert.equal(ekranGecisi(undefined, 'bugun'), null);
+  assert.deepEqual(['bugun', 'trend', 'aktivite', 'takvim'].map(kayanMi), [false, false, true, true]);
+});
+test('menuToplan: aşağı toplar, yukarı ve en üst açar, küçük oynama durumu korur', () => {
+  assert.equal(menuToplan(0, 40, false), true);
+  assert.equal(menuToplan(100, 130, true), true);
+  assert.equal(menuToplan(130, 100, true), false);
+  assert.equal(menuToplan(100, 102, true), true);
+  assert.equal(menuToplan(100, 102, false), false);
+  assert.equal(menuToplan(50, 4, true), false); // en üstte hep açık
+  assert.equal(menuToplan(NaN, 40, true), true);
+  assert.equal(menuToplan(0, undefined, false), false);
+});
+test('gunSirasi ve tarihAnahtari: yerel gün anahtarı, bulunamazsa -1', () => {
+  const gunler = [new Date(2026, 10, 10), new Date(2026, 10, 11), new Date(2026, 10, 12)].map((tarih) => ({ tarih }));
+  assert.equal(tarihAnahtari(new Date(2026, 0, 5)), '2026-01-05');
+  assert.equal(gunSirasi('2026-11-11', gunler), 1);
+  assert.equal(gunSirasi('2026-11-12', gunler), 2);
+  assert.equal(gunSirasi('2026-10-01', gunler), -1);
+  assert.equal(gunSirasi(null, gunler), -1);
+  assert.equal(gunSirasi('2026-11-11', null), -1);
+  assert.equal(gunSirasi('2026-11-11', [null, {}]), -1);
+});
+test('modulKur: başarıda denetleyiciyi verir; yükleme, kurucu ya da biçim hatasında null (yedek yol)', async () => {
+  const c = { goster() {}, gizle() {}, yokEt() {} };
+  let verilen = null;
+  const iyi = await modulKur(async () => ({ aktiviteKur: (kap, b) => { verilen = [kap, b]; return c; } }), 'aktiviteKur', 'KAP', { ornek: true });
+  assert.equal(iyi, c);
+  assert.deepEqual(verilen, ['KAP', { ornek: true }]);
+  assert.equal(await modulKur(async () => { throw new TypeError('Failed to fetch dynamically imported module'); }, 'aktiviteKur', {}, {}), null);
+  assert.equal(await modulKur(() => { throw new Error('eşzamanlı'); }, 'aktiviteKur', {}, {}), null);
+  assert.equal(await modulKur(async () => ({}), 'aktiviteKur', {}, {}), null);
+  assert.equal(await modulKur(async () => ({ aktiviteKur: () => { throw new Error('kurulum'); } }), 'aktiviteKur', {}, {}), null);
+  assert.equal(await modulKur(async () => ({ aktiviteKur: () => ({ goster() {} }) }), 'aktiviteKur', {}, {}), null);
+  assert.equal(await modulKur(async () => null, 'aktiviteKur', {}, {}), null);
 });

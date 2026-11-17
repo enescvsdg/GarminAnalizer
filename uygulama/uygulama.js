@@ -1,4 +1,4 @@
-import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani } from './duzen.js';
+import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, menuToplan, gunSirasi, modulKur, kayanMi } from './duzen.js';
 import { simgeKur } from './simgeler.js';
 import { ACIKLAMA } from './aciklama.js';
 const $ = (id) => document.getElementById(id);
@@ -13,13 +13,15 @@ function genisKur() {
   document.documentElement.classList.add('genis'); telKok.classList.add('genis');
   const bolge = (id) => { const d = document.createElement('div'); d.id = id; d.className = 'bolge'; return d; };
   const bB = bolge('bolgeB'), bT = bolge('bolgeT');
-  bB.append($('gl'), $('bugun')); bT.append($('trend'));
+  bB.append($('gl'), $('bugun')); bT.append($('trend'), $('aktivite'), $('takvim'));
   telKok.prepend(bB, bT);
-  const ab = document.createElement('button'); ab.type = 'button'; ab.id = 'ayarBtn';
-  ab.setAttribute('aria-haspopup', 'dialog'); ab.setAttribute('aria-controls', 'ayar'); ab.setAttribute('aria-expanded', 'false');
-  ab.innerHTML = '<svg viewBox="0 0 22 22" aria-hidden="true"><path d="M3 7h8M15 7h4M3 15h4M11 15h8"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="15" r="2"/></svg><span>Ayarlar</span>';
+  // Ayarlar düğmesi (#ayarBtn) HTML'de tek; geniş ekranda yazılı hap olarak bu çubuğa taşınır
+  const dugme = (id, metin) => { const d = document.createElement('button'); d.type = 'button'; d.id = id; d.className = 'aracDugme'; d.textContent = metin; return d; };
+  const dTrend = dugme('wTrend', 'Trend'); dTrend.hidden = true;
+  const dAkt = dugme('wAktivite', 'Aktiviteler'), dTak = dugme('wTakvim', 'Takvim');
+  dAkt.setAttribute('aria-pressed', 'false'); dTak.setAttribute('aria-pressed', 'false');
   const arac = document.createElement('div'); arac.id = 'arac'; $('sesBtn').title = 'Ses efektleri';
-  arac.append($('sesBtn'), ab); telKok.insertBefore(arac, $('bekle'));
+  arac.append(dTrend, dAkt, dTak, $('sesBtn'), $('ayarBtn')); telKok.insertBefore(arac, $('bekle'));
   $('ipucu').textContent = matchMedia('(hover: none)').matches ? 'Bir güne dokun · ← → gün · ↑ ↓ ya da 1–9 ölçüm' : 'Tekerlekle gez, bir güne tıkla · ← → gün · ↑ ↓ ya da 1–9 ölçüm';
   $('trend').setAttribute('aria-label', 'Trend: gün seçmek için sol ve sağ ok tuşları');
 }
@@ -163,6 +165,8 @@ const bpmDe = (g) => g.d.nabiz ?? 60; // nabız verisi yoksa nötr tempo
 const tel = $('tel'), cv = $('gl'), bKok = GENIS ? $('bolgeB') : tel; // bKok: Bugün koordinatlarının kökü
 let H = 844, S = 1;
 let ekran = 'bugun', mesgul = false, sel7 = 6, sonOlcum = 0, ayarAcik = false;
+// altEkran: Aktiviteler/Takvim açıkken altta kalan ana ekran; kayanAcik: geniş ekranda Trend'in yerini alan ekran
+let altEkran = 'bugun', kayanAcik = null;
 const st = { e: GUNLER[N - 1].e, bpm: bpmDe(GUNLER[N - 1]), ign: RM ? 1 : 0, orbit: 1, flat: 0, cy: 430, P: N - 1, gunesY: 1, yuk: 0, yukA: 0 };
 // Bugün yerleşimi: başlık ile gün şeridi arasında kalan boşluğa göre hesaplanır
 const lay = { cy: 430, rx: 139, ry0: 150, ry1: 166, ks: 1, rs: 0.86 };
@@ -646,7 +650,7 @@ if (GENIS) {
     const h = ev.target;
     const inputOdak = !!(h && h.closest && h.closest('input,textarea,select,[contenteditable]:not([contenteditable=false])'));
     const e = klavyeEylem(ev.key, { gun: hedef, olcum: sonOlcum, gunSayisi: N, olcumSayisi: O.length },
-      { alt: ev.altKey, ctrl: ev.ctrlKey, meta: ev.metaKey, inputOdak, ayarAcik });
+      { alt: ev.altKey, ctrl: ev.ctrlKey, meta: ev.metaKey, inputOdak, ayarAcik: ayarAcik || !!kayanAcik });
     if (!e) return;
     ev.preventDefault(); ipucuGizle();
     if (e.tur === 'gun') { if (e.deger !== hedef || Math.abs(st.P - hedef) > 0.01) git(e.deger, carkSure(Math.abs(e.deger - st.P))); }
@@ -655,37 +659,14 @@ if (GENIS) {
 }
 
 /* ================= Ekran geçişleri ================= */
-// Kapsül menü: etkin parça kayan bir "hap" ile vurgulanır; etkin olan simge kısa bir kıpırtı yapar (döngü yok).
-let hapSon = 'sBugun';
-function simgeOyna(id) {
-  if (RM) return;
-  const d = $(id), q = (c) => d.querySelector(c);
-  if (id === 'sBugun') {
-    gsap.fromTo(q('.halka'), { rotation: 0 }, { rotation: 120, duration: 0.6, ease: 'power3.out', overwrite: 'auto' });
-    gsap.fromTo(q('.cekirdek'), { scale: 0.78 }, { scale: 1, duration: 0.55, ease: 'elastic.out(1,0.5)', transformOrigin: '50% 50%', overwrite: 'auto' });
-  } else if (id === 'sTrend') {
-    gsap.fromTo(q('.sirt'), { strokeDasharray: 1, strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.5, ease: 'power2.out', overwrite: 'auto', onComplete: () => gsap.set(q('.sirt'), { clearProps: 'strokeDasharray,strokeDashoffset' }) });
-    gsap.fromTo(q('.nokta'), { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: 0.45, delay: 0.3, ease: 'back.out(2.4)', overwrite: 'auto' });
-  } else {
-    gsap.fromTo(q('.k1'), { x: -4 }, { x: 0, duration: 0.55, ease: 'elastic.out(1,0.55)', overwrite: 'auto' });
-    gsap.fromTo(q('.k2'), { x: 4 }, { x: 0, duration: 0.55, ease: 'elastic.out(1,0.55)', overwrite: 'auto' });
+// Alt menü: Bugün, Trend, Aktiviteler, Takvim. Her sekmenin kendi aktif zemini ve rengi var (CSS); kayan hap yok.
+const SEKME = { bugun: 'sBugun', trend: 'sTrend', aktivite: 'sAktivite', takvim: 'sTakvim' };
+function sekmeGuncelle() {
+  for (const [e, id] of Object.entries(SEKME)) {
+    if (e === ekran) $(id).setAttribute('aria-current', 'page'); else $(id).removeAttribute('aria-current');
   }
 }
-function hapGit(id) {
-  const b = $(id);
-  const x = b.offsetLeft - 5;
-  if (RM || !b.offsetWidth) gsap.set('#sekmeHap', { x }); else gsap.to('#sekmeHap', { x, duration: 0.5, ease: 'back.out(1.5)', overwrite: 'auto' });
-  if (hapSon !== id) simgeOyna(id);
-  hapSon = id;
-}
-function sekmeGuncelle() {
-  let aktif = '';
-  [['sBugun', !ayarAcik && ekran === 'bugun'], ['sTrend', !ayarAcik && ekran === 'trend'], ['sAyar', ayarAcik]].forEach(([id, a]) => {
-    if (a) { $(id).setAttribute('aria-current', 'page'); aktif = id; } else $(id).removeAttribute('aria-current');
-  });
-  if (aktif) hapGit(aktif);
-}
-function trendeGec(oi, kaynak) {
+function trendeGec(oi, kaynak, anlik) {
   if (mesgul || ekran === 'trend' || GENIS) return; // geniş ekranda ekran geçişi yok: Trend hep açık
   dokunBirak(); ekran = 'trend'; sekmeGuncelle();
   st.P = hedef = G0 + sel7; pA = st.P;
@@ -693,7 +674,7 @@ function trendeGec(oi, kaynak) {
   olcumSec(oi == null ? sonOlcum : oi, false);
   gsap.set('#ipucu', { autoAlpha: 1 });
   const ufuk = yy(cur.v[hedef]);
-  if (RM) {
+  if (RM || anlik) {
     st.yuk = st.yukA = 1; st.flat = 1; st.cy = ufuk;
     gsap.set(trend, { autoAlpha: 1 }); gsap.set([cv, '#bugun'], { autoAlpha: 0 }); return;
   }
@@ -721,13 +702,13 @@ function trendeGec(oi, kaynak) {
       .fromTo('#balon .dr', { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 1.1);
   }
 }
-function bugunGec() {
+function bugunGec(anlik) {
   if (mesgul || ekran === 'bugun') return;
   aciklamaKapat(false); if (simge) simge.durdur();
   ekran = 'bugun'; sekmeGuncelle();
   const gi = clamp(Math.round(st.P), 0, N - 1); if (gi >= G0 && gi - G0 !== sel7) sec(gi - G0, true);
   yerlesimB(false);
-  if (RM) {
+  if (RM || anlik) {
     st.flat = 0; st.cy = lay.cy; L.forEach((l) => (l.r = 1));
     gsap.set(trend, { autoAlpha: 0 }); gsap.set([cv, '#bugun', '#bugunUst'], { autoAlpha: 1 }); return;
   }
@@ -742,8 +723,116 @@ function bugunGec() {
     .to(L, { r: 1, duration: 0.9, stagger: 0.06, ease: 'back.out(1.5)' }, 0.72)
     .to('#bugunUst', { autoAlpha: 1, duration: 0.5 }, 0.85);
 }
-$('sBugun').addEventListener('click', () => { ayarKapat(); bugunGec(); });
-$('sTrend').addEventListener('click', () => { ayarKapat(); trendeGec(null, null); });
+/* ================= Aktiviteler ve Takvim ================= */
+// İki ekran ayrı modüldür (aktiviteler.js, takvim.js); ilk açılışta dinamik yüklenir. Yüklenemezse ekranda sakin bir metin kalır.
+// Telefonda ekranı tamamen kaplarlar (alttaki ana ekran durur, kare başı iş durur); geniş ekranda yalnız Trend bölgesini kaplarlar.
+const KAYAN = {
+  aktivite: { kap: $('aktivite'), ice: () => import('./aktiviteler.js'), kur: 'aktiviteKur', api: 'aktiviteGetir', gun: 56, c: null, yuk: null },
+  takvim: { kap: $('takvim'), ice: () => import('./takvim.js'), kur: 'takvimKur', api: 'takvimGetir', gun: 400, c: null, yuk: null },
+};
+const menu = tel.querySelector('.sekme');
+// Takvimden bir güne dokunuş: son 28 gündeyse Bugün'e geçip o günü seçer ve true döner; değilse false
+function gunAc(tarih) {
+  const gi = gunSirasi(tarih, GUNLER);
+  if (gi < 0 || mesgul) return false;
+  sec(gi - G0, true);
+  if (GENIS) { genisKayan(null); git(gi, carkSure(Math.abs(gi - st.P))); return true; }
+  st.P = hedef = gi; pA = gi;
+  return kayanMi(ekran) ? ekranGit('bugun') : true;
+}
+function kayanBaglam(k) {
+  return {
+    getir: () => (bag.baglanti && typeof CANLI[k.api] === 'function' ? Promise.resolve(CANLI[k.api](k.gun)).catch(() => null) : Promise.resolve(null)),
+    ornek: !bag.baglanti, canli: bag.canli, ses: SES, rm: RM, gunAc,
+  };
+}
+function kayanHazir(ad) {
+  const k = KAYAN[ad];
+  if (k.c) return Promise.resolve(k.c);
+  if (!k.yuk) {
+    k.kap.textContent = '';
+    k.yuk = modulKur(k.ice, k.kur, k.kap, kayanBaglam(k)).then((c) => {
+      k.yuk = null;
+      if (c) k.c = c;
+      else { k.kap.textContent = ''; const p = document.createElement('p'); p.className = 'ekranHata'; p.setAttribute('role', 'status'); p.textContent = 'Bu bölüm yüklenemedi.'; k.kap.appendChild(p); }
+      return c;
+    });
+  }
+  return k.yuk;
+}
+function kayanGoster(ad) {
+  kayanHazir(ad).then((c) => { if (c && (GENIS ? kayanAcik : ekran) === ad) { try { c.goster(); } catch (e) { /* modül hatası uygulamayı durdurmaz */ } } });
+}
+function kayanGizle(ad) { const c = KAYAN[ad].c; if (c) { try { c.gizle(); } catch (e) { /* aynı */ } } }
+let sonKay = 0;
+function kayanAc(ad, bitir) {
+  const el = KAYAN[ad].kap;
+  el.hidden = false; el.style.zIndex = '4';
+  menu.classList.remove('toplandi'); sonKay = el.scrollTop;
+  kayanGoster(ad);
+  if (RM) { gsap.set(el, { autoAlpha: 1, y: 0 }); bitir(); return; }
+  gsap.fromTo(el, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.32, ease: 'power2.out', overwrite: 'auto', onComplete: bitir });
+}
+function kayanKapat(ad, bitir, anlik) {
+  const el = KAYAN[ad].kap; kayanGizle(ad);
+  const son = () => { el.hidden = true; el.style.zIndex = ''; if (bitir) bitir(); };
+  if (RM || anlik) { gsap.killTweensOf(el); gsap.set(el, { autoAlpha: 0 }); son(); return; }
+  gsap.to(el, { autoAlpha: 0, duration: 0.25, ease: 'power1.in', overwrite: 'auto', onComplete: son });
+}
+for (const k of Object.values(KAYAN)) {
+  k.kap.addEventListener('scroll', () => {
+    const y = k.kap.scrollTop;
+    menu.classList.toggle('toplandi', menuToplan(sonKay, y, menu.classList.contains('toplandi')));
+    sonKay = y;
+  }, { passive: true });
+}
+const anaPasif = (p) => { $('bugun').inert = p; trend.inert = p; }; // örtülen ana ekran odak ve erişilebilirlik ağacından çıkar
+// Telefon: dört ekran arasında geçiş. Bugün ↔ Trend eski geçişlerini (uçan sayı dahil) kullanır; yeni ekranlar solarak gelir.
+function ekranGit(hedefEkran) {
+  if (mesgul) return false;
+  const g = ekranGecisi(ekran, hedefEkran, altEkran);
+  if (!g) return false;
+  dokunBirak(); aciklamaKapat(false);
+  const onceki = ekran;
+  if (g.tur === 'ana') { if (hedefEkran === 'trend') trendeGec(null, null); else bugunGec(); return true; }
+  if (g.tur === 'ac') {
+    altEkran = g.alt; if (onceki === 'trend' && simge) simge.durdur();
+    ekran = hedefEkran; sekmeGuncelle(); mesgul = true; anaPasif(true);
+    kayanAc(hedefEkran, () => { mesgul = false; });
+    return true;
+  }
+  if (g.tur === 'degis') {
+    ekran = hedefEkran; sekmeGuncelle(); mesgul = true;
+    KAYAN[onceki].kap.style.zIndex = '3';
+    kayanAc(hedefEkran, () => { kayanKapat(onceki, null, true); mesgul = false; });
+    return true;
+  }
+  ekran = g.alt; sekmeGuncelle(); anaPasif(false); menu.classList.remove('toplandi');
+  if (g.tur === 'kapat') {
+    if (g.alt === 'trend') { if (simge) simge.baslat(); yerlesimT(); st.cy = yy(cur.v[hedef]); } else { yerlesimB(false); st.cy = lay.cy; }
+  } else if (hedefEkran === 'trend') trendeGec(null, null, true); // kapsayıcının altında anlık, sonra kapsayıcı solar
+  else bugunGec(true);
+  mesgul = true;
+  kayanKapat(onceki, () => { mesgul = false; });
+  return true;
+}
+// Geniş ekran: Aktiviteler ve Takvim sağ bölgede Trend'in yerini alır; ad null ise Trend'e dönülür
+function genisKayan(ad) {
+  if (ad === kayanAcik) return;
+  const once = kayanAcik; kayanAcik = ad;
+  if (ad) {
+    trend.inert = true;
+    kayanAc(ad, () => { if (kayanAcik) gsap.set(trend, { autoAlpha: 0 }); if (once && once !== kayanAcik) kayanKapat(once, null, true); });
+  } else { trend.inert = false; gsap.set(trend, { autoAlpha: 1 }); kayanKapat(once); }
+  $('wAktivite').setAttribute('aria-pressed', kayanAcik === 'aktivite'); $('wTakvim').setAttribute('aria-pressed', kayanAcik === 'takvim');
+  $('wTrend').hidden = !kayanAcik;
+}
+for (const [e, id] of Object.entries(SEKME)) $(id).addEventListener('click', () => { ayarKapat(); ekranGit(e); });
+if (GENIS) {
+  $('wAktivite').addEventListener('click', () => genisKayan('aktivite'));
+  $('wTakvim').addEventListener('click', () => genisKayan('takvim'));
+  $('wTrend').addEventListener('click', () => genisKayan(null));
+}
 
 /* ================= Ses ve ayarlar ================= */
 const sesAc = () => SES.ac();
@@ -755,10 +844,10 @@ const sesDegis = (anahtar) => () => { SES.ayar[anahtar] = !SES.ayar[anahtar]; SE
 $('sesBtn').addEventListener('click', sesDegis('acik')); $('aSes').addEventListener('click', sesDegis('acik')); $('aKalp').addEventListener('click', sesDegis('kalp'));
 let ayarOnce = null;
 function ayarAc() {
-  if (ayarAcik) return; aciklamaKapat(false); ayarAcik = true; ayarOnce = document.activeElement; sekmeGuncelle(); SES.tik();
+  if (ayarAcik) return; aciklamaKapat(false); ayarAcik = true; ayarOnce = document.activeElement; $('ayarBtn').setAttribute('aria-expanded', 'true'); SES.tik();
   gsap.to('#perde', { autoAlpha: 1, duration: RM ? 0 : 0.25 });
   if (GENIS) { // geniş ekranda ortada bir pencere
-    $('ayarBtn').setAttribute('aria-expanded', 'true'); $('ayar').scrollTop = 0;
+    $('ayar').scrollTop = 0;
     gsap.set('#ayar', { xPercent: -50, yPercent: -50, visibility: 'visible' }); // görünür olmalı ki odak içeri girebilsin
     gsap.fromTo('#ayar', { y: 14, scale: 0.98, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: RM ? 0 : 0.34, ease: 'power3.out', overwrite: 'auto' });
   } else gsap.fromTo('#ayar', { yPercent: 110, autoAlpha: 1 }, { yPercent: 0, duration: RM ? 0 : 0.5, ease: 'power4.out' });
@@ -766,17 +855,16 @@ function ayarAc() {
   yzOku(); bilOku(); olcuYaz();
 }
 function ayarKapat() {
-  if (!ayarAcik) return; ayarAcik = false; sekmeGuncelle();
+  if (!ayarAcik) return; ayarAcik = false; $('ayarBtn').setAttribute('aria-expanded', 'false');
   gsap.to('#perde', { autoAlpha: 0, duration: RM ? 0 : 0.25 });
-  if (GENIS) { $('ayarBtn').setAttribute('aria-expanded', 'false'); gsap.to('#ayar', { y: 10, autoAlpha: 0, duration: RM ? 0 : 0.2, ease: 'power2.in', overwrite: 'auto' }); }
+  if (GENIS) { gsap.to('#ayar', { y: 10, autoAlpha: 0, duration: RM ? 0 : 0.2, ease: 'power2.in', overwrite: 'auto' }); }
   else gsap.to('#ayar', { yPercent: 110, duration: RM ? 0 : 0.32, ease: 'power3.in', onComplete: () => gsap.set('#ayar', { autoAlpha: 0 }) });
-  // Safari tıklanan düğmeye odak vermez (activeElement body kalır): geniş ekranda Ayarlar düğmesine dön
-  const don = ayarOnce && ayarOnce !== document.body ? ayarOnce : (GENIS ? $('ayarBtn') : ayarOnce);
+  // Safari tıklanan düğmeye odak vermez (activeElement body kalır): Ayarlar düğmesine dön
+  const don = ayarOnce && ayarOnce !== document.body ? ayarOnce : $('ayarBtn');
   if (don) don.focus({ preventScroll: true });
 }
-$('sAyar').addEventListener('click', () => (ayarAcik ? ayarKapat() : ayarAc()));
+$('ayarBtn').addEventListener('click', () => (ayarAcik ? ayarKapat() : ayarAc()));
 if (GENIS) {
-  $('ayarBtn').addEventListener('click', () => (ayarAcik ? ayarKapat() : ayarAc()));
   addEventListener('keydown', (ev) => { // Ayarlar açıkken Tab pencerenin içinde döner
     if (!ayarAcik || ev.key !== 'Tab') return;
     const f = [...$('ayar').querySelectorAll('button,input,a[href]')].filter((e) => !e.disabled && e.getClientRects().length);
@@ -954,7 +1042,7 @@ $('bBagla').addEventListener('click', () => {
 });
 $('bKaldir').addEventListener('click', () => { CANLI.baglantiSil(); location.reload(); });
 [$('bAdres'), $('bAnahtar')].forEach((e) => e.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') $('bBagla').click(); }));
-$('seritDugme').addEventListener('click', ayarAc); // Ayarlar sekmesiyle aynı açılış yolu
+$('seritDugme').addEventListener('click', ayarAc); // çark düğmesiyle aynı açılış yolu
 function trendKaynak(b) {
   if (b.canli) return '';
   return b.kaynak === 'onbellek' ? 'Çevrimdışı' : 'Örnek veri';
@@ -1041,7 +1129,7 @@ function sigdir() {
   svg.setAttribute('viewBox', `0 0 ${tw} ${H}`); $('ust').setAttribute('viewBox', `0 0 ${tw} ${H}`);
   if (GENIS) genisTrend();
   yerlesimB(false);
-  if (ekran === 'trend') { yerlesimT(); st.cy = yy(cur.v[hedef]); }
+  if (ekran === 'trend' || (!GENIS && kayanMi(ekran) && altEkran === 'trend')) { yerlesimT(); st.cy = yy(cur.v[hedef]); }
   if (GENIS) yerlesimT();
 }
 function genisTrend() { // geniş ekran: 28 gün bölgeye sığar; sırt ve bant bölgenin iki kenarına uzanır
@@ -1056,6 +1144,8 @@ olcekKanca = sigdir;
 /* ================= Döngü ================= */
 let ang = -0.35, bt = 0, curT = 60 / st.bpm, ph = 1, beat = 0;
 gsap.ticker.add((time, dt) => {
+  // Aktiviteler/Takvim tüm sahneyi kaplarken şekil ve Trend çizimi görünmez: kare başı iş durur, ekrandan çıkınca sürer
+  if (!GENIS && kayanMi(ekran) && !mesgul) return;
   const ds = Math.min(dt, 50) / 1000;
   const bugunGorunur = ekran === 'bugun' || mesgul;
   dokunAdim(ds);
@@ -1147,7 +1237,7 @@ if (!RM) {
     .add(() => L.forEach((l, j) => { if (g.d[l.o.id] !== null) gsap.to(l, { val: g.d[l.o.id], duration: 1.3, delay: j * 0.08, ease: 'power2.out', onUpdate: () => (l.deg.textContent = Math.round(l.val)) }); }), 0.6)
     .to('#yor', { autoAlpha: 1, duration: 1.2 }, 1.2)
     .from('.gun', { y: 22, autoAlpha: 0, duration: 0.7, stagger: 0.045, ease: 'power3.out' }, 1.0)
-    .from(GENIS ? '#arac' : ['.sekme', '#sesBtn'], { autoAlpha: 0, duration: 0.8 }, 1.3);
+    .from(GENIS ? '#arac' : ['.sekme', '#sesBtn', '#ayarBtn'], { autoAlpha: 0, duration: 0.8 }, 1.3);
   if (GENIS) { // Trend sırtları yükselir, güneş doğar, başlık gelir
     st.yuk = st.yukA = 0; gsap.set(['#secici', '#tTarih', '#tAd', '#tGer', '#balon', '#cip'], { autoAlpha: 0 });
     acilis.to(st, { yukA: 1, duration: 1.3, ease: 'expo.out' }, 0.9).to(st, { yuk: 1, duration: 1.3, ease: 'expo.out' }, 1.0)
@@ -1176,10 +1266,10 @@ function ac(v, bag) {
   try { ({ CANLI } = await import('./veri-canli.js')); } catch (e) {
     CANLI = { // modül yüklenemedi: yalnız uygulamanın açılması için en küçük yedek
       baglantiOku() { try { const o = JSON.parse(localStorage.getItem('gk-baglanti')); return o && o.adres && o.anahtar ? o : null; } catch (x) { return null; } },
-      baglantiSil() { try { localStorage.removeItem('gk-baglanti'); localStorage.removeItem('gk-son-veri'); } catch (x) {} },
+      baglantiSil() { try { localStorage.removeItem('gk-baglanti'); localStorage.removeItem('gk-son-veri'); localStorage.removeItem('gk-son-aktivite'); localStorage.removeItem('gk-son-takvim'); } catch (x) {} },
       baglantiYaz: () => false, baglantiKarar: () => ({ tamam: false, hata: 'Bağlantı modülü yüklenemedi.' }),
       adresDuzelt: () => null, ekSatiri: () => null, eskilikSaat: () => null, sonEsitlemeMetni: () => null,
-      veriGetir: async () => null, veriYukle: async () => ({ veri: null, kaynak: 'yok', zaman: null, neden: null }), ayarGetir: async () => null, ayarYaz: async () => null,
+      veriGetir: async () => null, aktiviteGetir: async () => null, takvimGetir: async () => null, veriYukle: async () => ({ veri: null, kaynak: 'yok', zaman: null, neden: null }), ayarGetir: async () => null, ayarYaz: async () => null,
       abonelikKaydet: async () => false, abonelikSil: async () => false, denemeBildirimi: async () => null,
     };
   }

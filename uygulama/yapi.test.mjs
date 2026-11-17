@@ -230,18 +230,53 @@ test('Ayarlar gizlilik metni 28 günlük özeti anlatır, eski cümle yok', () =
   assert.doesNotMatch(js, /geçmiş günler gönderilmez/);
 });
 
-test('alt menü yüzen cam kapsüldür: üç düğme, etiket, tam genişlik değil, iki backdrop-filter', () => {
+test('alt menü yüzen cam kapsüldür: dört sekme, etiket, kayan hap yok, iki backdrop-filter, Ayarlar sekmesi yok', () => {
   const html = oku('index.html');
   const nav = html.match(/<nav class="sekme" aria-label="Ekranlar">[\s\S]*?<\/nav>/);
   assert.ok(nav, 'nav.sekme aria-label="Ekranlar" bulunmalı');
-  for (const id of ['sBugun', 'sTrend', 'sAyar']) assert.match(nav[0], new RegExp(`<button type="button" id="${id}"`));
+  for (const id of ['sBugun', 'sTrend', 'sAktivite', 'sTakvim']) assert.match(nav[0], new RegExp(`<button type="button" id="${id}"`));
+  assert.equal((nav[0].match(/<button\b/g) || []).length, 4);
   assert.match(nav[0], /<button type="button" id="sBugun" aria-current="page"/);
+  assert.doesNotMatch(html, /sAyar/);
+  assert.doesNotMatch(html + oku('uygulama.js'), /sekmeHap|class="hap"|\.sekme \.hap/);
+  assert.doesNotMatch(nav[0], /class="hap"/);
   const kural = html.match(/\n\.sekme\{([^}]*)\}/);
   assert.ok(kural, '.sekme kuralı bulunmalı');
   assert.doesNotMatch(kural[1], /(^|;)\s*(left:0|right:0)\s*(;|$)/);
+  assert.match(kural[1], /max-width:540px/);
+  assert.match(kural[1], /height:64px/);
+  assert.match(kural[1], /border-radius:32px/);
+  assert.match(kural[1], /bottom:calc\(max\(var\(--sb\),10px\) \+ 10px\)/);
   assert.match(kural[1], /(^|[;\s])backdrop-filter:blur/);
   assert.match(kural[1], /-webkit-backdrop-filter:blur/);
   assert.match(html, /\.genis \.sekme\{display:none\}/);
+  for (const id of ['sBugun', 'sTrend', 'sAktivite', 'sTakvim']) assert.match(html, new RegExp(`#${id}\\{--ak:#[0-9a-f]{6};--akz:rgba`));
+  assert.match(html, /\.sekme button\[aria-current=page\]\{color:var\(--ak\);background:var\(--akz\)/);
+});
+
+test('Ayarlar çarkı: tek #ayarBtn, aria-label Ayarlar, sesin yanında ve en az 44 px', () => {
+  const html = oku('index.html');
+  assert.equal((html.match(/id="ayarBtn"/g) || []).length, 1);
+  assert.match(html, /<button id="ayarBtn" type="button" aria-label="Ayarlar"[^>]*aria-controls="ayar"/);
+  assert.ok(html.indexOf('id="sesBtn"') < html.indexOf('id="ayarBtn"'));
+  const k = html.match(/\n#sesBtn,#ayarBtn\{([^}]*)\}/);
+  assert.ok(k);
+  assert.match(k[1], /width:44px;height:44px/);
+  assert.doesNotMatch(oku('uygulama.js'), /createElement\('button'\);[^\n]*ayarBtn|ab\.id = 'ayarBtn'/);
+  assert.match(html, /<section id="aktivite" class="ekran"[^>]*hidden><\/section>/);
+  assert.match(html, /<section id="takvim" class="ekran"[^>]*hidden><\/section>/);
+  assert.match(html, /\.ekran\{[^}]*overflow-y:auto[^}]*overscroll-behavior:contain/);
+});
+
+test('Aktiviteler ve Takvim modülleri dinamik import ile, hata yakalanarak yüklenir', () => {
+  const js = oku('uygulama.js');
+  assert.match(js, /import\('\.\/aktiviteler\.js'\)/);
+  assert.match(js, /import\('\.\/takvim\.js'\)/);
+  assert.match(js, /modulKur\(k\.ice, k\.kur, k\.kap/);
+  assert.match(js, /Bu bölüm yüklenemedi\./);
+  assert.doesNotMatch(js, /^import .*['"]\.\/(aktiviteler|takvim)\.js['"]/m);
+  assert.match(js, /ayarAcik: ayarAcik \|\| !!kayanAcik/);
+  assert.match(js, /if \(!GENIS && kayanMi\(ekran\) && !mesgul\) return;/);
 });
 
 test('Ayarlar ölçü satırı #surum altında gizli başlar; iosTam sınıfı sahneyi mutlak konumlar', () => {
