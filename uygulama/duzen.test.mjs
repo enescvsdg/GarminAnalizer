@@ -240,3 +240,10 @@ test('gorunumYuksekligi: ana ekran değilse innerHeight esas alınır (Safari ar
 test('DUZEN gorunumYuksekligi içerir', () => {
   assert.equal(DUZEN.gorunumYuksekligi, gorunumYuksekligi);
 });
+
+test('gorunumYuksekligi: iOS tam ekranda kısa bildirilen yükseklikler yerine ekran yüksekliği kullanılır', () => {
+  assert.equal(gorunumYuksekligi({ ic: 797, dvh: 797, gorsel: 797, kok: 797, ekran: 852, standalone: true, iosTam: true }), 852);
+  assert.equal(gorunumYuksekligi({ ic: 797, dvh: 797, ekran: 852, standalone: true, iosTam: false }), 797);
+  assert.equal(gorunumYuksekligi({ ic: 797, ekran: 0, standalone: true, iosTam: true }), 797);
+  assert.equal(gorunumYuksekligi({ ic: 797, ekran: NaN, iosTam: true }), 797);
+});

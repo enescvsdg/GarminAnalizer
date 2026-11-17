@@ -132,8 +132,12 @@ export function carkHedef(gun, adim, gunSayisi) {
 // Sonlu ve pozitif adayların en büyüğü seçilir; ekran yüksekliği (ekran) biliniyorsa onu aşmaz.
 // Ana ekran uygulaması değilse (Safari sekmesi, araç çubukları oynar) yalnızca innerHeight'a güvenilir; o yoksa diğerlerinin en büyüğü.
 // Hiç aday yoksa 844 (tasarım yüksekliği).
-export function gorunumYuksekligi({ ic, dvh, gorsel, kok, ekran, standalone } = {}) {
+// iosTam: iOS ana ekran uygulaması, dikey ve pencere ekran genişliğinde (tam ekran). Bu durumda sayfa
+// ekranın tamamını kaplar (viewport-fit=cover + black-translucent); tarayıcının bildirdiği yükseklikler
+// açılışta kısa kalabildiği için ekran yüksekliğinin kendisi kullanılır.
+export function gorunumYuksekligi({ ic, dvh, gorsel, kok, ekran, standalone, iosTam } = {}) {
   const gecerli = (v) => sonlu(v) && v > 0;
+  if (iosTam === true && gecerli(ekran)) return ekran;
   const hepsi = [ic, dvh, gorsel, kok].filter(gecerli);
   let y = standalone === false && gecerli(ic) ? ic : hepsi.length ? Math.max(...hepsi) : 844;
   if (gecerli(ekran) && y > ekran) y = ekran;

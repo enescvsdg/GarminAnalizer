@@ -59,6 +59,7 @@ function gercekYukseklik() {
   return gorunumYuksekligi({
     ic: ih, dvh: olcuYuksekligi(), gorsel: window.visualViewport ? window.visualViewport.height : 0,
     kok: document.documentElement.clientHeight, ekran, standalone,
+    iosTam: navigator.standalone === true && ekran > 0 && iw === Math.min(sy.width || 0, sy.height || 0),
   });
 }
 function telOlcek() {
