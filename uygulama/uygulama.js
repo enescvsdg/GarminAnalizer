@@ -1,4 +1,4 @@
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani } from './duzen.js';
+import { duzenModu, gorunumYuksekligi, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani } from './duzen.js';
 import { simgeKur } from './simgeler.js';
 import { ACIKLAMA } from './aciklama.js';
 const $ = (id) => document.getElementById(id);
@@ -38,15 +38,50 @@ function genisOlcek() {
 }
 if (GENIS) genisKur();
 // Ölçekleme: veri beklenirken de ekran doğru oturur
+// Ölçü elemanları: position:fixed olduğundan iOS ana ekranında innerHeight'tan farklı (gerçek ekran) yükseklik verebilir.
+let olcuKutu = null, sonOlcu = '', olcekKanca = null;
+function olcuYuksekligi() {
+  if (!olcuKutu) {
+    olcuKutu = document.createElement('div');
+    olcuKutu.setAttribute('aria-hidden', 'true');
+    olcuKutu.style.cssText = 'position:fixed;left:0;top:0;bottom:0;width:0;height:auto;visibility:hidden;pointer-events:none';
+    olcuKutu.appendChild(document.createElement('div')).style.cssText = 'position:absolute;left:0;top:0;width:0;height:100dvh';
+    document.body.appendChild(olcuKutu);
+  }
+  return Math.max(olcuKutu.getBoundingClientRect().height, olcuKutu.firstChild.getBoundingClientRect().height);
+}
+function gercekYukseklik() {
+  const ih = innerHeight, iw = innerWidth;
+  const sy = typeof screen !== 'undefined' ? screen : null;
+  // ekran yüksekliği yalnızca dikeyde güvenilir üst sınırdır (iOS screen.* dönmez; yatayda uygulanmaz)
+  const ekran = sy && iw <= ih ? Math.max(sy.width || 0, sy.height || 0) : 0;
+  const standalone = navigator.standalone === true || (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches);
+  return gorunumYuksekligi({
+    ic: ih, dvh: olcuYuksekligi(), gorsel: window.visualViewport ? window.visualViewport.height : 0,
+    kok: document.documentElement.clientHeight, ekran, standalone,
+  });
+}
 function telOlcek() {
   if (GENIS) return genisOlcek();
   // Sayfa gizli/sıfır boyutlu açılırsa (arka planda başlatma) ölçek 0 olur ve bütün ölçümler NaN'a döner:
   // boyut yokken tasarım ölçüsü varsayılır; gerçek boyut gelince resize ile yeniden hesaplanır.
-  const iw = innerWidth || 390, ih = innerHeight || 844;
+  const iw = innerWidth || 390, ih = innerHeight ? gercekYukseklik() : 844;
   const mob = iw <= 520, S = mob ? iw / 390 : Math.max(0.1, Math.min(1, (ih - 32) / 844)), H = mob ? ih / S : 844;
   telKok.classList.toggle('mob', mob); telKok.style.height = H + 'px'; telKok.style.transform = `scale(${S})`;
+  document.documentElement.classList.toggle('mob', mob);
+  sonOlcu = iw + 'x' + ih;
   return { S, H };
 }
+// iOS ana ekranında yükseklik ilk çizimden sonra oturabilir ve resize gelmeyebilir: bu olaylarda ve yüklemeden kısa süre sonra ölçü değiştiyse yeniden yerleştir
+function olcuKontrol() {
+  if (GENIS || !innerWidth || !innerHeight) return;
+  const iw = innerWidth, ih = gercekYukseklik();
+  if (sonOlcu === iw + 'x' + ih) return;
+  (olcekKanca || telOlcek)();
+}
+['orientationchange', 'pageshow'].forEach((o) => addEventListener(o, olcuKontrol));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', olcuKontrol);
+requestAnimationFrame(olcuKontrol); setTimeout(olcuKontrol, 300); setTimeout(olcuKontrol, 1000);
 // geniş ↔ dar eşiği aşılınca (yeniden boyutlandırma durulduktan sonra) bir kez yeniden yükle; boyutsuz anlar sayılmaz
 let esikZaman = 0, esikYukleniyor = false;
 addEventListener('resize', () => {
@@ -927,6 +962,7 @@ function genisTrend() { // geniş ekran: 28 gün bölgeye sığar; sırt ve bant
   $('bantYazi').setAttribute('x', kenar); $('tBas').style.left = $('ekSatir').style.left = kenar + 'px';
 }
 addEventListener('resize', sigdir);
+olcekKanca = sigdir;
 
 /* ================= Döngü ================= */
 let ang = -0.35, bt = 0, curT = 60 / st.bpm, ph = 1, beat = 0;

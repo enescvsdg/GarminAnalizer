@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, DUZEN } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, DUZEN } from './duzen.js';
 
 const hepsiSonlu = (o) => Object.entries(o).every(([, v]) => typeof v === 'number' && Number.isFinite(v));
 
@@ -209,4 +209,34 @@ test('carkHedef: sınırlar', () => {
   assert.equal(carkHedef(27, 3, 28), 27);
   assert.equal(carkHedef(5, 2, 28), 7);
   assert.ok(Number.isFinite(carkHedef(NaN, 2, 28)));
+});
+
+test('gorunumYuksekligi: en büyük geçerli aday seçilir (iOS ana ekran: innerHeight kısa, ölçü elemanı uzun)', () => {
+  assert.equal(gorunumYuksekligi({ ic: 790, dvh: 852, standalone: true }), 852);
+  assert.equal(gorunumYuksekligi({ ic: 790, dvh: 852, gorsel: 800, kok: 852, standalone: true }), 852);
+  assert.equal(gorunumYuksekligi({ ic: 852, dvh: 790, standalone: true }), 852);
+});
+
+test('gorunumYuksekligi: ekran yüksekliğini aşmaz; ekran bilinmiyorsa sınır yok', () => {
+  assert.equal(gorunumYuksekligi({ ic: 700, dvh: 900, ekran: 852, standalone: true }), 852);
+  assert.equal(gorunumYuksekligi({ ic: 700, dvh: 900, standalone: true }), 900);
+  assert.equal(gorunumYuksekligi({ ic: 700, ekran: 852, standalone: true }), 700);
+});
+
+test('gorunumYuksekligi: sıfır, NaN, negatif ve sayı olmayan adaylar yok sayılır; hiç aday yoksa 844', () => {
+  assert.equal(gorunumYuksekligi({ ic: 0, dvh: NaN, gorsel: -5, kok: '800', standalone: true }), 844);
+  assert.equal(gorunumYuksekligi({ ic: 0, dvh: 700, standalone: true }), 700);
+  assert.equal(gorunumYuksekligi({}), 844);
+  assert.equal(gorunumYuksekligi(), 844);
+  assert.equal(gorunumYuksekligi({ ic: Infinity, standalone: true }), 844);
+  assert.equal(gorunumYuksekligi({ ekran: 600 }), 600);
+});
+
+test('gorunumYuksekligi: ana ekran değilse innerHeight esas alınır (Safari araç çubuğu)', () => {
+  assert.equal(gorunumYuksekligi({ ic: 664, dvh: 750, kok: 750, standalone: false }), 664);
+  assert.equal(gorunumYuksekligi({ ic: 0, dvh: 750, standalone: false }), 750);
+});
+
+test('DUZEN gorunumYuksekligi içerir', () => {
+  assert.equal(DUZEN.gorunumYuksekligi, gorunumYuksekligi);
 });
