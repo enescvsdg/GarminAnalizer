@@ -143,3 +143,19 @@ test('kimliksiz aktiviteUpsert TypeError fırlatır', async () => {
   const { results } = await db.prepare('SELECT id FROM activities').all();
   assert.equal(results.length, 0);
 });
+
+test('abonelikYaz: yazar, aynı uç noktada günceller, en çok 5 tutar (en eskiden siler)', async () => {
+  const { abonelikYaz, abonelikleriOku, abonelikSil } = await import('../src/db.js');
+  const { testD1 } = await import('./helpers/d1.mjs');
+  const db = testD1();
+  for (let i = 1; i <= 6; i += 1) await abonelikYaz(db, { endpoint: `https://e/${i}`, p256dh: `p${i}`, auth: `a${i}` }, i * 10);
+  let liste = await abonelikleriOku(db);
+  assert.deepEqual(liste.map((a) => a.endpoint), [2, 3, 4, 5, 6].map((i) => `https://e/${i}`));
+  await abonelikYaz(db, { endpoint: 'https://e/2', p256dh: 'yeni', auth: 'yeni' }, 100);
+  liste = await abonelikleriOku(db);
+  assert.equal(liste.length, 5);
+  assert.deepEqual(liste.at(-1), { endpoint: 'https://e/2', p256dh: 'yeni', auth: 'yeni', created_at: 100 });
+  await abonelikSil(db, 'https://e/3');
+  await abonelikSil(db, 'https://e/yok');
+  assert.equal((await abonelikleriOku(db)).length, 4);
+});

@@ -126,5 +126,23 @@ export function carkHedef(gun, adim, gunSayisi) {
   return clamp(Math.round((sonlu(gun) ? gun : 0) + (sonlu(adim) ? adim : 0)), 0, son);
 }
 
-export const DUZEN = { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
+// Telefon modunda sahnenin kullanacağı görünüm yüksekliği (px). iOS ana ekran uygulamasında innerHeight ilk
+// çizimde gerçek ekrandan kısa (üst güvenli alanı saymadan) gelebilir ve ardından resize olayı gelmeyebilir.
+// Adaylar: ic (innerHeight), dvh (position:fixed ölçü elemanı), gorsel (visualViewport.height), kok (documentElement.clientHeight).
+// Sonlu ve pozitif adayların en büyüğü seçilir; ekran yüksekliği (ekran) biliniyorsa onu aşmaz.
+// Ana ekran uygulaması değilse (Safari sekmesi, araç çubukları oynar) yalnızca innerHeight'a güvenilir; o yoksa diğerlerinin en büyüğü.
+// Hiç aday yoksa 844 (tasarım yüksekliği).
+// iosTam: iOS ana ekran uygulaması, dikey ve pencere ekran genişliğinde (tam ekran). Bu durumda sayfa
+// ekranın tamamını kaplar (viewport-fit=cover + black-translucent); tarayıcının bildirdiği yükseklikler
+// açılışta kısa kalabildiği için ekran yüksekliğinin kendisi kullanılır.
+export function gorunumYuksekligi({ ic, dvh, gorsel, kok, ekran, standalone, iosTam } = {}) {
+  const gecerli = (v) => sonlu(v) && v > 0;
+  if (iosTam === true && gecerli(ekran)) return ekran;
+  const hepsi = [ic, dvh, gorsel, kok].filter(gecerli);
+  let y = standalone === false && gecerli(ic) ? ic : hepsi.length ? Math.max(...hepsi) : 844;
+  if (gecerli(ekran) && y > ekran) y = ekran;
+  return y;
+}
+
+export const DUZEN = { gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
 globalThis.DUZEN = DUZEN;

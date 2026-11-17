@@ -201,6 +201,7 @@ async function istekCoz(yol, { method = 'GET', govde } = {}, isle, fetchFn, depo
       });
       if (!r) return { sonuc: null, neden: 'ag' };
       if (r.status === 401) return { sonuc: null, neden: 'yetki' };
+      if (r.status === 429) return { sonuc: null, neden: 'bekle' };
       if (r.ok !== true || (r.status !== undefined && r.status !== 200)) return { sonuc: null, neden: 'sunucu' };
       try { return { sonuc: isle(await r.json()), neden: null }; } catch { return { sonuc: null, neden: 'sunucu' }; }
     })();
@@ -247,14 +248,52 @@ function ayarCevir(j) {
   return { yapayZeka: j.yapayZeka };
 }
 
-// {yapayZeka:boolean} ya da null.
+// Eski Worker'lar bildirim alanını hiç vermez: yoksa ya da bozuksa {acikAnahtar: null, abone: 0}.
+function bildirimCevir(b) {
+  const nesne = b && typeof b === 'object' && !Array.isArray(b);
+  return {
+    acikAnahtar: nesne && metinMi(b.acikAnahtar) ? b.acikAnahtar : null,
+    abone: nesne && Number.isInteger(b.abone) && b.abone >= 0 ? b.abone : 0,
+  };
+}
+
+// {yapayZeka:boolean, bildirim:{acikAnahtar:string|null, abone:number}} ya da null.
 export function ayarGetir(fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
-  return istekYap('/api/ayar', {}, ayarCevir, fetchFn, depo, zamanAsimiMs);
+  return istekYap('/api/ayar', {}, (j) => ({ ...ayarCevir(j), bildirim: bildirimCevir(j.bildirim) }), fetchFn, depo, zamanAsimiMs);
 }
 
 export async function ayarYaz(yapayZeka, fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
   if (typeof yapayZeka !== 'boolean') return null;
   return istekYap('/api/ayar', { method: 'PUT', govde: JSON.stringify({ yapayZeka }) }, ayarCevir, fetchFn, depo, zamanAsimiMs);
+}
+
+/* ---------- Bildirim aboneliği ---------- */
+
+const tamamMi = (j) => { if (!j || j.tamam !== true) throw new TypeError('yanıt geçersiz'); return true; };
+
+// Aboneliği Worker'a kaydeder. Başarıda true; her başarısızlıkta (bağlantı yok, 401, 4xx/5xx, ağ, zaman aşımı) false.
+export async function abonelikKaydet(abonelik, fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
+  const a = abonelik && typeof abonelik === 'object' ? abonelik : {};
+  if (!metinMi(a.endpoint) || !metinMi(a.p256dh) || !metinMi(a.auth)) return false;
+  const govde = JSON.stringify({ endpoint: a.endpoint, p256dh: a.p256dh, auth: a.auth });
+  return (await istekYap('/api/abonelik', { method: 'POST', govde }, tamamMi, fetchFn, depo, zamanAsimiMs)) === true;
+}
+
+export async function abonelikSil(endpoint, fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = ZAMAN_ASIMI_MS } = {}) {
+  if (!metinMi(endpoint)) return false;
+  return (await istekYap('/api/abonelik', { method: 'DELETE', govde: JSON.stringify({ endpoint }) }, tamamMi, fetchFn, depo, zamanAsimiMs)) === true;
+}
+
+function denemeCevir(j) {
+  if (!j || typeof j !== 'object' || !Number.isInteger(j.gonderilen) || !Number.isInteger(j.basarili) || j.gonderilen < 0 || j.basarili < 0) throw new TypeError('yanıt geçersiz');
+  return { gonderilen: j.gonderilen, basarili: j.basarili };
+}
+
+// {gonderilen, basarili}, bekleme süresindeyse (HTTP 429) {bekle: true}, olmazsa null.
+// Push servisleri yavaş olabilir: zaman aşımı diğer isteklerden uzundur.
+export async function denemeBildirimi(fetchFn = globalThis.fetch, depo = varsayilanDepo(), { zamanAsimiMs = 15000 } = {}) {
+  const { sonuc, neden } = await istekCoz('/api/deneme-bildirim', { method: 'POST' }, denemeCevir, fetchFn, depo, zamanAsimiMs);
+  return neden === 'bekle' ? { bekle: true } : sonuc;
 }
 
 /* ---------- Biçimleme ---------- */
@@ -327,7 +366,7 @@ export function ekSatiri(olcumId, ek) {
 }
 
 export const CANLI = {
-  veriCevir, durum, veriGetir, veriYukle, sonVeriYaz, sonVeriOku, sonVeriSil, ayarGetir, ayarYaz, baglantiOku, baglantiYaz, baglantiSil, baglantiKarar, adresDuzelt,
+  veriCevir, durum, veriGetir, veriYukle, sonVeriYaz, sonVeriOku, sonVeriSil, ayarGetir, ayarYaz, abonelikKaydet, abonelikSil, denemeBildirimi, baglantiOku, baglantiYaz, baglantiSil, baglantiKarar, adresDuzelt,
   sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, OK, DURUM_METIN,
 };
 globalThis.CANLI = CANLI;

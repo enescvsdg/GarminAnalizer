@@ -215,3 +215,57 @@ test('sınır: tetikleme birkaç ms erken gelse de saatlik eşitleme çalışır
     assert.equal(s.calisti, calisir, `fark ${fark}`);
   }
 });
+
+// ---- sabah penceresi (İstanbul 05:00 <= saat < 11:00) ----
+const ist = (s, d = 0) => Date.UTC(2026, 10, 12, s - 3, d); // İstanbul yerel saat (UTC+3) -> ms
+const BUGUN_IST = '2026-11-12';
+
+async function sabahKur(db, ek = {}) {
+  await kur(db, { gecmis_imlec: BITTI, key_durum: 'gecerli', ...ek });
+}
+
+test('sabah penceresi sınırları: 04:59 taze, 05:00 çalışır, 10:59 çalışır, 11:00 taze', async () => {
+  const sonuclar = [];
+  for (const [saat, dk] of [[4, 59], [5, 0], [10, 59], [11, 0]]) {
+    const db = testD1();
+    const simdi = ist(saat, dk);
+    await sabahKur(db, { son_esitleme: simdi - 15 * DK });
+    const c = sahte();
+    await zamanliEsitle({ db, simdiMs: simdi, calistir: c });
+    sonuclar.push(c.sayi);
+  }
+  assert.deepEqual(sonuclar, [0, 1, 1, 0]);
+});
+
+test('sabah penceresi: uyku_gun bugünse taze kalır, dünse çalışır', async () => {
+  const simdi = ist(8);
+  const db = testD1();
+  await sabahKur(db, { son_esitleme: simdi - 15 * DK, uyku_gun: BUGUN_IST });
+  const c = sahte();
+  assert.deepEqual(await zamanliEsitle({ db, simdiMs: simdi, calistir: c }), { calisti: false, neden: 'taze' });
+  const db2 = testD1();
+  await sabahKur(db2, { son_esitleme: simdi - 15 * DK, uyku_gun: '2026-11-11' });
+  const c2 = sahte();
+  assert.equal((await zamanliEsitle({ db: db2, simdiMs: simdi, calistir: c2 })).calisti, true);
+});
+
+test('sabah penceresi: bekle_bitis ve geçersiz key önce gelir', async () => {
+  const simdi = ist(8);
+  const db = testD1();
+  await sabahKur(db, { son_esitleme: simdi - 15 * DK, bekle_bitis: simdi + 1 });
+  const c = sahte();
+  assert.deepEqual(await zamanliEsitle({ db, simdiMs: simdi, calistir: c }), { calisti: false, neden: 'bekleme' });
+  const db2 = testD1();
+  await sabahKur(db2, { son_esitleme: simdi - 15 * DK, key_durum: 'gecersiz', son_deneme: simdi - 2 * SAAT });
+  const c2 = sahte();
+  assert.deepEqual(await zamanliEsitle({ db: db2, simdiMs: simdi, calistir: c2 }), { calisti: false, neden: 'key' });
+  assert.equal(c.sayi + c2.sayi, 0);
+});
+
+test('sabah penceresi: UTC tarihi dünken İstanbul tarihi bugünse uyku_gun İstanbul tarihiyle karşılaştırılır', async () => {
+  const simdi = Date.UTC(2026, 10, 11, 22, 0) + 0; // İstanbul 12 Kas 01:00: pencere dışı
+  const db = testD1();
+  await sabahKur(db, { son_esitleme: simdi - 15 * DK });
+  const c = sahte();
+  assert.equal((await zamanliEsitle({ db, simdiMs: simdi, calistir: c })).calisti, false);
+});

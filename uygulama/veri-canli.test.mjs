@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { apiYaniti } from '../worker/src/stats/ozet.js';
 import { gunEkle } from '../worker/src/zaman.js';
 import {
-  veriCevir, durum, veriGetir, ayarGetir, ayarYaz, baglantiOku, baglantiYaz, baglantiSil,
+  veriCevir, durum, veriGetir, ayarGetir, ayarYaz, abonelikKaydet, abonelikSil, denemeBildirimi, baglantiOku, baglantiYaz, baglantiSil,
   sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, baglantiKarar,
   veriYukle, sonVeriYaz, sonVeriOku, sonVeriSil,
 } from './veri-canli.js';
@@ -487,7 +487,7 @@ const bagli = () => { const d = sahteDepo(); baglantiYaz({ adres: 'https://w.orn
 test('ayarGetir GET /api/ayar, anahtar yalnız başlıkta, yapayZeka döner', async () => {
   const cagrilar = [];
   const f = async (url, init) => { cagrilar.push({ url: String(url), init }); return yanitCevir({ yapayZeka: true }); };
-  assert.deepEqual(await ayarGetir(f, bagli()), { yapayZeka: true });
+  assert.deepEqual(await ayarGetir(f, bagli()), { yapayZeka: true, bildirim: { acikAnahtar: null, abone: 0 } });
   assert.equal(cagrilar.length, 1);
   assert.equal(cagrilar[0].url, 'https://w.ornek.dev/api/ayar');
   assert.equal(cagrilar[0].init.method, 'GET');
@@ -496,7 +496,7 @@ test('ayarGetir GET /api/ayar, anahtar yalnız başlıkta, yapayZeka döner', as
   assert.equal(cagrilar[0].init.credentials, 'omit');
   assert.equal(cagrilar[0].init.body, undefined);
   assert.equal(cagrilar[0].url.includes(ANAHTAR), false);
-  assert.deepEqual(await ayarGetir(async () => yanitCevir({ yapayZeka: false }), bagli()), { yapayZeka: false });
+  assert.deepEqual(await ayarGetir(async () => yanitCevir({ yapayZeka: false }), bagli()), { yapayZeka: false, bildirim: { acikAnahtar: null, abone: 0 } });
 });
 
 test('ayarYaz PUT gövde, Content-Type, anahtar yalnız başlıkta', async () => {
@@ -552,6 +552,123 @@ test('ayarGetir ve ayarYaz bağlantı yokken null, fetch çağrılmaz', async ()
   assert.equal(await ayarGetir(f, sahteDepo()), null);
   assert.equal(await ayarYaz(true, f, sahteDepo()), null);
   assert.equal(await ayarGetir(), null);
+  assert.equal(cagri, 0);
+});
+
+test('ayarGetir bildirim alanını döndürür; alan yoksa ya da bozuksa varsayılan', async () => {
+  const ok = await ayarGetir(async () => yanitCevir({ yapayZeka: true, bildirim: { acikAnahtar: 'BKey', abone: 2 } }), bagli());
+  assert.deepEqual(ok, { yapayZeka: true, bildirim: { acikAnahtar: 'BKey', abone: 2 } });
+  const bos = { acikAnahtar: null, abone: 0 };
+  for (const b of [undefined, null, 'x', [], { acikAnahtar: 5, abone: 'iki' }, { acikAnahtar: '', abone: -1 }, { acikAnahtar: null, abone: 1.5 }]) {
+    const r = await ayarGetir(async () => yanitCevir({ yapayZeka: false, bildirim: b }), bagli());
+    assert.deepEqual(r, { yapayZeka: false, bildirim: bos }, JSON.stringify(b));
+  }
+  assert.deepEqual(await ayarGetir(async () => yanitCevir({ yapayZeka: true, bildirim: { acikAnahtar: null, abone: 3 } }), bagli()),
+    { yapayZeka: true, bildirim: { acikAnahtar: null, abone: 3 } });
+});
+
+test('ayarYaz yanıtı yalnız yapayZeka taşır (bildirim alanı sızmaz)', async () => {
+  const r = await ayarYaz(true, async () => yanitCevir({ yapayZeka: true, bildirim: { acikAnahtar: 'k', abone: 1 } }), bagli());
+  assert.deepEqual(r, { yapayZeka: true });
+});
+
+const ABONE = { endpoint: 'https://web.push.apple.com/abc', p256dh: 'PPP', auth: 'AAA' };
+
+test('abonelikKaydet POST /api/abonelik: gövde, başlıklar, anahtar yalnız başlıkta', async () => {
+  const cagrilar = [];
+  const f = async (url, init) => { cagrilar.push({ url: String(url), init }); return yanitCevir({ tamam: true }); };
+  assert.equal(await abonelikKaydet({ ...ABONE, fazla: 'x' }, f, bagli()), true);
+  assert.equal(cagrilar.length, 1);
+  const { url, init } = cagrilar[0];
+  assert.equal(url, 'https://w.ornek.dev/api/abonelik');
+  assert.equal(init.method, 'POST');
+  assert.equal(init.body, JSON.stringify(ABONE));
+  assert.equal(init.headers['Content-Type'], 'application/json');
+  assert.equal(init.headers['X-Device-Key'], ANAHTAR);
+  assert.equal(init.redirect, 'error');
+  assert.equal(init.credentials, 'omit');
+  assert.equal(url.includes(ANAHTAR), false);
+  assert.equal(init.body.includes(ANAHTAR), false);
+});
+
+test('abonelikSil DELETE /api/abonelik: gövde yalnız endpoint', async () => {
+  const cagrilar = [];
+  const f = async (url, init) => { cagrilar.push({ url: String(url), init }); return yanitCevir({ tamam: true }); };
+  assert.equal(await abonelikSil(ABONE.endpoint, f, bagli()), true);
+  const { url, init } = cagrilar[0];
+  assert.equal(url, 'https://w.ornek.dev/api/abonelik');
+  assert.equal(init.method, 'DELETE');
+  assert.equal(init.body, JSON.stringify({ endpoint: ABONE.endpoint }));
+  assert.equal(init.headers['Content-Type'], 'application/json');
+  assert.equal(init.headers['X-Device-Key'], ANAHTAR);
+  assert.equal(init.redirect, 'error');
+  assert.equal(url.includes(ANAHTAR) || init.body.includes(ANAHTAR), false);
+});
+
+test('denemeBildirimi POST /api/deneme-bildirim, gövdesiz, sayıları döndürür', async () => {
+  const cagrilar = [];
+  const f = async (url, init) => { cagrilar.push({ url: String(url), init }); return yanitCevir({ gonderilen: 2, basarili: 1 }); };
+  assert.deepEqual(await denemeBildirimi(f, bagli()), { gonderilen: 2, basarili: 1 });
+  const { url, init } = cagrilar[0];
+  assert.equal(url, 'https://w.ornek.dev/api/deneme-bildirim');
+  assert.equal(init.method, 'POST');
+  assert.equal(init.body, undefined);
+  assert.equal(init.headers['X-Device-Key'], ANAHTAR);
+  assert.equal(init.redirect, 'error');
+  assert.equal(url.includes(ANAHTAR), false);
+  assert.deepEqual(await denemeBildirimi(async () => yanitCevir({ gonderilen: 0, basarili: 0 }), bagli()), { gonderilen: 0, basarili: 0 });
+});
+
+test('denemeBildirimi HTTP 429 için {bekle: true} döner, diğer hatalar null kalır', async () => {
+  assert.deepEqual(await denemeBildirimi(async () => yanitCevir({ hata: 'bekle' }, 429), bagli()), { bekle: true });
+  assert.equal(await denemeBildirimi(async () => yanitCevir({ hata: 'sunucu' }, 500), bagli()), null);
+  assert.equal(await denemeBildirimi(async () => yanitCevir({ hata: 'yetkisiz' }, 401), bagli()), null);
+});
+
+test('abonelik işlevleri 401, 500, 503, ağ hatası, bozuk JSON ve yanlış biçimde false/null', async () => {
+  const bozukJson = async () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('x'); } });
+  const kotuler = [
+    async () => yanitCevir({ hata: 'yetkisiz' }, 401),
+    async () => yanitCevir({ hata: 'gecersiz' }, 400),
+    async () => yanitCevir({ tamam: true }, 500),
+    async () => yanitCevir({ hata: 'yapilandirma' }, 503),
+    async () => { throw new TypeError('Failed to fetch'); },
+    bozukJson,
+    async () => yanitCevir(null),
+    async () => yanitCevir({}),
+  ];
+  for (const f of kotuler) {
+    assert.equal(await abonelikKaydet(ABONE, f, bagli()), false);
+    assert.equal(await abonelikSil(ABONE.endpoint, f, bagli()), false);
+    assert.equal(await denemeBildirimi(f, bagli()), null);
+  }
+  assert.equal(await abonelikKaydet(ABONE, async () => yanitCevir({ tamam: 'evet' }), bagli()), false);
+  assert.equal(await denemeBildirimi(async () => yanitCevir({ gonderilen: '1', basarili: 1 }), bagli()), null);
+  assert.equal(await denemeBildirimi(async () => yanitCevir({ gonderilen: 1, basarili: -1 }), bagli()), null);
+});
+
+test('abonelik işlevleri zaman aşımında false/null döner ve isteği iptal eder', async () => {
+  let iptal = 0;
+  const f = (url, init) => new Promise((_, red) => {
+    init.signal?.addEventListener('abort', () => { iptal += 1; red(new Error('abort')); });
+  });
+  assert.equal(await abonelikKaydet(ABONE, f, bagli(), { zamanAsimiMs: 30 }), false);
+  assert.equal(await abonelikSil(ABONE.endpoint, f, bagli(), { zamanAsimiMs: 30 }), false);
+  assert.equal(await denemeBildirimi(f, bagli(), { zamanAsimiMs: 30 }), null);
+  assert.equal(iptal, 3);
+});
+
+test('abonelik işlevleri bağlantı yokken fetch çağırmaz; geçersiz girdi istek atmaz', async () => {
+  let cagri = 0;
+  const f = async () => { cagri += 1; return yanitCevir({ tamam: true, gonderilen: 1, basarili: 1 }); };
+  assert.equal(await abonelikKaydet(ABONE, f, sahteDepo()), false);
+  assert.equal(await abonelikSil(ABONE.endpoint, f, sahteDepo()), false);
+  assert.equal(await denemeBildirimi(f, sahteDepo()), null);
+  assert.equal(cagri, 0);
+  for (const kotu of [null, undefined, {}, { endpoint: 'x' }, { endpoint: 'x', p256dh: 'p' }, { endpoint: '', p256dh: 'p', auth: 'a' }, { endpoint: 'x', p256dh: 5, auth: 'a' }]) {
+    assert.equal(await abonelikKaydet(kotu, f, bagli()), false);
+  }
+  for (const kotu of [null, undefined, '', 5, {}]) assert.equal(await abonelikSil(kotu, f, bagli()), false);
   assert.equal(cagri, 0);
 });
 

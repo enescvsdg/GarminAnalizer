@@ -1,4 +1,4 @@
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani } from './duzen.js';
+import { duzenModu, gorunumYuksekligi, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani } from './duzen.js';
 import { simgeKur } from './simgeler.js';
 import { ACIKLAMA } from './aciklama.js';
 const $ = (id) => document.getElementById(id);
@@ -38,15 +38,51 @@ function genisOlcek() {
 }
 if (GENIS) genisKur();
 // Ölçekleme: veri beklenirken de ekran doğru oturur
+// Ölçü elemanları: position:fixed olduğundan iOS ana ekranında innerHeight'tan farklı (gerçek ekran) yükseklik verebilir.
+let olcuKutu = null, sonOlcu = '', olcekKanca = null;
+function olcuYuksekligi() {
+  if (!olcuKutu) {
+    olcuKutu = document.createElement('div');
+    olcuKutu.setAttribute('aria-hidden', 'true');
+    olcuKutu.style.cssText = 'position:fixed;left:0;top:0;bottom:0;width:0;height:auto;visibility:hidden;pointer-events:none';
+    olcuKutu.appendChild(document.createElement('div')).style.cssText = 'position:absolute;left:0;top:0;width:0;height:100dvh';
+    document.body.appendChild(olcuKutu);
+  }
+  return Math.max(olcuKutu.getBoundingClientRect().height, olcuKutu.firstChild.getBoundingClientRect().height);
+}
+function gercekYukseklik() {
+  const ih = innerHeight, iw = innerWidth;
+  const sy = typeof screen !== 'undefined' ? screen : null;
+  // ekran yüksekliği yalnızca dikeyde güvenilir üst sınırdır (iOS screen.* dönmez; yatayda uygulanmaz)
+  const ekran = sy && iw <= ih ? Math.max(sy.width || 0, sy.height || 0) : 0;
+  const standalone = navigator.standalone === true || (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches);
+  return gorunumYuksekligi({
+    ic: ih, dvh: olcuYuksekligi(), gorsel: window.visualViewport ? window.visualViewport.height : 0,
+    kok: document.documentElement.clientHeight, ekran, standalone,
+    iosTam: navigator.standalone === true && ekran > 0 && iw === Math.min(sy.width || 0, sy.height || 0),
+  });
+}
 function telOlcek() {
   if (GENIS) return genisOlcek();
   // Sayfa gizli/sıfır boyutlu açılırsa (arka planda başlatma) ölçek 0 olur ve bütün ölçümler NaN'a döner:
   // boyut yokken tasarım ölçüsü varsayılır; gerçek boyut gelince resize ile yeniden hesaplanır.
-  const iw = innerWidth || 390, ih = innerHeight || 844;
+  const iw = innerWidth || 390, ih = innerHeight ? gercekYukseklik() : 844;
   const mob = iw <= 520, S = mob ? iw / 390 : Math.max(0.1, Math.min(1, (ih - 32) / 844)), H = mob ? ih / S : 844;
   telKok.classList.toggle('mob', mob); telKok.style.height = H + 'px'; telKok.style.transform = `scale(${S})`;
+  document.documentElement.classList.toggle('mob', mob);
+  sonOlcu = iw + 'x' + ih;
   return { S, H };
 }
+// iOS ana ekranında yükseklik ilk çizimden sonra oturabilir ve resize gelmeyebilir: bu olaylarda ve yüklemeden kısa süre sonra ölçü değiştiyse yeniden yerleştir
+function olcuKontrol() {
+  if (GENIS || !innerWidth || !innerHeight) return;
+  const iw = innerWidth, ih = gercekYukseklik();
+  if (sonOlcu === iw + 'x' + ih) return;
+  (olcekKanca || telOlcek)();
+}
+['orientationchange', 'pageshow'].forEach((o) => addEventListener(o, olcuKontrol));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', olcuKontrol);
+requestAnimationFrame(olcuKontrol); setTimeout(olcuKontrol, 300); setTimeout(olcuKontrol, 1000);
 // geniş ↔ dar eşiği aşılınca (yeniden boyutlandırma durulduktan sonra) bir kez yeniden yükle; boyutsuz anlar sayılmaz
 let esikZaman = 0, esikYukleniyor = false;
 addEventListener('resize', () => {
@@ -650,7 +686,7 @@ function ayarAc() {
     gsap.fromTo('#ayar', { y: 14, scale: 0.98, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: RM ? 0 : 0.34, ease: 'power3.out', overwrite: 'auto' });
   } else gsap.fromTo('#ayar', { yPercent: 110, autoAlpha: 1 }, { yPercent: 0, duration: RM ? 0 : 0.5, ease: 'power4.out' });
   $('aSes').focus({ preventScroll: true });
-  yzOku();
+  yzOku(); bilOku();
 }
 function ayarKapat() {
   if (!ayarAcik) return; ayarAcik = false; sekmeGuncelle();
@@ -701,6 +737,112 @@ $('aYz').addEventListener('click', async () => {
   yz.deger = r.yapayZeka; yzGoster(); location.reload(); // yorum kaynağı değişti: veri yeniden yüklenir; mesgul açık kalır ki ikinci dokunuş ayarı geri çevirmesin
 });
 yzGoster();
+
+/* ================= Bildirimler anahtarı (Web Push) ================= */
+// Durum sunucudan ve tarayıcının gerçek aboneliğinden okunur; iyimser güncelleme yok. Anahtar, okuma bitene kadar kapalı kalır.
+const bil = { abone: false, hazir: false, mesgul: false, deneme: false, oku: 0, mod: null, modDenendi: false, durum: null, acikAnahtar: null };
+const bilYerel = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname || '') && !/[?&]sw=1(&|$)/.test(location.search || ''); // kabuk.js yerelde worker kaydetmez
+const bilDestek = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+function bilOrtam() {
+  const standalone = (matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const ios = bil.mod ? bil.mod.iosMu({ userAgent: navigator.userAgent, maxTouchPoints: navigator.maxTouchPoints }) : false;
+  return { destek: bilDestek, izin: bilDestek ? Notification.permission : 'default', standalone, ios, yerel: bilYerel };
+}
+function bilGoster(not) {
+  const d = bil.durum;
+  const kapali = bil.mesgul || !bil.hazir || (!bil.abone && !(d && d.kullanilabilir));
+  $('aBil').disabled = kapali; $('aBil').setAttribute('aria-disabled', kapali); $('aBil').setAttribute('aria-checked', bil.abone);
+  $('bilDene').disabled = !bil.abone || bil.mesgul || bil.deneme;
+  let metin = not || '';
+  if (!metin && !bil.mod && bil.modDenendi) metin = 'Bildirim modülü yüklenemedi.';
+  else if (!metin && d && !d.kullanilabilir) metin = d.neden;
+  $('bilDurum').textContent = metin;
+}
+// Service worker hazır olana kadar bekler ama sonsuza dek değil (kayıt hiç olmayabilir).
+function bilKayit() {
+  let sayac;
+  const bekle = new Promise((coz) => { sayac = setTimeout(() => coz(null), 4000); });
+  return Promise.race([navigator.serviceWorker.ready.catch(() => null), bekle]).finally(() => clearTimeout(sayac));
+}
+async function bilGercekAbone() {
+  const kayit = await bilKayit();
+  return kayit ? { kayit, abone: await kayit.pushManager.getSubscription() } : { kayit: null, abone: null };
+}
+const bilHata = (m) => Object.assign(new Error(m), { bil: true }); // kullanıcıya gösterilecek Türkçe neden
+const bilNeden = (e, yedek) => (e && e.bil ? e.message : e && e.name === 'NotAllowedError' ? 'Bildirim izni verilmedi.' : yedek);
+async function bilOku() { // Ayarlar her açıldığında
+  if (bil.mesgul) return bilGoster();
+  const n = ++bil.oku; bil.hazir = false;
+  if (!bil.mod) { bil.durum = null; return bilGoster(); }
+  if (!bag.canli) { bil.durum = bil.mod.bildirimDurumu({ ...bilOrtam(), canli: false }); return bilGoster(); }
+  bilGoster();
+  let ayar = null; try { ayar = await CANLI.ayarGetir(); } catch (e) { ayar = null; }
+  if (n !== bil.oku || bil.mesgul) return;
+  if (!ayar) { bil.durum = null; return bilGoster('Ayar okunamadı.'); }
+  bil.acikAnahtar = ayar.bildirim ? ayar.bildirim.acikAnahtar : null;
+  bil.durum = bil.mod.bildirimDurumu({ ...bilOrtam(), acikAnahtar: bil.acikAnahtar, canli: true });
+  let abone = null;
+  if (bilDestek && !bilYerel) { try { abone = (await bilGercekAbone()).abone; } catch (e) { abone = null; } }
+  if (n !== bil.oku || bil.mesgul) return;
+  bil.abone = !!abone; bil.hazir = true; bilGoster();
+}
+async function bilBitir(not) { // gerçek durumu geri oku, anahtarı ona göre göster
+  let abone = null; try { abone = (await bilGercekAbone()).abone; } catch (e) { abone = null; }
+  bil.abone = !!abone; bil.mesgul = false; bilGoster(not); $('aBil').focus({ preventScroll: true });
+}
+async function bilAcDevam(izinSoz) {
+  let kayit = null, abone = null;
+  try {
+    if (await izinSoz !== 'granted') throw bilHata('Bildirim izni verilmedi.');
+    kayit = (await bilKayit());
+    if (!kayit) throw bilHata('Service worker hazır değil. Sayfayı yenile.');
+    const anahtar = bil.mod.b64urlCoz(bil.acikAnahtar);
+    if (!anahtar.length) throw bilHata("Worker'daki bildirim anahtarı geçersiz.");
+    abone = await kayit.pushManager.getSubscription();
+    // farklı anahtarla yapılmış eski abonelik yenisiyle değiştirilir
+    if (abone && bil.mod.anahtarAyni(abone.options && abone.options.applicationServerKey, anahtar) === false) { await abone.unsubscribe(); abone = null; }
+    if (!abone) abone = await kayit.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: anahtar });
+    const alan = bil.mod.abonelikAlanlari(abone.toJSON());
+    if (!alan) throw bilHata('Abonelik bilgisi alınamadı.');
+    if (!(await CANLI.abonelikKaydet(alan))) throw bilHata("Worker'a kaydedilemedi.");
+  } catch (e) {
+    if (abone) { try { await abone.unsubscribe(); } catch (x) { /* zaten kapalı */ } } // sunucuya kaydedilemeyen yerel abonelik kalmaz
+    return bilBitir(bilNeden(e, 'Bildirimler açılamadı.'));
+  }
+  bilBitir('Bildirimler açık.');
+}
+async function bilKapat() {
+  try {
+    const { abone } = await bilGercekAbone();
+    if (abone) {
+      if (!(await CANLI.abonelikSil(abone.endpoint))) throw bilHata("Kapatılamadı. Worker'a ulaşılamadı.");
+      await abone.unsubscribe();
+    }
+  } catch (e) { return bilBitir(bilNeden(e, 'Kapatılamadı.')); }
+  bilBitir('Bildirimler kapalı.');
+}
+$('aBil').addEventListener('click', () => {
+  if (!bil.hazir || bil.mesgul || !bil.mod) return;
+  if (bil.abone) { bil.mesgul = true; bilGoster(); return bilKapat(); }
+  if (!bil.durum || !bil.durum.kullanilabilir) return;
+  bil.mesgul = true; bilGoster();
+  let izinSoz; // izin penceresi kullanıcı dokunuşunun eşzamanlı yolunda açılmalı (iOS): önünde await yok
+  try { izinSoz = Notification.permission === 'default' ? Promise.resolve(Notification.requestPermission()) : Promise.resolve(Notification.permission); } catch (e) { izinSoz = Promise.resolve('denied'); }
+  bilAcDevam(izinSoz);
+});
+$('bilDene').addEventListener('click', async () => {
+  if (!bil.abone || bil.mesgul || bil.deneme) return;
+  bil.deneme = true; bilGoster('Gönderiliyor…');
+  let r = null; try { r = await CANLI.denemeBildirimi(); } catch (e) { r = null; }
+  bil.deneme = false;
+  bilGoster(r && r.bekle ? 'Az önce gönderildi. Birkaç saniye bekle.' : !r ? 'Gönderilemedi.' : r.gonderilen === 0 ? 'Kayıtlı cihaz yok.' : r.basarili > 0 ? 'Gönderildi. Birkaç saniye içinde gelmeli.' : 'Gönderilemedi.');
+  $('bilDene').focus({ preventScroll: true });
+});
+(async () => {
+  try { bil.mod = await import('./bildirim.js'); } catch (e) { bil.mod = null; }
+  bil.modDenendi = true; bilGoster();
+  if (ayarAcik) bilOku(); // modül Ayarlar açıldıktan sonra geldiyse durum şimdi okunur
+})();
 
 /* ================= Bağlantı ve uyarı şeridi ================= */
 const kayitli = CANLI.baglantiOku();
@@ -822,6 +964,7 @@ function genisTrend() { // geniş ekran: 28 gün bölgeye sığar; sırt ve bant
   $('bantYazi').setAttribute('x', kenar); $('tBas').style.left = $('ekSatir').style.left = kenar + 'px';
 }
 addEventListener('resize', sigdir);
+olcekKanca = sigdir;
 
 /* ================= Döngü ================= */
 let ang = -0.35, bt = 0, curT = 60 / st.bpm, ph = 1, beat = 0;
@@ -950,6 +1093,7 @@ function ac(v, bag) {
       baglantiYaz: () => false, baglantiKarar: () => ({ tamam: false, hata: 'Bağlantı modülü yüklenemedi.' }),
       adresDuzelt: () => null, ekSatiri: () => null, eskilikSaat: () => null, sonEsitlemeMetni: () => null,
       veriGetir: async () => null, veriYukle: async () => ({ veri: null, kaynak: 'yok', zaman: null, neden: null }), ayarGetir: async () => null, ayarYaz: async () => null,
+      abonelikKaydet: async () => false, abonelikSil: async () => false, denemeBildirimi: async () => null,
     };
   }
   const ORNEK = { baglanti: false, canli: false, kaynak: 'yok', neden: null, zaman: null };
