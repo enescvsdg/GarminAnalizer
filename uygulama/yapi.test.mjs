@@ -250,8 +250,112 @@ test('alt menü yüzen cam kapsüldür: dört sekme, etiket, kayan hap yok, iki 
   assert.match(kural[1], /(^|[;\s])backdrop-filter:blur/);
   assert.match(kural[1], /-webkit-backdrop-filter:blur/);
   assert.match(html, /\.genis \.sekme\{display:none\}/);
-  for (const id of ['sBugun', 'sTrend', 'sAktivite', 'sTakvim']) assert.match(html, new RegExp(`#${id}\\{--ak:#[0-9a-f]{6};--akz:rgba`));
-  assert.match(html, /\.sekme button\[aria-current=page\]\{color:var\(--ak\);background:var\(--akz\)/);
+  for (const id of ['sBugun', 'sTrend', 'sAktivite', 'sTakvim']) assert.match(html, new RegExp(`#${id}\\{--ak:#[0-9a-f]{6};--akr:\\d+ \\d+ \\d+\\}`));
+  assert.match(html, /\.sekme button\[aria-current=page\]\{color:var\(--ak\);font-weight:700\}/);
+});
+
+/* ---------- Menü: hareketli simgeler, cam kapsül, rüzgâr sesi ---------- */
+const menuNav = () => oku('index.html').match(/<nav class="sekme" aria-label="Ekranlar">[\s\S]*?<\/nav>/)[0];
+const cssKural = (html, secici) => {
+  const i = html.indexOf(`\n${secici}{`);
+  assert.ok(i >= 0, `${secici} kuralı bulunmalı`);
+  return html.slice(i + secici.length + 2, html.indexOf('}', i + secici.length + 2));
+};
+
+test('menü: dört sekmenin her birinde kendi hareketli simge parçaları var (24×24 satır içi SVG)', () => {
+  const nav = menuNav();
+  assert.ok(oku('index.html').startsWith('<!doctype html>'));
+  assert.equal((oku('index.html').match(/<nav class="sekme"/g) || []).length, 1);
+  const PARCA = { sBugun: ['m-halka', 'm-nefes', 'm-cekirdek'], sTrend: ['m-akis', 'm-binici'], sAktivite: ['m-iz', 'm-kuyruk'], sTakvim: ['m-yaprak', 'm-nokta', 'm-isik'] };
+  for (const [id, parcalar] of Object.entries(PARCA)) {
+    const b = nav.match(new RegExp(`<button type="button" id="${id}"[\\s\\S]*?</button>`));
+    assert.ok(b, id);
+    assert.match(b[0], /<svg class="sm" viewBox="0 0 24 24" aria-hidden="true">/);
+    for (const p of parcalar) assert.match(b[0], new RegExp(`class="${p}"`), `${id} ${p}`);
+  }
+  const html = oku('index.html');
+  for (const p of Object.values(PARCA).flat()) assert.ok(new RegExp(`\\.sekme\\.oynar [^{]*\\.${p}[^{]*\\{[^}]*animation:`).test(html), `${p} için animasyon kuralı`);
+  // döngüler yalnız seçili sekmede ve girişten sonra; en hızlısı bile 2 saniyeden kısa döngü yapmaz
+  for (const m of html.matchAll(/\.sekme\.oynar \[aria-current=page\]:not\(\.gir\) [^{]+\{[^}]*animation:\w+ ([\d.]+)s[^}]*infinite/g)) assert.ok(+m[1] >= 2, m[0]);
+  // giriş hareketi (gecikmesiyle birlikte) 600 ms'yi geçmez
+  const girisler = [...html.matchAll(/\.sekme\.oynar \.gir [^{]+\{[^}]*?animation:\w+ ([\d.]+)s cubic-bezier\([^)]*\)(?: ([\d.]+)s)?/g)];
+  assert.ok(girisler.length >= 8, `giriş kuralları: ${girisler.length}`);
+  for (const m of girisler) assert.ok(+m[1] + (+m[2] || 0) <= 0.6 + 1e-9, m[0]);
+  assert.match(html, /@media \(prefers-reduced-motion:reduce\)\{\.sekme \.sm \*,\.sekme button::before\{animation:none!important\}\}/);
+});
+
+test('menü: seçili sekmenin kapsülü cam yüzeydir; kendi backdrop-filter yok (dış çubukta iki önek var), iç kenar ışığı ve tint', () => {
+  const html = oku('index.html');
+  const cam = cssKural(html, '.sekme button::before');
+  assert.doesNotMatch(cam, /backdrop-filter/); // dış çubuk zaten backdrop kökü; iç içe filtre yalnız maliyet
+  assert.match(cssKural(html, '.sekme'), /-webkit-backdrop-filter:blur/);
+  assert.match(cssKural(html, '.sekme'), /(^|[;\s])backdrop-filter:blur/);
+  assert.match(cam, /inset 0 1px 0 rgba\(255,255,255,\.\d+\)/); // üstte ince ışık çizgisi
+  assert.match(cam, /inset 0 0 0 1px rgba\(255,255,255/); // 1px parlak iç kenar
+  assert.match(cam, /rgb\(var\(--akr\)/); // sekmenin rengi cama hafifçe yansır
+  assert.match(html, /\.sekme button\[aria-current=page\]::before\{opacity:1;transform:none\}/);
+  assert.match(cssKural(html, '.sekme button::after'), /mask-composite:exclude/);
+  assert.match(html, /\.genis \.sekme\{display:none\}/);
+});
+
+test('menü: simge döngüsü gizli ekranda, geniş modda ve azaltılmış harekette durur; giriş yalnız gerçek sekme değişiminde', () => {
+  const js = oku('uygulama.js');
+  assert.match(js, /const menuOynar = \(\) => tel\.querySelector\('\.sekme'\)\.classList\.toggle\('oynar', !RM && !GENIS && !document\.hidden\);/);
+  assert.match(js, /document\.addEventListener\('visibilitychange', menuOynar\);/);
+  assert.match(js, /if \(ekran === sekmeSon \|\| !SEKME\[ekran\]\) return;/);
+  assert.match(js, /if \(RM \|\| GENIS\) return;/);
+  assert.match(js, /girZaman = setTimeout\(\(\) => b\.classList\.remove\('gir'\), 600\);/);
+});
+
+test('menü: rüzgâr sesi yalnız gerçek sekme değişiminde çalar; Bugün ↔ Trend menüden geçerken eski tık/süpürme çalmaz', () => {
+  const js = oku('uygulama.js');
+  assert.match(js, /if \(!ekranGit\(e, true\)\) return;\n  SES\.ruzgar\(/);
+  assert.equal((js.match(/SES\.ruzgar\(/g) || []).length, 1);
+  assert.match(js, /trendeGec\(null, null, false, menuden\)/);
+  assert.match(js, /bugunGec\(false, menuden\)/);
+  assert.match(js, /if \(!menuden\) SES\.tik\(\);/);
+  assert.match(js, /if \(!menuden\) SES\.gecis\(true\);/);
+  assert.match(js, /if \(!menuden\) SES\.gecis\(false\);/);
+});
+
+// ses.js'i sahte bir AudioContext ile çalıştırır; kurulan ses kaynaklarını sayar.
+function sesKur(kayitli) {
+  const sayac = { kaynak: 0, baslat: 0 };
+  const param = () => ({ value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {}, setTargetAtTime() {}, cancelScheduledValues() {} });
+  const dugum = (ek = {}) => ({ connect() {}, gain: param(), frequency: param(), Q: param(), delayTime: param(), pan: param(), ...ek });
+  class SahteAC {
+    constructor() { this.currentTime = 0; this.sampleRate = 8000; this.state = 'running'; this.destination = dugum(); }
+    createGain() { return dugum(); } createDynamicsCompressor() { return dugum(); } createDelay() { return dugum(); }
+    createBiquadFilter() { return dugum(); } createStereoPanner() { return dugum(); }
+    createOscillator() { sayac.kaynak++; return dugum({ start() { sayac.baslat++; }, stop() {} }); }
+    createBufferSource() { sayac.kaynak++; return dugum({ start() { sayac.baslat++; }, stop() {} }); }
+    createBuffer(k, n) { return { getChannelData: () => new Float32Array(n) }; }
+    resume() {}
+  }
+  const depo = { 'gk-ses': JSON.stringify(kayitli) };
+  const win = { AudioContext: SahteAC, localStorage: { getItem: (k) => depo[k] ?? null, setItem: (k, v) => { depo[k] = v; } } };
+  win.window = win;
+  runInNewContext(oku('ses.js'), win);
+  win.SES.ac();
+  return { SES: win.SES, sayac };
+}
+
+test('SES.ruzgar: ses kapalıyken hiçbir ses düğümü kurmaz ve çalmaz; açıkken tek kısa gürültü kaynağı başlatır', () => {
+  const kapali = sesKur({ acik: false });
+  for (const id of Object.keys(kapali.SES.SECENEK.ruzgar)) { kapali.SES.ayar.ruzgar = id; kapali.SES.ruzgar(1); kapali.SES.ruzgar(-1); }
+  assert.deepEqual(kapali.sayac, { kaynak: 0, baslat: 0 });
+  const acik = sesKur({ acik: true });
+  acik.SES.ruzgar(1);
+  assert.deepEqual(acik.sayac, { kaynak: 1, baslat: 1 });
+  assert.equal(acik.SES.ayar.ruzgar, 'esinti');
+  assert.ok(Object.keys(acik.SES.SECENEK.ruzgar).length >= 2 && Object.keys(acik.SES.SECENEK.ruzgar).length <= 3);
+  // eski API bozulmadı
+  for (const ad of ['ac', 'kaydet', 'cal', 'hazir', 'kalp', 'tik', 'gecis', 'can', 'nota', 'akor', 'dokunBasla', 'dokunAyar', 'dokunBitir']) assert.equal(typeof acik.SES[ad], 'function', ad);
+});
+
+test('sesler.html menü rüzgârı seçeneklerini listeler', () => {
+  assert.match(oku('sesler.html'), /<div class="liste" id="ruzgar"><\/div>/);
+  assert.match(oku('sesler.js'), /for \(const tur of \['tik', 'gecis', 'can', 'ruzgar'\]\)/);
 });
 
 test('Ayarlar çarkı: tek #ayarBtn, aria-label Ayarlar, sesin yanında ve en az 44 px', () => {

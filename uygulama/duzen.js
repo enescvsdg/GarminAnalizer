@@ -14,10 +14,14 @@ const SOL_PAY = 64, SAG_PAY = 56; // grafiğin ilk/son günü ile bölge kenarı
 const sonlu = (v) => typeof v === 'number' && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+const SABIT_ARALIK = { adim: [0, 15000], kat: [0, 25], kalori: [0, 1200], yogun: [0, 90], maxnabiz: [90, 190] };
+
 export function simgeOrani(id, deger, bant) {
   if (!sonlu(deger)) return null;
   if (id === 'spo2') return clamp((deger - 88) / 12, 0, 1);
   if (['uyku', 'bb', 'stres'].includes(id)) return clamp(deger / 100, 0, 1);
+  // Günlük hareket ölçümleri sabit aralıkta: Takvim kişisel bant olmadan da aynı simgeyi çizer.
+  if (Object.hasOwn(SABIT_ARALIK, id)) { const [a, b] = SABIT_ARALIK[id]; return clamp((deger - a) / (b - a), 0, 1); }
   if (!['hrv', 'nabiz', 'yuk', 'derin', 'solunum'].includes(id)) return null;
   const { min, max } = bant ?? {};
   if (!sonlu(min) || !sonlu(max) || min >= max) return null;
@@ -221,3 +225,16 @@ export async function modulKur(ice, kurAdi, kap, baglam) {
 
 export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
 globalThis.DUZEN = DUZEN;
+
+/* ---------- Trend: yönsüz ölçümlerde (iyi 0, ör. en yüksek nabız) sapma nötrdür ---------- */
+// "normalin üstünde" yön yargısı taşır; iyi/kötü yönü olmayan ölçümde yalnız "aralığın üstünde" denir ve vurgu yapılmaz.
+export const sapmaVurgusu = (iyi, du) => iyi !== 0 && (du === 'lo' || du === 'hi');
+export function sapmaMetni(iyi, du) {
+  if (du === 'ok') return iyi === 0 ? 'her zamanki aralıkta' : 'normal aralıkta';
+  return (iyi === 0 ? 'aralığın ' : 'normalin ') + (du === 'lo' ? 'altında' : 'üstünde');
+}
+// 28 günlük özetin ilk cümlesi (ortalama cümlesi çağıranda eklenir)
+export function ozetCumlesi(iyi, dis, n) {
+  if (iyi === 0) return dis === 0 ? `Son ${n} günde hep her zamanki aralığında kaldın.` : `Son ${n} günde ${dis} gün her zamankinden farklıydı.`;
+  return dis === 0 ? `Son ${n} günde hep normal aralığında kaldın.` : `Son ${n} günde ${dis} gün normal aralığının dışında.`;
+}

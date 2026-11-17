@@ -1,9 +1,9 @@
 // Ses motoru: bütün sesler tarayıcıda üretilir, ses dosyası yok.
 // Tarayıcılar (özellikle iOS) ilk dokunuştan önce ses çalmaz; ac() ilk dokunuşta çağrılır.
-// Buton, geçiş ve çan seslerinin birden çok seçeneği var; seçim sesler.html'de yapılır ve hatırlanır.
+// Buton, geçiş, çan ve menü rüzgârı seslerinin birden çok seçeneği var; seçim sesler.html'de yapılır ve hatırlanır.
 window.SES = (function () {
   let ctx = null, master = null, send = null, gurultuBuf = null, dk = null;
-  const ayar = { acik: true, kalp: true, tik: 'cam-tik', gecis: 'supurme', can: 'can' };
+  const ayar = { acik: true, kalp: true, tik: 'cam-tik', gecis: 'supurme', can: 'can', ruzgar: 'esinti' };
   try { Object.assign(ayar, JSON.parse(localStorage.getItem('gk-ses') || '{}')); } catch (e) {}
   function kaydet() { try { localStorage.setItem('gk-ses', JSON.stringify(ayar)); } catch (e) {} }
 
@@ -51,6 +51,32 @@ window.SES = (function () {
     s.start(t0); s.stop(t0 + a + d + 0.05);
   }
 
+  // Rüzgâr: süzülmüş gürültüden kısa, yumuşak bir hava geçişi (sert tiz yok).
+  // Bant geçiren süzgeç yükselip iner (yaklaşan ve uzaklaşan hava), alçak geçiren tavan hışırtıyı keser,
+  // alttaki pes katman sese gövde verir. Zarf doğrusal ve yavaş açılır, üstel söner. yon: 1 soldan sağa, -1 tersi.
+  function hava({ sure = 0.44, tepe = 0.4, f0 = 320, fT = 860, f1 = 420, q = 0.8, tavan = 1700, g = 0.3, govde = 0.18, gf = 380, yanki = 0.22, yon = 1 }) {
+    if (!ctx || !ayar.acik || !gurultuBuf) return;
+    const t0 = ctx.currentTime + 0.005, tp = t0 + sure * tepe, t1 = t0 + sure;
+    const s = ctx.createBufferSource(); s.buffer = gurultuBuf; s.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = q;
+    bp.frequency.setValueAtTime(f0, t0); bp.frequency.exponentialRampToValueAtTime(fT, tp); bp.frequency.exponentialRampToValueAtTime(f1, t1);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.5; lp.frequency.value = tavan;
+    const alt = ctx.createBiquadFilter(); alt.type = 'lowpass'; alt.Q.value = 0.6;
+    alt.frequency.setValueAtTime(gf * 0.8, t0); alt.frequency.exponentialRampToValueAtTime(gf * 1.15, tp); alt.frequency.exponentialRampToValueAtTime(gf * 0.7, t1);
+    const v = ctx.createGain(), va = ctx.createGain();
+    for (const [n, h] of [[v, g], [va, govde]]) {
+      n.gain.setValueAtTime(0.0001, t0); n.gain.linearRampToValueAtTime(h, tp); n.gain.exponentialRampToValueAtTime(0.0001, t1);
+    }
+    s.connect(bp); bp.connect(lp); lp.connect(v); s.connect(alt); alt.connect(va);
+    let cikis = master;
+    if (ctx.createStereoPanner) { // eski tarayıcıda yok: ortada çalar
+      const p = ctx.createStereoPanner(); p.pan.setValueAtTime(-0.3 * yon, t0); p.pan.linearRampToValueAtTime(0.3 * yon, t1); p.connect(master); cikis = p;
+    }
+    v.connect(cikis); va.connect(cikis);
+    if (yanki) { const e = ctx.createGain(); e.gain.value = yanki; v.connect(e); e.connect(send); }
+    s.start(t0, Math.random() * 0.5); s.stop(t1 + 0.05);
+  }
+
   /* ---------- seçenekler ---------- */
   const SECENEK = {
     tik: {
@@ -69,6 +95,11 @@ window.SES = (function () {
       nefes: { ad: 'Nefes', tarif: 'Yumuşak, havalı, tonsuz', cal(y) { gurultu({ a: 0.25, d: 0.7, f1: y ? 400 : 1400, f2: y ? 1400 : 400, g: 0.11, q: 0.6, tur: 'lowpass' }); } },
       arpej: { ad: 'Arpej', tarif: 'Dört nota arka arkaya', cal(y) { const n = [261.63, 329.63, 392, 523.25]; (y ? n : n.slice().reverse()).forEach((f, i) => ton({ f, tip: 'triangle', d: 0.22, g: 0.09, t: i * 0.085, yanki: 0.55 })); } },
       derin: { ad: 'Derin kabarma', tarif: 'Pes, sinematik', cal(y) { ton({ f: y ? 70 : 150, f2: y ? 150 : 70, a: 0.3, d: 0.6, g: 0.3 }); ton({ f: y ? 140 : 300, f2: y ? 300 : 140, a: 0.3, d: 0.6, g: 0.08, yanki: 0.5 }); gurultu({ a: 0.3, d: 0.5, f1: 200, f2: 700, g: 0.05 }); } },
+    },
+    ruzgar: {
+      esinti: { ad: 'Esinti (şimdiki)', tarif: 'Yumuşak, kısa bir hava geçişi', cal(y) { hava({ yon: y }); } },
+      derin: { ad: 'Derin esinti', tarif: 'Daha pes ve dolgun', cal(y) { hava({ sure: 0.5, f0: 230, fT: 640, f1: 300, q: 0.7, tavan: 1300, g: 0.3, govde: 0.18, gf: 300, yon: y }); } },
+      fisilti: { ad: 'Fısıltı', tarif: 'Çok hafif ve kısa', cal(y) { hava({ sure: 0.36, tepe: 0.36, f0: 480, fT: 1150, f1: 640, q: 1, tavan: 2000, g: 0.22, govde: 0.07, gf: 460, yanki: 0.15, yon: y }); } },
     },
     can: {
       can: { ad: 'Çan (şimdiki)', tarif: 'Metalik, uzun', cal(e) { const f = nota(e) * 2; ton({ f, d: 1.3, g: 0.15, yanki: 0.6 }); ton({ f: f * 2.76, d: 0.5, g: 0.035 }); ton({ f: f * 1.5, d: 0.9, g: 0.045, t: 0.02 }); } },
@@ -91,6 +122,8 @@ window.SES = (function () {
     tik() { cal('tik', ayar.tik); },
     gecis(yukari = true) { cal('gecis', ayar.gecis, yukari); },
     can(e = 0.5) { cal('can', ayar.can, e); },
+    // menüde sekme değişince; yon: 1 sağdaki sekmeye, -1 soldakine. Ses kapalıysa hiçbir düğüm kurulmaz.
+    ruzgar(yon = 1) { if (ayar.acik) cal('ruzgar', ayar.ruzgar, yon < 0 ? -1 : 1); },
     nota(e) { ton({ f: nota(e), tip: 'triangle', d: 0.32, g: 0.12, yanki: 0.5 }); },
     akor(e) {
       const n = e < 0.4 ? [220, 261.63, 329.63] : e < 0.7 ? [196, 293.66, 392, 440] : [261.63, 329.63, 392, 587.33];

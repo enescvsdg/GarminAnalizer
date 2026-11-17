@@ -151,19 +151,68 @@ svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.sekme{background:rgba(26,16,42,.95)}}
 /* Aşağı kaydırılan ekranlarda (Aktiviteler, Takvim) kapsül daralır, etiketler silinir; yukarıda açılır. 4 x 50 px hedef, 44 px sınırının üstünde. */
 .sekme.toplandi{max-width:272px;height:56px}
-.sekme button{flex:1;min-width:0;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:26px;font-size:10.5px;font-weight:500;letter-spacing:.01em;color:rgba(255,246,236,.72);transition:color .2s,background .2s,opacity .15s}
+.sekme button{position:relative;flex:1;min-width:0;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:26px;font-size:10.5px;font-weight:500;letter-spacing:.01em;color:rgba(255,246,236,.72);transition:color .2s,opacity .15s}
 .sekme button:active{opacity:.6}
 .sekme button:focus-visible{outline:2px solid var(--isaret);outline-offset:-2px}
-.sekme svg.sm{width:24px;height:24px;flex:none;stroke:currentColor;stroke-width:1.6}
-.sekme span{max-height:14px;overflow:hidden;white-space:nowrap;transition:opacity .18s,max-height .3s}
+.sekme svg.sm{position:relative;z-index:1;width:24px;height:24px;flex:none;stroke:currentColor;stroke-width:1.6;overflow:visible;transition:filter .3s}
+.sekme span{position:relative;z-index:1;max-height:14px;overflow:hidden;white-space:nowrap;transition:opacity .18s,max-height .3s}
 .sekme.toplandi span{opacity:0;max-height:0}
 .sekme.toplandi button{gap:0}
-/* Her sekmenin kendi rengi ve aktif zemini; kayan hap yok */
-#sBugun{--ak:#ffc9a6;--akz:rgba(255,201,166,.17)}
-#sTrend{--ak:#b9a2ff;--akz:rgba(185,162,255,.19)}
-#sAktivite{--ak:#ff8f7a;--akz:rgba(255,143,122,.18)}
-#sTakvim{--ak:#9fe8c7;--akz:rgba(159,232,199,.16)}
-.sekme button[aria-current=page]{color:var(--ak);background:var(--akz);font-weight:700}
+/* Her sekmenin kendi rengi; --akr aynı rengin kanalları (cam tinti ve ışıma için) */
+#sBugun{--ak:#ffc9a6;--akr:255 201 166}
+#sTrend{--ak:#b9a2ff;--akr:185 162 255}
+#sAktivite{--ak:#ff8f7a;--akr:255 143 122}
+#sTakvim{--ak:#9fe8c7;--akr:159 232 199}
+.sekme button[aria-current=page]{color:var(--ak);font-weight:700}
+/* Seçili sekmenin cam kapsülü (dış çubuk zaten bulanıkladığı için kendi backdrop-filter'ı yok): buzlu açık tint, alttan sekme renginde hafif yansıma, üstte ince ışık çizgisi, 1px parlak iç kenar, iç derinlik ve dışta yumuşak gölge */
+.sekme button::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transform:scale(.92);transition:opacity .22s,transform .34s cubic-bezier(.32,.72,0,1);
+  background:radial-gradient(130% 90% at 50% 118%,rgb(var(--akr) / .34),rgb(var(--akr) / 0) 70%),linear-gradient(180deg,rgba(255,250,244,.32),rgba(255,250,244,.1) 46%,rgba(255,250,244,.18)),rgb(var(--akr) / .1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.13),inset 0 9px 12px -11px rgba(255,255,255,.55),inset 0 -7px 12px -9px rgb(var(--akr) / .5),0 6px 14px -5px rgba(5,3,10,.6),0 0 22px -8px rgb(var(--akr) / .65)}
+/* Işık kıran kenar: sol üstte parlayan, altta sekme rengine dönen 1px halka (maske ile yalnız kenar boyanır) */
+.sekme button::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;opacity:0;transition:opacity .22s;
+  background:linear-gradient(162deg,rgba(255,255,255,.9),rgba(255,255,255,.16) 28%,rgba(255,255,255,0) 50%,rgb(var(--akr) / .4) 80%,rgba(255,255,255,.55));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
+.sekme button[aria-current=page]::before{opacity:1;transform:none}
+.sekme button[aria-current=page]::after{opacity:1}
+.sekme button[aria-current=page] svg.sm{filter:drop-shadow(0 0 3.5px rgb(var(--akr) / .55))}
+/* Menü simgeleri. Durağan hâl ilk karedir; döngü yalnız .oynar (JS: azaltılmış hareket yok, ekran görünür, telefon) ve seçili sekmede, giriş hareketi .gir sırasında */
+.sekme .sm *{transform-box:fill-box;transform-origin:50% 50%}
+.sekme .m-nefes,.sekme .m-kuyruk{opacity:0}
+.sekme .m-yaprak{transform-origin:50% 100%}
+.sekme.oynar .gir .m-halka{animation:mHalkaGir .56s cubic-bezier(.34,1.4,.5,1) both}
+.sekme.oynar .gir .m-cekirdek{animation:mCekirdekGir .5s cubic-bezier(.34,1.6,.5,1) both}
+.sekme.oynar [aria-current=page]:not(.gir) .m-halka{animation:mDon 30s linear infinite}
+.sekme.oynar [aria-current=page]:not(.gir) .m-cekirdek{animation:mNefes 4.2s ease-in-out infinite}
+.sekme.oynar [aria-current=page]:not(.gir) .m-nefes{animation:mHale 4.2s ease-out infinite}
+.sekme.oynar .gir .m-akis{stroke-dasharray:100;animation:mCiz .58s cubic-bezier(.3,.7,.2,1) both}
+.sekme.oynar .gir .m-binici{animation:mPit .42s cubic-bezier(.34,1.7,.5,1) .18s both}
+.sekme.oynar [aria-current=page]:not(.gir) .m-akis{animation:mAk 7.2s linear infinite}
+.sekme.oynar [aria-current=page]:not(.gir) .m-binici{animation:mBin 7.2s linear infinite}
+.sekme.oynar .gir .m-iz{stroke-dasharray:100;animation:mCiz .52s cubic-bezier(.3,.7,.2,1) both}
+.sekme.oynar [aria-current=page]:not(.gir) .m-iz{opacity:.5;transition:opacity .4s}
+.sekme.oynar [aria-current=page]:not(.gir) .m-kuyruk{opacity:1;stroke-width:1.9;animation:mNabiz 3s cubic-bezier(.45,.05,.3,1) infinite}
+.sekme.oynar .gir .m-yaprak{animation:mYaprak .5s cubic-bezier(.34,1.5,.5,1) both}
+.sekme.oynar .gir .m-nokta circle{animation:mPit .34s cubic-bezier(.34,1.7,.5,1) both}
+.sekme.oynar .gir .m-nokta circle:nth-child(2){animation-delay:.05s}
+.sekme.oynar .gir .m-nokta circle:nth-child(3){animation-delay:.1s}
+.sekme.oynar .gir .m-nokta circle:nth-child(4){animation-delay:.15s}
+.sekme.oynar .gir .m-isik{animation:mPit .4s cubic-bezier(.34,1.9,.5,1) .2s both}
+.sekme.oynar [aria-current=page]:not(.gir) .m-isik{animation:mIsik 3.6s ease-in-out infinite}
+.sekme.oynar .gir::before{animation:mCam .52s cubic-bezier(.32,.72,0,1) both}
+@keyframes mCam{0%{opacity:0;transform:scale(.74,.62)}55%{opacity:1;transform:scale(1.035,1.06)}100%{opacity:1;transform:none}}
+@keyframes mHalkaGir{0%{opacity:0;transform:rotate(-140deg) scale(.55)}100%{opacity:1;transform:none}}
+@keyframes mCekirdekGir{0%{transform:scale(.3)}100%{transform:none}}
+@keyframes mDon{to{transform:rotate(360deg)}}
+@keyframes mNefes{0%,100%{transform:none}50%{transform:scale(1.13)}}
+@keyframes mHale{0%{opacity:0;transform:none}12%{opacity:.55}70%,100%{opacity:0;transform:scale(2.05)}}
+@keyframes mCiz{0%{stroke-dashoffset:100}100%{stroke-dashoffset:0}}
+@keyframes mPit{0%{transform:scale(0)}100%{transform:none}}
+@keyframes mAk{to{transform:translateX(-18px)}}
+@keyframes mBin{0%{transform:none}6.25%{transform:translateY(-.02px)}12.5%{transform:translateY(.51px)}18.75%{transform:translateY(1.56px)}25%{transform:translateY(2.86px)}31.25%{transform:translateY(3.98px)}37.5%{transform:translateY(4.51px)}43.75%{transform:translateY(4.32px)}50%{transform:translateY(3.55px)}56.25%{transform:translateY(2.56px)}62.5%{transform:translateY(1.72px)}68.75%{transform:translateY(1.22px)}75%{transform:translateY(1.03px)}81.25%{transform:translateY(.92px)}87.5%{transform:translateY(.7px)}93.75%{transform:translateY(.34px)}100%{transform:none}}
+@keyframes mNabiz{0%{stroke-dashoffset:16}72%,100%{stroke-dashoffset:-100}}
+@keyframes mYaprak{0%{opacity:0;transform:translateY(-3.5px) scaleY(.4)}100%{opacity:1;transform:none}}
+@keyframes mIsik{0%,100%{transform:none;opacity:.85}50%{transform:scale(1.32);opacity:1}}
+@media (prefers-reduced-motion:reduce){.sekme .sm *,.sekme button::before{animation:none!important}}
 #sesBtn,#ayarBtn{position:absolute;top:calc(var(--st) + 2px);width:44px;height:44px;display:grid;place-items:center;z-index:5;border-radius:50%;color:rgba(255,246,236,.85)}
 #sesBtn{right:54px}#ayarBtn{right:10px}
 #sesBtn svg,#ayarBtn svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.6}
@@ -336,13 +385,13 @@ html.genis,html.genis body{background:#08050c}
     </button>
     <nav class="sekme" aria-label="Ekranlar">
       <button type="button" id="sBugun" aria-current="page">
-        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" stroke-dasharray="1.6 3.1"/><circle cx="12" cy="12" r="3.6"/></svg><span>Bugün</span></button>
+        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><circle class="m-halka" cx="12" cy="12" r="8.2" stroke-dasharray="1.6 3.1"/><circle class="m-nefes" cx="12" cy="12" r="3.6"/><g class="m-cekirdek"><circle cx="12" cy="12" r="3.6"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" opacity=".55"/></g></svg><span>Bugün</span></button>
       <button type="button" id="sTrend">
-        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.8 17.5C5.5 17.5 6.4 11.2 9 11.8S12.4 16.8 15 13S18.6 6.6 21.2 7.6"/><path d="M3 21h18" opacity=".35"/></svg><span>Trend</span></button>
+        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="mTrendSol" gradientUnits="userSpaceOnUse" x1="2" y1="0" x2="22" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".24" stop-color="#fff"/><stop offset=".86" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="mTrendMaske" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect x="2" y="2" width="20" height="20" fill="url(#mTrendSol)"/></mask></defs><g mask="url(#mTrendMaske)"><path class="m-akis" pathLength="100" d="M3 13.44C3.25 13.73 4 14.69 4.5 15.15C5 15.61 5.5 16.05 6 16.19C6.5 16.34 7 16.22 7.5 16C8 15.77 8.5 15.25 9 14.86C9.5 14.46 10 13.94 10.5 13.62C11 13.3 11.5 13.08 12 12.93C12.5 12.78 13 12.79 13.5 12.72C14 12.65 14.5 12.62 15 12.5C15.5 12.39 16 12.17 16.5 12.03C17 11.89 17.5 11.67 18 11.68C18.5 11.68 19 11.79 19.5 12.08C20 12.38 20.5 12.93 21 13.44C21.5 13.95 22 14.69 22.5 15.15C23 15.61 23.5 16.05 24 16.19C24.5 16.34 25 16.22 25.5 16C26 15.77 26.5 15.25 27 14.86C27.5 14.46 28 13.94 28.5 13.62C29 13.3 29.5 13.08 30 12.93C30.5 12.78 31 12.79 31.5 12.72C32 12.65 32.5 12.62 33 12.5C33.5 12.39 34 12.17 34.5 12.03C35 11.89 35.5 11.67 36 11.68C36.5 11.68 37 11.79 37.5 12.08C38 12.38 38.75 13.22 39 13.44"/></g><path d="M3 20.5h18" opacity=".35"/><g class="m-binici" fill="currentColor" stroke="none"><circle cx="17.5" cy="11.74" r="3.1" opacity=".2"/><circle cx="17.5" cy="11.74" r="1.5"/></g></svg><span>Trend</span></button>
       <button type="button" id="sAktivite">
-        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12.5h4l2.4-6.5 4.2 12 2.4-5.5H21"/></svg><span>Aktiviteler</span></button>
+        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><path class="m-iz" pathLength="100" d="M3 12.5h4l2.4-6.5 4.2 12 2.4-5.5H21"/><path class="m-kuyruk" pathLength="100" stroke-dasharray="16 84" stroke-dashoffset="16" d="M3 12.5h4l2.4-6.5 4.2 12 2.4-5.5H21"/></svg><span>Aktiviteler</span></button>
       <button type="button" id="sTakvim">
-        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3.5"/><path d="M4 10.5h16M8.5 3.5v3.5M15.5 3.5v3.5"/><circle cx="9" cy="14.5" r=".6"/><circle cx="12" cy="14.5" r=".6"/><circle cx="15" cy="14.5" r=".6"/></svg><span>Takvim</span></button>
+        <svg class="sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14.5" rx="3.5"/><g class="m-yaprak"><path d="M4 10.5h16M8.5 3.5v3.5M15.5 3.5v3.5"/></g><g class="m-nokta" fill="currentColor" stroke="none"><circle cx="8.5" cy="14" r=".8"/><circle cx="12" cy="14" r=".8"/><circle cx="15.5" cy="14" r=".8"/><circle cx="8.5" cy="17" r=".8"/></g><circle class="m-isik" cx="12" cy="17" r="1.3" fill="currentColor" stroke="none"/></svg><span>Takvim</span></button>
     </nav>
     <div id="bekle" role="status" hidden><div><i aria-hidden="true"></i><p>Veriler alınıyor…</p></div></div>
     <div id="perde"></div>

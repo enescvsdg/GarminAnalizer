@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ORNEK, aylaraBol, enerjiRengi, enerjiKelime, ayOzeti, gunEtiketi, tarihCoz, degerMetni, takvimKur } from './takvim.js';
+import { ORNEK, aylaraBol, enerjiRengi, enerjiKelime, ayOzeti, gunEtiketi, tarihCoz, degerMetni, takvimKur, GUNLUK, gunlukMetni, gunlukVeri } from './takvim.js';
 
 const iki = (n) => String(n).padStart(2, '0');
 function tamAy(y, a, e = 0.5) {
@@ -98,7 +98,10 @@ test('ORNEK: sözleşme biçimi', () => {
   const idler = ['uyku', 'bb', 'hrv', 'nabiz', 'stres', 'yuk'];
   let onceki = '';
   for (const g of ORNEK.gunler) {
-    assert.deepEqual(Object.keys(g).sort(), ['e', 'hukum', 'kartlar', 'tarih']);
+    assert.deepEqual(Object.keys(g).sort(), ['e', 'gunluk', 'hukum', 'kartlar', 'tarih']);
+    assert.deepEqual(Object.keys(g.gunluk), ['adim', 'kat', 'kalori', 'yogun', 'maxnabiz']);
+    for (const v of Object.values(g.gunluk)) assert.ok(v === null || (Number.isInteger(v) && v >= 0));
+    if (g.e === null) assert.ok(Object.values(g.gunluk).every((v) => v === null), 'veri olmayan günde günlük de yok');
     assert.match(g.tarih, /^\d{4}-\d{2}-\d{2}$/);
     assert.ok(g.tarih > onceki, 'eskiden yeniye');
     onceki = g.tarih;
@@ -113,6 +116,8 @@ test('ORNEK: sözleşme biçimi', () => {
     }
   }
   assert.ok(ORNEK.gunler.some((g) => g.e === null), 'veri olmayan gün de var');
+  assert.ok(ORNEK.gunler.some((g) => g.gunluk.adim === null && g.gunluk.kat === 0), 'saatin gündüz takılmadığı gün de var');
+  assert.ok(ORNEK.gunler.some((g) => g.gunluk.adim > 10000));
   assert.ok(ayOzeti(ORNEK.gunler).normalDisi > 0);
 });
 
@@ -127,6 +132,7 @@ function sahteDom() {
     getAttribute(k) { return this.attrs[k] ?? null; }
     appendChild(c) { if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = this; this.children.push(c); return c; }
     insertBefore(c, ref) { if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = this; const i = ref ? this.children.indexOf(ref) : -1; if (i < 0) this.children.push(c); else this.children.splice(i, 0, c); return c; }
+    remove() { if (this.parentNode) this.parentNode.removeChild(this); }
     removeChild(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); c.parentNode = null; return c; }
     addEventListener(t, f) { (this.listeners[t] ||= []).push(f); }
     fire(t, ev = {}) { (this.listeners[t] || []).forEach((f) => f(ev)); }
@@ -241,4 +247,127 @@ test('takvimKur: açık kartlı sayfa yeniden gösterilince (taze veri) kart aç
   kap.all((e) => e.tagName === 'button' && e.className.includes('tkv-gun'))[1].fire('click');
   await t.goster();
   assert.ok(kap.all((e) => e.className === 'tkv-kart')[0], 'kart hâlâ açık');
+});
+
+test('gunlukMetni / gunlukVeri: null "–", gerçek 0 yazılır, binlik ayırıcı', () => {
+  assert.deepEqual(GUNLUK.map((m) => m.id), ['adim', 'kat', 'kalori', 'yogun', 'maxnabiz']);
+  assert.equal(gunlukMetni(null), '–');
+  assert.equal(gunlukMetni(undefined), '–');
+  assert.equal(gunlukMetni(NaN), '–');
+  assert.equal(gunlukMetni(0), '0');
+  assert.equal(gunlukMetni(8432), '8.432');
+  assert.equal(gunlukMetni(12480.4), '12.480');
+  assert.equal(gunlukVeri({ tarih: '2026-11-18' }), null, 'eski Worker: alan yok');
+  assert.equal(gunlukVeri({ gunluk: null }), null);
+  assert.equal(gunlukVeri({ gunluk: { adim: null, kat: null, kalori: null, yogun: null, maxnabiz: null } }), null);
+  assert.ok(gunlukVeri({ gunluk: { adim: null, kat: 0, kalori: 0, yogun: 0, maxnabiz: null } }));
+});
+
+function sahteGsap() {
+  const tick = new Set();
+  return { tick, gsap: { ticker: { add: (f) => tick.add(f), remove: (f) => tick.delete(f) }, to: () => ({ kill() {}, progress() { return this; } }) } };
+}
+function svgOrtami(t, El) {
+  const eski = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  Object.defineProperty(globalThis, 'document', { value: { createElementNS: (_, tag) => new El(tag) }, configurable: true });
+  t.after(() => { if (eski) Object.defineProperty(globalThis, 'document', eski); else delete globalThis.document; });
+}
+
+test('takvimKur: gün kartında "Günlük" bölümü; null "–", gerçek 0, simgeler kapanınca temizlenir', async (t) => {
+  const { doc, El } = sahteDom();
+  svgOrtami(t, El);
+  const { gsap, tick } = sahteGsap();
+  const gunler = tamAy(2026, 10, 0.7).map((g, i) => ({ ...g, kartlar: { uyku: { v: 80, durum: 'ok' } },
+    gunluk: i === 1 ? { adim: null, kat: 0, kalori: 0, yogun: 0, maxnabiz: null } : { adim: 8432, kat: 12, kalori: 512, yogun: 34, maxnabiz: 168 } }));
+  const kap = doc.createElement('section');
+  const tk = takvimKur(kap, { getir: async () => ({ gunler }), ornek: false, rm: false, gsap, gunAc: () => false });
+  await tk.goster();
+  const dugmeler = kap.all((e) => e.tagName === 'button' && e.className.includes('tkv-gun'));
+  dugmeler[0].fire('click');
+  let kart = kap.all((e) => e.className === 'tkv-kart')[0];
+  let m = kokKapat(kart.textContent);
+  assert.match(m, /Günlük/);
+  assert.match(m, /Adım8\.432/);
+  assert.match(m, /Kat12/);
+  assert.match(m, /Aktif kalori512kcal/);
+  assert.match(m, /Yoğun dakika34dk/);
+  assert.match(m, /En yüksek nabız168/);
+  const ikonlar = kart.all((e) => e.tagName === 'svg');
+  assert.equal(ikonlar.length, 5, 'her satırda bir canlı simge');
+  assert.equal(ikonlar[0].attrs.width, '24');
+  assert.ok(tick.size > 0, 'simgeler oynar');
+  // tıklanan gün bir kez atar
+  assert.match(dugmeler[0].children[0].className, /atis/);
+  // saatin takılmadığı gün: adım ve nabız "–", sayımlar 0
+  dugmeler[1].fire('click');
+  assert.equal(tick.size, 3, 'önceki kartın simgeleri yok edildi; eksik iki değer oynamaz');
+  kart = kap.all((e) => e.className === 'tkv-kart')[0];
+  m = kokKapat(kart.textContent);
+  assert.match(m, /Adım–/);
+  assert.match(m, /Kat0Aktif kalori0kcalYoğun dakika0dk/);
+  assert.match(m, /En yüksek nabız–/);
+  assert.doesNotMatch(m, /NaN|undefined|null/);
+  const ids = kap.all((e) => e.attrs && e.attrs.id).map((e) => e.attrs.id);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.doesNotMatch(JSON.stringify(kap.all((e) => e.tagName !== 'section').map((e) => e.attrs)), /NaN|undefined/);
+  kart.all((e) => e.className === 'tkv-kapat')[0].fire('click');
+  assert.equal(tick.size, 0);
+  assert.equal(kap.all((e) => e.tagName === 'svg').length, 0);
+  dugmeler[2].fire('click');
+  assert.ok(tick.size > 0);
+  tk.gizle();
+  assert.equal(tick.size, 0, 'gizlenince simgeler durur ve silinir');
+  tk.yokEt();
+});
+
+test('takvimKur: gunluk alanı olmayan (eski Worker) ya da tümü boş günde bölüm çizilmez; gsap yoksa simgesiz satır', async () => {
+  const gunler = tamAy(2026, 10, 0.6).map((g, i) => (i === 0 ? g : { ...g, gunluk: i === 1 ? { adim: null, kat: null, kalori: null, yogun: null, maxnabiz: null } : { adim: 500, kat: null, kalori: null, yogun: null, maxnabiz: null } }));
+  const { kap } = await kurVeGoster({ gunler });
+  const d = kap.all((e) => e.tagName === 'button' && e.className.includes('tkv-gun'));
+  d[0].fire('click');
+  assert.doesNotMatch(kap.textContent, /Günlük/);
+  d[1].fire('click');
+  assert.doesNotMatch(kap.textContent, /Günlük/);
+  d[2].fire('click');
+  const m = kokKapat(kap.all((e) => e.className === 'tkv-kart')[0].textContent);
+  assert.match(m, /Adım500Kat–Aktif kalori–Yoğun dakika–En yüksek nabız–/);
+  assert.doesNotMatch(m, /NaN|undefined|null/);
+  // rm: atış sınıfı eklenmez
+  assert.doesNotMatch(d[2].children[0].className, /atis/);
+});
+
+test('takvimKur: ay başlığı simgesi ortalama enerji rengini taşır; veri yoksa boş halka; renk eşlemesi aynı', async () => {
+  const { kap } = await kurVeGoster({ gunler: [...tamAy(2026, 9, 0.5), ...tamAy(2026, 10).map((g) => ({ ...g, e: null, hukum: null }))] });
+  const html = kap.html;
+  assert.equal((html.match(/class="tkv-ayik"/g) || []).length, 2);
+  const kimlik = [...html.matchAll(/id="(tkv[hks]\d+)"/g)].map((x) => x[1]);
+  assert.equal(new Set(kimlik).size, kimlik.length, 'ay simgesi kimlikleri eşsiz');
+  assert.doesNotMatch(html, /NaN|undefined/);
+  assert.equal(enerjiRengi(0.5), 'rgb(255, 176, 122)');
+});
+
+test('ORNEK günlük alanı Trend ile aynı sırada ve takvim kartında çizilir', async () => {
+  const { kap } = await kurVeGoster(null, { ornek: true });
+  const d = kap.all((e) => e.tagName === 'button' && e.className.includes('tkv-gun'));
+  d[d.length - 3].fire('click');
+  const m = kokKapat(kap.textContent);
+  assert.match(m, /Günlük/);
+  assert.doesNotMatch(m, /NaN|undefined|null/);
+});
+
+test('takvimKur: ay başlığı simgeleri ekran dışındayken durur (tek IntersectionObserver); ciz/gizle/yokEt bırakır', async (t) => {
+  const eski = globalThis.IntersectionObserver; const kopyalar = [];
+  globalThis.IntersectionObserver = class { constructor(f) { this.f = f; this.hedef = []; this.kesildi = false; kopyalar.push(this); } observe(e) { this.hedef.push(e); } disconnect() { this.kesildi = true; } };
+  t.after(() => { if (eski) globalThis.IntersectionObserver = eski; else delete globalThis.IntersectionObserver; });
+  const { kap, t: tk } = await kurVeGoster({ gunler: [...tamAy(2026, 9), ...tamAy(2026, 10)] }, { rm: false });
+  assert.equal(kopyalar.length, 1);
+  const io = kopyalar[0]; assert.equal(io.hedef.length, 2, 'her ay başlığı gözlenir');
+  assert.ok(io.hedef.every((e) => /tkv-ayba/.test(e.className)));
+  io.f([{ target: io.hedef[0], isIntersecting: false }, { target: io.hedef[1], isIntersecting: true }]);
+  assert.match(io.hedef[0].className, /\bdur\b/); assert.doesNotMatch(io.hedef[1].className, /\bdur\b/);
+  io.f([{ target: io.hedef[0], isIntersecting: true }]);
+  assert.doesNotMatch(io.hedef[0].className, /\bdur\b/);
+  tk.gizle(); assert.equal(io.kesildi, true);
+  await tk.goster(); assert.equal(kopyalar.length, 2, 'taze veriyle yeniden gösterilince yeniden gözlenir');
+  tk.yokEt(); assert.equal(kopyalar[1].kesildi, true);
 });

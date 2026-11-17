@@ -37,7 +37,7 @@ test('her gün contract şeklinde; eskiden yeniye; aralıktaki her gün', () => 
   assert.equal(y.gunler[0].tarih, gunEkle(BUGUN, -59));
   assert.equal(y.gunler[59].tarih, BUGUN);
   for (const g of y.gunler) {
-    assert.deepEqual(Object.keys(g).sort(), ['e', 'hukum', 'kartlar', 'tarih']);
+    assert.deepEqual(Object.keys(g).sort(), ['e', 'gunluk', 'hukum', 'kartlar', 'tarih']);
     assert.deepEqual(Object.keys(g.kartlar).sort(), [...KART_IDLERI].sort());
     for (const k of Object.values(g.kartlar)) {
       assert.deepEqual(Object.keys(k).sort(), ['durum', 'v']);

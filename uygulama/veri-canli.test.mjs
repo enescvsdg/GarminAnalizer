@@ -43,7 +43,9 @@ const yanitCevir = (govde, status = 200) => ({ ok: status >= 200 && status < 300
 test('veriCevir 28 günü VERI biçimine çevirir', () => {
   const v = veriCevir(yanit());
   assert.equal(v.GUNLER.length, 28);
-  assert.equal(v.OLCUMLER.length, 9);
+  assert.equal(v.OLCUMLER.length, 14);
+  assert.deepEqual(v.OLCUMLER.slice(9).map((o) => o.id), ['adim', 'kat', 'kalori', 'yogun', 'maxnabiz']);
+  assert.equal(v.OLCUMLER.find((o) => o.id === 'maxnabiz').iyi, 0);
   const son = v.GUNLER[27];
   assert.ok(son.tarih instanceof Date);
   assert.equal(son.gunKisa, 'Per');
@@ -106,7 +108,7 @@ test('tarih yerel gün: saat 00:00, gün kayması yok', () => {
 test('kart bayrağı ve ek alanı aktarılır', () => {
   const v = veriCevir(yanit());
   assert.equal(v.OLCUMLER.filter((o) => o.kart).length, 6);
-  assert.deepEqual(v.OLCUMLER.filter((o) => !o.kart).map((o) => o.id), ['derin', 'spo2', 'solunum']);
+  assert.deepEqual(v.OLCUMLER.filter((o) => !o.kart).map((o) => o.id), ['derin', 'spo2', 'solunum', 'adim', 'kat', 'kalori', 'yogun', 'maxnabiz']);
   const ek = v.GUNLER[27].ek;
   assert.equal(ek.uyku.derin, 71);
   assert.equal(ek.uyku.ihtiyac, 490);
@@ -953,4 +955,57 @@ test('bozuk gün önbelleği sonVeriSil ile silinir ama aktivite ve takvim önbe
   await aktiviteGetir(56, async () => yanitCevir(AKT), depo);
   sonVeriSil(depo);
   assert.notEqual(depo.getItem(SON_AKT), null);
+});
+
+test('yeni günlük ölçümler ve ek alanları aktarılır; eksik alanlar null kalır', () => {
+  const rows = satirlar(40, { [BUGUN]: { steps: 8432, floors: 0, calories_active: 512, intensity_minutes: 34, hr_max: 168, nap_seconds: 1500, sleep_stress_avg: 18, spo2_min: 91, calories: 2350 } });
+  const v = veriCevir(yanit(rows));
+  const son = v.GUNLER[27];
+  assert.deepEqual([son.d.adim, son.d.kat, son.d.kalori, son.d.yogun, son.d.maxnabiz], [8432, 0, 512, 34, 168]);
+  assert.equal(son.ek.uyku.sekerleme, 25);
+  assert.equal(son.ek.uyku.stres, 18);
+  assert.equal(son.ek.spo2.en_dusuk, 91);
+  assert.equal(son.ek.kalori.toplam, 2350);
+  const once = v.GUNLER[26];
+  assert.deepEqual([once.ek.uyku.sekerleme, once.ek.uyku.stres, once.ek.spo2.en_dusuk, once.ek.kalori.toplam], [null, null, null, null]);
+  assert.equal(once.d.adim, null);
+  // eski Worker: ek nesnesinde yeni alanlar hiç yok
+  const eski = veriCevir({ ...yanit(), gunler: yanit().gunler.map((g) => ({ ...g, ek: { uyku: { toplam: 400 } } })) });
+  assert.deepEqual(eski.GUNLER[0].ek.spo2, { en_dusuk: null });
+  assert.deepEqual(eski.GUNLER[0].ek.kalori, { toplam: null });
+  assert.doesNotMatch(JSON.stringify(v.GUNLER.map((g) => [g.d, g.ek])), /NaN|undefined/);
+});
+
+test('sayım ölçümlerinin bandı sıfırın altına inmez; diğer ölçümlerin bandı değişmez', () => {
+  const api = yanit();
+  api.olcumler = api.olcumler.map((o) => (o.id === 'kat' ? { ...o, min: -2.1, max: 9 } : o.id === 'adim' ? { ...o, min: -300, max: -100 } : o));
+  const v = veriCevir(api);
+  const kat = v.OLCUMLER.find((o) => o.id === 'kat'), adim = v.OLCUMLER.find((o) => o.id === 'adim');
+  assert.deepEqual([kat.min, kat.max], [0, 9]);
+  assert.deepEqual([adim.min, adim.max], [0, 0]);
+  assert.equal(v.durum(kat, 0), 'ok');
+  const nabiz = v.OLCUMLER.find((o) => o.id === 'nabiz');
+  const ham = api.olcumler.find((o) => o.id === 'nabiz');
+  assert.deepEqual([nabiz.min, nabiz.max], [ham.min, ham.max]);
+});
+
+test('ekSatiri: uykuda şekerleme ve stres, SpO₂ en düşük, toplam kalori; null alanlar yazılmaz', () => {
+  const ek = { uyku: { toplam: 455, ihtiyac: null, sekerleme: 25, stres: 18 }, spo2: { en_dusuk: 91 }, kalori: { toplam: 2350 } };
+  assert.equal(ekSatiri('uyku', ek).metin, '7s 35dk uyudun · Şekerleme 25 dk · Uykuda stres 18');
+  assert.equal(ekSatiri('uyku', { uyku: { toplam: 455, sekerleme: null, stres: 18 } }).metin, '7s 35dk uyudun · Uykuda stres 18');
+  assert.equal(ekSatiri('uyku', { uyku: { toplam: 455, sekerleme: 0, stres: null } }).metin, '7s 35dk uyudun');
+  assert.equal(ekSatiri('uyku', { uyku: { toplam: null, sekerleme: 40, stres: null } }).metin, 'Şekerleme 40 dk');
+  assert.equal(ekSatiri('uyku', { uyku: { toplam: null, sekerleme: null, stres: null } }), null);
+  assert.equal(ekSatiri('spo2', ek).metin, 'En düşük %91');
+  assert.equal(ekSatiri('spo2', { spo2: { en_dusuk: null } }), null);
+  assert.equal(ekSatiri('kalori', ek).metin, 'Toplam 2.350 kcal');
+  assert.equal(ekSatiri('kalori', { kalori: { toplam: 980 } }).metin, 'Toplam 980 kcal');
+  assert.equal(ekSatiri('kalori', { kalori: { toplam: null } }), null);
+  for (const id of ['adim', 'kat', 'yogun', 'maxnabiz']) assert.equal(ekSatiri(id, ek), null);
+  for (const id of ['uyku', 'spo2', 'kalori']) assert.doesNotMatch(JSON.stringify(ekSatiri(id, ek)), /NaN|undefined/);
+});
+
+test('ekSatiri: spo2.en_dusuk 0 eksik sayılır ("%0" yazılmaz), gerçek değer yazılır', () => {
+  assert.equal(ekSatiri('spo2', { spo2: { en_dusuk: 0 } }), null);
+  assert.equal(ekSatiri('spo2', { spo2: { en_dusuk: 91 } }).metin, 'En düşük %91');
 });

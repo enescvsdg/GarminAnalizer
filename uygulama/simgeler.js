@@ -1,4 +1,4 @@
-// Trend ve önizleme galerisi için onaylı dokuz canlı ölçüm simgesi.
+// Trend, Takvim ve önizleme galerisi için canlı ölçüm simgeleri (dokuz sabah ölçümü + beş günlük hareket ölçümü).
 // Bağımlılık yok; GSAP örneği dışarıdan verilir. Global stil, innerHTML ya da filtre kullanılmaz:
 // ışıma radyal gradyanlarla yapılır (kare başına ucuz), her örneğin kimlikleri kendine özeldir.
 //
@@ -72,7 +72,7 @@ function palet(s) {
 const HALO = [[0, 1], [0.16, 0.82], [0.32, 0.58], [0.48, 0.34], [0.64, 0.16], [0.8, 0.05], [1, 0]];
 const YILDIZ = 'M0,-1C.15,-.15 .15,-.15 1,0C.15,.15 .15,.15 0,1C-.15,.15 -.15,.15 -1,0C-.15,-.15 -.15,-.15 0,-1Z';
 
-/* ---------- dokuz simge ----------
+/* ---------- sabah ölçümü simgeleri ----------
    Her tanım (g, c) alır ve { ciz(s, dt, t, statik), tempo?(o, ham) } döndürür.
    s: { o: 0..1 değer, sic: yüksek, sog: düşük, bos: veri yok, tempo } — hepsi yumuşak geçer.
    statik: az hareket; döngüsel faz yerine değeri en iyi gösteren sabit kare çizilir. */
@@ -387,6 +387,223 @@ IKON.solunum = (g, c) => {
       }
       ata(halo, 'opacity', (0.15 + 0.45 * b) * (1 - 0.8 * s.bos));
       ata(oz, 'opacity', (0.5 + 0.5 * b) * (1 - s.bos));
+    },
+  };
+};
+
+/* ---------- günlük hareket simgeleri (Trend'de ve Takvim gün kartında) ---------- */
+
+// Adım: ayak izleri yukarı doğru birer birer basılır; adım arttıkça tempo hızlanır, iz uzar.
+const TABAN = 'M0,-6.2C2.2,-6.2 3,-3.7 2.9,-1.3C2.8,.9 1.9,2.2 .1,2.2C-1.8,2.2 -2.6,.7 -2.6,-1.4C-2.6,-3.9 -1.9,-6.2 0,-6.2Z';
+IKON.adim = (g, c) => {
+  const halo = yap('ellipse', { cx: 24, cy: 25, rx: 20, ry: 21, fill: c.halo('b') }, g);
+  const ig = c.grad('radialGradient', { gradientUnits: 'userSpaceOnUse', cx: -1, cy: -3, r: 10 }, [[0, 'a', 1], [0.55, 'b', 1], [1, (P) => karis(P.b, P.c, 0.6), 1]]);
+  // Beş iz yerinde durur; basılma sırası ve sönüşü canlandırılır.
+  const YON = 29.4, ux = 0.87, uy = 0.49;
+  const izler = [0, 1, 2, 3, 4].map((j) => {
+    const t = j / 4, yan = j % 2 ? 3.7 : -3.7;
+    const x = 15 + 18 * t + ux * yan, y = 40 - 31 * t + uy * yan;
+    const k = yap('g', {}, g);
+    yap('path', { d: TABAN, fill: ig }, k);
+    yap('ellipse', { cx: 0.1, cy: 5.3, rx: 2.05, ry: 2.25, fill: ig }, k);
+    const toz = yap('circle', { cx: x, cy: y + 1, fill: 'none', 'stroke-width': 0.8 }, g); c.renk(toz, 'stroke', 'a');
+    return { k, toz, x, y, ayna: j % 2 ? 1 : -1 };
+  });
+  const bos = yap('g', { transform: 'translate(24,24) rotate(29.4) scale(1.1)' }, g);
+  for (const e of [yap('path', { d: TABAN, fill: 'none', 'stroke-width': 0.9, 'stroke-dasharray': '1.4 2.1' }, bos), yap('ellipse', { cx: 0.1, cy: 5.3, rx: 2.05, ry: 2.25, fill: 'none', 'stroke-width': 0.9, 'stroke-dasharray': '1.4 2.1' }, bos)]) c.renk(e, 'stroke', 'a');
+  let faz = 0;
+  return {
+    ciz(s, dt, t, st) {
+      const o = s.o, L = 1.8 + 2.9 * o;
+      if (!st) faz += dt * (0.7 + 2.1 * o);
+      const f = st ? 3.55 : faz;
+      for (let j = 0; j < 5; j++) {
+        const iz = izler[j], yas = ((f - j) % 5 + 5) % 5;
+        const gir = kl(yas / 0.1), son = kl(1 - yas / L);
+        const sc = 0.95 * (1 + 0.2 * Math.exp(-yas * 9));
+        ata(iz.k, 'transform', `translate(${f2(iz.x)},${f2(iz.y)}) rotate(${YON}) scale(${f2(sc * iz.ayna)},${f2(sc)})`);
+        ata(iz.k, 'opacity', gir * Math.pow(son, 0.8) * (0.35 + 0.65 * (0.4 + 0.6 * o)) * (1 - s.bos));
+        const u = kl(yas / 0.55);
+        ata(iz.toz, 'r', 2.4 + u * 5.5);
+        ata(iz.toz, 'opacity', st ? 0 : (1 - u) * (1 - u) * 0.55 * (1 - s.bos) * (yas < 0.55 ? 1 : 0));
+      }
+      ata(halo, 'opacity', (0.1 + 0.36 * o + (st ? 0 : 0.05 * Math.sin(t * 2.2))) * (1 - 0.85 * s.bos));
+      ata(bos, 'opacity', s.bos * 0.8);
+    },
+  };
+};
+
+// Kat: basamaklar kat sayısı kadar aydınlanır; ışık topu basamak basamak tırmanır, tepede parlar.
+IKON.kat = (g, c) => {
+  const MERD = 'M6,41H12V35H18.4V29H24.8V23H31.2V17H37.6V11H43';
+  const BOY = 67, BAS = (k) => (k === 0 ? 3 : 12.4 * k + 2.8);
+  const TX = [9, 15.2, 21.6, 28, 34.4, 40.3], TY = [41, 35, 29, 23, 17, 11];
+  const halo = yap('circle', { cx: 24, cy: 26, r: 22, fill: c.halo('b') }, g);
+  yap('path', { d: `${MERD}V44H6Z`, fill: c.grad('linearGradient', { gradientUnits: 'userSpaceOnUse', x1: 0, y1: 11, x2: 0, y2: 44 }, [[0, 'c', 0.32], [1, 'd', 0]]) }, g);
+  const iz = yap('path', { d: MERD, fill: 'none', 'stroke-width': 1.5, 'stroke-opacity': 0.22 }, g); c.renk(iz, 'stroke', 'a');
+  const ag = c.grad('linearGradient', { gradientUnits: 'userSpaceOnUse', x1: 6, y1: 41, x2: 43, y2: 11 }, [[0, 'c', 1], [0.5, 'b', 1], [1, 'a', 1]]);
+  const isima = yap('path', { d: MERD, fill: 'none', stroke: ag, 'stroke-width': 5, 'stroke-opacity': 0.16 }, g);
+  const yan = yap('path', { d: MERD, fill: 'none', stroke: ag, 'stroke-width': 1.9 }, g);
+  const yildiz = yap('path', { d: YILDIZ }, g); c.renk(yildiz, 'fill', 'a');
+  const th = yap('circle', { r: 6.5, fill: c.halo('a') }, g);
+  const top = yap('ellipse', { rx: 2.1, ry: 2.1, fill: c.grad('radialGradient', {}, [[0, 'a', 1], [0.65, 'a', 1], [1, 'b', 1]]) }, g);
+  const bos = yap('path', { d: MERD, fill: 'none', 'stroke-width': 1.2, 'stroke-dasharray': '1.6 2.4' }, g); c.renk(bos, 'stroke', 'a');
+  let faz = 0;
+  return {
+    ciz(s, dt, t, st) {
+      const o = s.o, uz = 3 + o * (BOY - 3);
+      let n = 0; while (n < 5 && BAS(n + 1) <= uz + 0.01) n++;
+      const da = `${f2(uz)} ${BOY + 10}`;
+      ata(yan, 'stroke-dasharray', da); ata(isima, 'stroke-dasharray', da);
+      ata(yan, 'opacity', 1 - s.bos); ata(isima, 'opacity', 1 - s.bos); ata(bos, 'opacity', s.bos * 0.8);
+      const tirman = Math.max(n, 0.6), devir = tirman + 1.5;
+      if (!st) faz += dt * (1.9 + 0.8 * o);
+      const p = st ? tirman + 0.4 : ((faz % devir) + devir) % devir;
+      let x, y, gor = 1, par = 0, ez = 1;
+      if (p < tirman) {
+        const k = Math.min(Math.floor(p), Math.max(n - 1, 0)), u = n ? p - k : 0;
+        const k2 = n ? k + 1 : 0, yay = Math.sin(Math.PI * (n ? u : p / tirman));
+        x = TX[k] + (TX[k2] - TX[k]) * u; y = TY[k] + (TY[k2] - TY[k]) * u - 2.4 - 4.2 * yay;
+        ez = 1 + 0.12 * yay; gor = kl(p / 0.25);
+      } else {
+        const r = p - tirman; x = TX[n]; y = TY[n] - 2.4;
+        par = Math.exp(-r * 2.6); gor = kl((1.5 - r) / 0.4); ez = 1 - 0.1 * Math.exp(-r * 14);
+      }
+      ata(top, 'cx', x); ata(top, 'cy', y); ata(top, 'rx', 2.1 / Math.sqrt(ez)); ata(top, 'ry', 2.1 * ez);
+      ata(th, 'cx', x); ata(th, 'cy', y);
+      ata(top, 'opacity', gor * (1 - s.bos)); ata(th, 'opacity', gor * (0.45 + 0.4 * par) * (1 - s.bos));
+      const ys = 2.4 + 1.6 * par + (st ? 0 : 0.35 * Math.sin(t * 3));
+      ata(yildiz, 'transform', `translate(${f2(TX[n] + 1.2)},${f2(TY[n] - 8.2)}) scale(${f2(ys)})`);
+      ata(yildiz, 'opacity', (0.35 + 0.65 * par) * ss(0.05, 0.3, o) * (1 - s.bos));
+      ata(halo, 'cy', 26 - 10 * o);
+      ata(halo, 'opacity', (0.1 + 0.32 * o + 0.1 * par) * (1 - 0.85 * s.bos));
+    },
+  };
+};
+
+// Aktif kalori: maytap gibi yanan bir kor; kalori arttıkça kıvılcımlar çoğalır, uzar ve hızlanır.
+IKON.kalori = (g, c) => {
+  const CX = 24, CY = 26, NK = 11;
+  const halo = yap('circle', { cx: CX, cy: CY, r: 16, fill: c.halo('b') }, g);
+  const kv = Array.from({ length: NK }, () => {
+    const cz = yap('line', { 'stroke-width': 1.15 }, g); c.renk(cz, 'stroke', (P) => karis(P.a, P.b, 0.35));
+    const uc = yap('circle', { r: 0.75 }, g); c.renk(uc, 'fill', 'a');
+    return { cz, uc };
+  });
+  const kg = yap('g', {}, g);
+  yap('circle', { r: 6.5, fill: c.halo('a') }, kg);
+  yap('circle', { r: 3.6, fill: c.grad('radialGradient', { gradientUnits: 'userSpaceOnUse', cx: -1, cy: -1.2, r: 5 }, [[0, 'a', 1], [0.55, 'b', 1], [1, (P) => karis(P.b, P.c, 0.6), 1]]) }, kg);
+  const yd = yap('path', { d: YILDIZ }, kg); c.renk(yd, 'fill', 'a');
+  const bos = yap('circle', { cx: CX, cy: CY, r: 5, fill: 'none', 'stroke-width': 1.1, 'stroke-dasharray': '1.6 2.4' }, g); c.renk(bos, 'stroke', 'a');
+  let faz = 0, don = 0;
+  return {
+    ciz(s, dt, t, st) {
+      const o = s.o, Lr = 5.5 + 13 * Math.pow(o, 0.85), etkin = 3 + 8 * o;
+      if (!st) { faz += dt * (0.8 + 1.5 * o); don += dt * (20 + 50 * o); }
+      for (let i = 0; i < NK; i++) {
+        const v = st ? 0.35 + 0.37 * fr(i * 0.618) : faz + i / NK, dv = Math.floor(v), u = st ? v : fr(v);
+        const a = -Math.PI / 2 + hs(dv * 7.31 + i * 3.17) * 2.3;
+        const r = 4.2 + u * Lr, kuy = 1.6 + 2.6 * o * (1 - u);
+        const ca = Math.cos(a), sa = Math.sin(a), yuk = -u * u * 2.2;
+        const g2 = ss(i, i + 1, etkin) * Math.pow(Math.sin(Math.PI * kl(u)), 0.7) * (1 - s.bos);
+        ata(kv[i].cz, 'x1', CX + ca * Math.max(4, r - kuy)); ata(kv[i].cz, 'y1', CY + sa * Math.max(4, r - kuy) + yuk);
+        ata(kv[i].cz, 'x2', CX + ca * r); ata(kv[i].cz, 'y2', CY + sa * r + yuk);
+        ata(kv[i].cz, 'opacity', g2 * 0.85);
+        ata(kv[i].uc, 'cx', CX + ca * (r + 0.6)); ata(kv[i].uc, 'cy', CY + sa * (r + 0.6) + yuk);
+        ata(kv[i].uc, 'opacity', g2 * ss(0.4, 0.8, u));
+      }
+      const tit = st ? 0 : 0.5 + 0.5 * gur(t * 9);
+      ata(kg, 'transform', `translate(${CX},${CY}) scale(${f2(0.85 + 0.35 * o + 0.08 * tit)})`);
+      ata(yd, 'transform', `rotate(${f2(st ? 20 : don)}) scale(${f2(4.6 + 1.6 * o + 0.6 * tit)})`);
+      ata(kg, 'opacity', 1 - s.bos);
+      ata(halo, 'r', 10 + 11 * o);
+      ata(halo, 'opacity', (0.16 + 0.4 * o + 0.08 * tit) * (1 - 0.85 * s.bos));
+      ata(bos, 'opacity', s.bos * 0.8);
+    },
+  };
+};
+
+// Yoğun dakika: on iki dakika çentiği hedefe doğru dolar; ortadaki şimşek yoğunluk arttıkça sıklaşan darbelerle çakar.
+const SIMSEK = 'M2.3,-10.6L-5.4,1.3H-.5L-2.5,10.6L5.5,-1.7H.7Z';
+IKON.yogun = (g, c) => {
+  const halo = yap('circle', { cx: 24, cy: 24, r: 17, fill: c.halo('b') }, g);
+  const ce = Array.from({ length: 12 }, (_, i) => {
+    const a = -Math.PI / 2 + (i / 12) * TAU, ca = Math.cos(a), sa = Math.sin(a);
+    const e = yap('line', { x1: 24 + 16.2 * ca, y1: 24 + 16.2 * sa, x2: 24 + 20 * ca, y2: 24 + 20 * sa, 'stroke-width': 2 }, g);
+    c.renk(e, 'stroke', (P) => karis(P.b, P.a, i / 11));
+    return e;
+  });
+  const dalga = yap('circle', { cx: 24, cy: 24, fill: 'none' }, g); c.renk(dalga, 'stroke', (P) => karis(P.a, P.b, 0.4));
+  const sg = yap('g', {}, g);
+  yap('circle', { r: 9, fill: c.halo('a') }, sg);
+  const sim = yap('path', { d: SIMSEK, fill: c.grad('linearGradient', { gradientUnits: 'userSpaceOnUse', x1: 0, y1: -11, x2: 0, y2: 11 }, [[0, 'a', 1], [0.55, 'b', 1], [1, (P) => karis(P.b, P.c, 0.55), 1]]) }, sg);
+  const kenar = yap('path', { d: SIMSEK, fill: 'none', 'stroke-width': 0.7, 'stroke-opacity': 0.5 }, sg); c.renk(kenar, 'stroke', 'a');
+  const bos = yap('path', { d: SIMSEK, fill: 'none', 'stroke-width': 1.1, 'stroke-dasharray': '1.6 2.4', transform: 'translate(24,24)' }, g); c.renk(bos, 'stroke', 'a');
+  let faz = 0, tur = 0;
+  return {
+    ciz(s, dt, t, st) {
+      const o = s.o, dolu = o * 12;
+      if (!st) { faz += dt * (0.55 + 1.9 * o * o); tur += dt * 0.45; }
+      const p = st ? 0.18 : fr(faz), cak = Math.exp(-p * 9) * (1 - s.bos);
+      const kos = st ? -9 : fr(tur) * Math.max(dolu, 1);
+      for (let i = 0; i < 12; i++) {
+        const isik = kl(dolu - i), yakin = Math.exp(-Math.pow(i - kos, 2) * 1.2) * ss(0, 1, isik);
+        ata(ce[i], 'opacity', (0.16 + 0.84 * isik * (0.62 + 0.38 * yakin)) * (1 - 0.5 * s.bos));
+      }
+      const jx = st ? 0 : cak * 0.6 * gur(t * 40), jy = st ? 0 : cak * 0.4 * gur(t * 37 + 2);
+      ata(sg, 'transform', `translate(${f2(24 + jx)},${f2(24 + jy)}) scale(${f2(0.9 + 0.1 * o + 0.14 * cak)})`);
+      ata(sim, 'opacity', (0.55 + 0.45 * Math.max(cak, st ? 0.6 : 0)) * (1 - s.bos)); ata(kenar, 'opacity', 1 - s.bos);
+      const rr = 8 + p * 8;
+      ata(dalga, 'r', rr); ata(dalga, 'stroke-width', 1.2 * (1 - p * 0.6));
+      ata(dalga, 'opacity', st ? 0 : Math.pow(1 - p, 2) * 0.6 * (1 - s.bos));
+      ata(halo, 'opacity', (0.12 + 0.3 * o + 0.25 * cak) * (1 - 0.85 * s.bos));
+      ata(bos, 'opacity', s.bos * 0.8);
+    },
+  };
+};
+
+// En yüksek nabız: atımlar gittikçe yükselir, en yükseği tepe çizgisine değer; ışık izi o hızda koşar ve tepede parlar.
+IKON.maxnabiz = (g, c) => {
+  const XS = [10, 18, 26, 34], Y0 = 39;
+  const halo = yap('circle', { cx: 34, cy: 22, r: 14, fill: c.halo('b') }, g);
+  const tepe = yap('line', { x1: 5, x2: 44, 'stroke-width': 0.9, 'stroke-dasharray': '1.2 2.2' }, g); c.renk(tepe, 'stroke', 'a');
+  const ag = c.grad('linearGradient', { gradientUnits: 'userSpaceOnUse', x1: 2, y1: 0, x2: 46, y2: 0 }, [[0, 'c', 0.35], [0.5, 'b', 0.9], [0.75, 'a', 1], [1, 'b', 0.4]]);
+  const iz = yap('path', { fill: 'none', stroke: ag, 'stroke-width': 1.5, 'stroke-opacity': 0.55 }, g);
+  const kuyruk = yap('path', { fill: 'none', 'stroke-width': 4, 'stroke-opacity': 0.18, pathLength: 100 }, g); c.renk(kuyruk, 'stroke', 'a');
+  const kuyrukIc = yap('path', { fill: 'none', 'stroke-width': 1.8, pathLength: 100 }, g); c.renk(kuyrukIc, 'stroke', 'a');
+  const th = yap('circle', { r: 7, fill: c.halo('a') }, g);
+  const nokta = yap('circle', { r: 1.9 }, g); c.renk(nokta, 'fill', 'a');
+  const bos = yap('path', { d: 'M4,39H44', fill: 'none', 'stroke-width': 1.2, 'stroke-dasharray': '1.6 2.4' }, g); c.renk(bos, 'stroke', 'a');
+  let faz = 0, oncekiO = -1, d = '', kesir = 0.7, tx = 34, ty = 20;
+  const yolKur = (o) => {
+    const H = 9 + 22 * o, p = [[3, Y0]];
+    XS.forEach((x, k) => {
+      const h = H * Math.pow((k + 1) / 4, 1.45), b = Y0 - (x - 3) / 31 * 3.5 * o;
+      p.push([x - 2.2, b], [x - 1.1, b + 1.6], [x, Y0 - h], [x + 1.2, b + 0.3 * h * 0.3 + 1.4], [x + 2.4, b]);
+    });
+    p.push([45, Y0]);
+    let top = 0, tepeU = 0; const pk = 3 + 5 * 3 + 2 + 1;
+    for (let i = 1; i < p.length; i++) { top += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); if (i === pk) tepeU = top; }
+    d = 'M' + p.map((q) => `${f2(q[0])},${f2(q[1])}`).join('L');
+    kesir = tepeU / top; tx = XS[3]; ty = Y0 - H;
+  };
+  return {
+    tempo: (o, ham) => (Number.isFinite(ham) ? kl(ham, 60, 220) : 100 + 80 * o),
+    ciz(s, dt, t, st) {
+      const o = s.o;
+      if (Math.abs(o - oncekiO) > 0.002) { yolKur(o); oncekiO = o; ata(iz, 'd', d); ata(kuyruk, 'd', d); ata(kuyrukIc, 'd', d); }
+      if (!st) faz += dt * s.tempo / 60 / 4;
+      const bas = st ? kesir : fr(faz) * 1.15 - 0.05;
+      const ofs = f2(12 - bas * 100);
+      for (const e of [kuyruk, kuyrukIc]) { ata(e, 'stroke-dasharray', '12 120'); ata(e, 'stroke-dashoffset', ofs); ata(e, 'opacity', (st ? 0.8 : kl((1.08 - bas) / 0.12)) * (1 - s.bos)); }
+      const du = bas - kesir, par = du >= 0 ? Math.exp(-du * 5) : Math.exp(du * 40) * 0.4;
+      ata(tepe, 'y1', ty); ata(tepe, 'y2', ty); ata(tepe, 'opacity', (0.25 + 0.3 * par) * (1 - s.bos));
+      ata(nokta, 'cx', tx); ata(nokta, 'cy', ty); ata(nokta, 'r', 1.5 + 1 * par);
+      ata(th, 'cx', tx); ata(th, 'cy', ty);
+      ata(nokta, 'opacity', (0.55 + 0.45 * par) * (1 - s.bos)); ata(th, 'opacity', (0.25 + 0.6 * par) * (1 - s.bos));
+      ata(iz, 'opacity', 1 - s.bos);
+      ata(halo, 'cy', ty + 2); ata(halo, 'opacity', (0.1 + 0.28 * o + 0.14 * par) * (1 - 0.85 * s.bos));
+      ata(bos, 'opacity', s.bos * 0.8);
     },
   };
 };

@@ -3,6 +3,10 @@
 //
 //   const a = aktiviteKur(kap, { getir, ornek, canli, ses, rm, gunAc });  a.goster(); a.gizle(); a.yokEt();
 //
+// Üstte en son antrenman kahraman kartta (canlı tür simgesi, bölge halkası, etki kadranları), sonra haftalık yük,
+// sonra önceki antrenmanlar. Simgeler tek bir rAF döngüsüyle yaşar: görünmeyen (IntersectionObserver) simge, gizli
+// ekran ve azaltılmış hareket altında durur; yokEt gözlemciyi, döngüyü ve dinleyicileri temizler.
+//
 // Kurallar: DOM yalnız createElement/textContent ile kurulur (API metni asla innerHTML'e girmez), satır içi
 // olay özniteliği yok, dış kaynak yok. Eksik değer null'dır ve hiçbir yerde görünmez; "veri yok" yalnız
 // bütün bir bölüm boşsa yazılır. Durum renkle birlikte ok + metinle verilir.
@@ -314,24 +318,272 @@ export function yanitDuzenle(y) {
   return { aktiviteler, haftalar, yukBant };
 }
 
-/* ================= Simgeler ================= */
+/* ================= Nabız bölgeleri ve etki (saf) ================= */
 
-const SIMGE = {
-  kosu: [['circle', { cx: 15, cy: 4.8, r: 1.9 }], ['path', { d: 'M10.4 20.8l2.6-5.4-2.9-2.6 2.1-4.1 3.7 1.7 3 .6M10.2 8.8l-3.3 2.3M12.2 8.7l-1.1 3.4' }]],
-  yuruyus: [['circle', { cx: 12.5, cy: 4.5, r: 1.9 }], ['path', { d: 'M12.5 8.2l-.4 5.3 2.4 2.4.7 5M12.1 13.5l-2.9 2.6-.9 4.7M8.4 11.2l4.1-3 3.4 3' }]],
-  dag: [['path', { d: 'M2.5 19.5l6.2-10.2 3.5 5.6 2.4-3.6 6.9 8.2z' }], ['path', { d: 'M8.7 9.3l1.8 2.9' }], ['circle', { cx: 17.5, cy: 5.5, r: 1.4 }]],
-  bisiklet: [['circle', { cx: 6, cy: 16, r: 3.6 }], ['circle', { cx: 18, cy: 16, r: 3.6 }], ['path', { d: 'M6 16l3.8-7.6h5.2l3 7.6M9.8 8.4L14 16M13 6h3' }]],
-  yuzme: [['circle', { cx: 16.5, cy: 6.2, r: 1.7 }], ['path', { d: 'M4 12.2l5.2-2.6 4 2 3.4-2.4M2.5 17c1.7 0 1.7-1.4 3.4-1.4s1.7 1.4 3.4 1.4 1.7-1.4 3.4-1.4 1.7 1.4 3.4 1.4 1.7-1.4 3.4-1.4M2.5 21c1.7 0 1.7-1.4 3.4-1.4s1.7 1.4 3.4 1.4 1.7-1.4 3.4-1.4 1.7 1.4 3.4 1.4 1.7-1.4 3.4-1.4' }]],
-  kuvvet: [['path', { d: 'M6.8 7.5v9M17.2 7.5v9M3.6 10v4M20.4 10v4M6.8 12h10.4' }]],
-  yoga: [['circle', { cx: 12, cy: 4.8, r: 1.9 }], ['path', { d: 'M12 8.3v5.1M6.4 10.6l5.6 2.6 5.6-2.6M5.4 19.6c3.2-.7 5.4-2.8 6.6-6.2 1.2 3.4 3.4 5.5 6.6 6.2' }]],
-  pilates: [['circle', { cx: 12, cy: 5.2, r: 1.8 }], ['path', { d: 'M4.8 15.2a7.2 7.2 0 0114.4 0M3 19.2h18M12 8.4v3.6' }]],
-  hiit: [['path', { d: 'M13.2 2.8L5.6 13.4h6l-1 7.8 7.8-11h-6.2z' }]],
-  kardiyo: [['path', { d: 'M12 20.2s-7.4-4.5-7.4-10.2A4.2 4.2 0 0112 7.6a4.2 4.2 0 017.4 2.4c0 5.7-7.4 10.2-7.4 10.2z' }], ['path', { d: 'M3.8 12.4h4l1.6-2.6 2.4 4.4 1.6-1.8h6.8' }]],
-  eliptik: [['path', { d: 'M5 20.5h14M8.5 20.5l-1-7.2 4.5-6.8 4.5 6.8-1 7.2M12 6.5V3.5' }], ['circle', { cx: 12, cy: 3.4, r: 0.9 }]],
-  kurek: [['path', { d: 'M2.8 16.6c3.4 2.2 14 2.2 18.4 0M5.2 13.4l8.6-3.8M13.8 9.6l4.4-4.8M18.2 4.8l2.2 2.2' }], ['circle', { cx: 9.4, cy: 7.4, r: 1.6 }]],
-  diger: [['circle', { cx: 12, cy: 13.5, r: 7.2 }], ['path', { d: 'M12 13.5V9.6M10 3.2h4M17.6 6.2l1.4-1.4' }]],
-  genel: [['circle', { cx: 12, cy: 12, r: 8 }], ['path', { d: 'M12 7.6V12l3 1.8' }]],
+const NAB_RENK = ['#a9b8ff', '#8fd9c4', '#ffe08a', '#ffa66e', '#ff6f8e'];
+const NAB_AD = ['Çok hafif', 'Hafif', 'Orta', 'Sert', 'Azami'];
+
+// Bölge saniyeleri → { s: 5 sayı (geçersiz → 0), toplam, baskin: en uzun bölgenin indeksi }. Hiç süre yoksa null.
+export function bolgeOzet(bolgeler) {
+  if (!Array.isArray(bolgeler)) return null;
+  const s = [0, 1, 2, 3, 4].map((i) => (sonlu(bolgeler[i]) && bolgeler[i] > 0 ? bolgeler[i] : 0));
+  const toplam = s.reduce((x, y) => x + y, 0);
+  if (toplam <= 0) return null;
+  let baskin = 0;
+  s.forEach((v, i) => { if (v > s[baskin]) baskin = i; });
+  return { s, toplam, baskin };
+}
+
+// Bölge süresi dakikayla: "18 dk", bir dakikadan azsa "<1 dk", yoksa "–" (sıfır uydurulmaz).
+export function bolgeDakika(sn) {
+  if (!sonlu(sn) || sn <= 0) return '–';
+  const dk = Math.round(sn / 60);
+  return dk < 1 ? '<1 dk' : `${dk} dk`;
+}
+
+// Antrenman etkisi (0–5) için Garmin'in ölçeğine denk sözcük. Geçersiz: null.
+export function etkiEtiketi(v) {
+  if (!sonlu(v) || v < 0) return null;
+  const r = Math.round(v * 10) / 10;
+  if (r < 1) return 'Etkisiz';
+  if (r < 2) return 'Hafif';
+  if (r < 3) return 'Koruyor';
+  if (r < 4) return 'Geliştiriyor';
+  if (r < 5) return 'Çok geliştiriyor';
+  return 'Aşırı yüklenme';
+}
+
+/* ================= Hareketli simgeler ================= */
+// Her tür kendi küçük sahnesini çizer: kur(g) → { ciz(t), statik }. t saniyedir; `statik` azaltılmış hareket
+// karesidir (değeri en iyi anlatan duruş). Çizgi rengi currentColor; ışıma kabın CSS'inden gelir (kimlik yok).
+
+const f2 = (x) => Math.round(x * 100) / 100;
+const TAU = Math.PI * 2;
+const ata = (e, k, v) => {
+  const s = typeof v === 'number' ? String(f2(v)) : v;
+  const m = e.__v || (e.__v = {});
+  if (m[k] !== s) { m[k] = s; e.setAttribute(k, s); }
 };
+const yol = (...p) => `M${p.map((q) => `${f2(q[0])} ${f2(q[1])}`).join('L')}`;
+const uzat = (o, boy, aci) => [o[0] + boy * Math.sin(aci), o[1] + boy * Math.cos(aci)];
+const yumusak = (x) => { const k = Math.max(0, Math.min(1, x)); return k * k * (3 - 2 * k); };
+
+const CANLI = {
+  // Koşu: kollar ve bacaklar karşılıklı salınır, beden hafifçe yaylanır, yerde hız çizgileri akar.
+  kosu(g) {
+    const zemin = [0, 1].map(() => sv('path', { 'stroke-width': 1.1, opacity: 0.4 }, g));
+    const kollar = [0, 1].map(() => sv('path', {}, g));
+    const bacaklar = [0, 1].map(() => sv('path', {}, g));
+    const govde = sv('path', {}, g);
+    const kafa = sv('circle', { r: 1.9 }, g);
+    return {
+      statik: 0.55,
+      ciz(t) {
+        const f = t * TAU * 1.15;
+        const bob = 0.45 * Math.cos(2 * f);
+        const H = [10.6, 12.5 + bob]; const S = [13.7, 8.1 + bob];
+        ata(govde, 'd', yol(S, H));
+        ata(kafa, 'cx', 15.6); ata(kafa, 'cy', 5.1 + bob);
+        [0, Math.PI].forEach((ek, i) => {
+          const p = f + ek;
+          const a1 = 0.12 + 0.85 * Math.sin(p);
+          const K = uzat(H, 4.3, a1);
+          const F = uzat(K, 4.2, a1 - (0.15 + 1.35 * Math.max(0, Math.cos(p))));
+          ata(bacaklar[i], 'd', yol(H, K, F));
+          const b1 = -0.8 * Math.sin(p);
+          const E = uzat(S, 3.1, b1);
+          ata(kollar[i], 'd', yol(S, E, uzat(E, 2.7, b1 + 1.65)));
+          ata(kollar[i], 'opacity', i ? 0.45 : 1);
+          ata(bacaklar[i], 'opacity', i ? 0.45 : 1);
+        });
+        zemin.forEach((z, i) => {
+          const x = 24 - ((t * 15 + i * 12) % 26);
+          ata(z, 'd', `M${f2(x)} ${i ? 19.6 : 22.2}h${i ? 2.2 : 3.4}`);
+        });
+      },
+    };
+  },
+  // Yürüyüş: ayak izleri sırayla belirip söner, yukarı doğru ilerler.
+  ayak(g) {
+    const IZ = [[9.4, 19.4, -12], [14.4, 15, 12], [9.6, 10.6, -12], [14.6, 6.2, 12]];
+    const izler = IZ.map(([x, y, r]) => {
+      const k = sv('g', { transform: `translate(${x} ${y}) rotate(${r})`, fill: 'currentColor', stroke: 'none' }, g);
+      sv('ellipse', { cx: 0, cy: 0.7, rx: 1.65, ry: 2.5 }, k);
+      sv('circle', { cx: 0.1, cy: -2.6, r: 1.05 }, k);
+      return k;
+    });
+    return {
+      statik: 1.9,
+      ciz(t) {
+        const u = (t / 2.6) % 1;
+        izler.forEach((k, i) => {
+          const yas = u * 5 - i;
+          ata(k, 'opacity', yas < 0 ? 0.22 : Math.max(0.22, 1 - yas * 0.3));
+        });
+      },
+    };
+  },
+  // Doğa yürüyüşü: dağın yamacında kesik iz yukarı akar, güneş yavaşça nefes alır.
+  dag(g) {
+    sv('path', { d: 'M2.4 20.2l6.6-10.8 3.5 5.6 2.6-3.9 6.5 9.1z' }, g);
+    const iz = sv('path', { d: 'M4.6 20.2c1.6-1.6 2.7-3.6 3.6-5.6s1.3-3.4 2.4-4.8', 'stroke-dasharray': '.1 2', 'stroke-width': 1.7 }, g);
+    const isin = sv('circle', { cx: 18, cy: 5.4, r: 3, 'stroke-width': 0.8, opacity: 0.4 }, g);
+    sv('circle', { cx: 18, cy: 5.4, r: 1.6 }, g);
+    return {
+      statik: 0,
+      ciz(t) {
+        ata(iz, 'stroke-dashoffset', (t * 2.4) % 2.1);
+        const n = 0.5 + 0.5 * Math.sin(t * 1.6);
+        ata(isin, 'r', 2.6 + n * 0.9); ata(isin, 'opacity', 0.55 - n * 0.35);
+      },
+    };
+  },
+  // Bisiklet: teker telleri ve pedal kolu döner.
+  bisiklet(g) {
+    const T = [[5.4, 16.2], [18.6, 16.2]];
+    const teller = T.map(([x, y]) => {
+      sv('circle', { cx: x, cy: y, r: 3.9 }, g);
+      const k = sv('g', { 'stroke-width': 0.8, opacity: 0.7 }, g);
+      for (let i = 0; i < 3; i++) { const a = (i * Math.PI) / 3; sv('path', { d: `M${f2(x - 3.4 * Math.cos(a))} ${f2(y - 3.4 * Math.sin(a))}L${f2(x + 3.4 * Math.cos(a))} ${f2(y + 3.4 * Math.sin(a))}` }, k); }
+      return [k, x, y];
+    });
+    sv('path', { d: 'M5.4 16.2l4.2-7h5.8l3.2 7M9.6 9.2l3.4 7h-7.6M8.4 7.1h2.6M15.4 9.2l-.7-2.4h2.1' }, g);
+    const krank = sv('path', { 'stroke-width': 1.4 }, g);
+    return {
+      statik: 0.1,
+      ciz(t) {
+        const a = t * 260;
+        for (const [k, x, y] of teller) ata(k, 'transform', `rotate(${f2(a % 360)} ${x} ${y})`);
+        const r = (t * 4.5) % TAU;
+        ata(krank, 'd', `M${f2(13 - 1.8 * Math.cos(r))} ${f2(16.2 - 1.8 * Math.sin(r))}L${f2(13 + 1.8 * Math.cos(r))} ${f2(16.2 + 1.8 * Math.sin(r))}`);
+      },
+    };
+  },
+  // Yüzme: dalgalar akar, kol kulaç atar, baş suyun üstünde salınır.
+  yuzme(g) {
+    let d = 'M-6 0';
+    for (let i = 0; i < 12; i++) d += i ? 't3 0' : 'q1.5 -1.3 3 0';
+    const dalga = [[17.6, 1, 4.2], [21.2, 0.5, 2.8]].map(([y, op, h]) => [sv('path', { d, opacity: op }, g), y, h]);
+    const govde = sv('path', {}, g);
+    const kol = sv('path', {}, g);
+    const kafa = sv('circle', { r: 1.8 }, g);
+    return {
+      statik: 0.3,
+      ciz(t) {
+        dalga.forEach(([p, y, h]) => ata(p, 'transform', `translate(${f2(-((t * h) % 6))} ${y})`));
+        const bob = 0.5 * Math.sin(t * 3.3);
+        ata(kafa, 'cx', 16.4); ata(kafa, 'cy', 11.2 + bob);
+        const O = [13.4, 13.3 + bob * 0.5];
+        ata(govde, 'd', yol(O, [6.2, 14.6]));
+        const a = -t * 3.3;
+        const E = [O[0] + 4.6 * Math.cos(a), O[1] + 4.6 * Math.sin(a) * 0.9];
+        ata(kol, 'd', `M${f2(O[0])} ${f2(O[1])}Q${f2((O[0] + E[0]) / 2 + Math.sin(a) * 1.6)} ${f2((O[1] + E[1]) / 2 - Math.cos(a) * 1.6)} ${f2(E[0])} ${f2(E[1])}`);
+        ata(kol, 'opacity', Math.sin(a) > 0.35 ? 0.35 : 1);
+      },
+    };
+  },
+  // Kuvvet: halter omuzdan baş üstüne kalkar, tepede kısa durur, iner.
+  kuvvet(g) {
+    sv('circle', { cx: 12, cy: 8.4, r: 1.8 }, g);
+    sv('path', { d: 'M12 10.6v6.2M12 16.8l-2.6 4.6M12 16.8l2.6 4.6' }, g);
+    const kollar = [0, 1].map(() => sv('path', {}, g));
+    const bar = sv('g', {}, g);
+    sv('path', { d: 'M3.6 0h16.8', 'stroke-width': 1.4 }, bar);
+    sv('path', { d: 'M5.4 -2.6v5.2M18.6 -2.6v5.2', 'stroke-width': 2 }, bar);
+    sv('path', { d: 'M3.6 -1.6v3.2M20.4 -1.6v3.2', 'stroke-width': 1.3 }, bar);
+    return {
+      statik: 1.1,
+      ciz(t) {
+        const u = (t / 2.4) % 1;
+        const k = u < 0.4 ? yumusak(u / 0.4) : u < 0.55 ? 1 : u < 0.9 ? 1 - yumusak((u - 0.55) / 0.35) : 0;
+        const y = 11.4 - 7.4 * k;
+        ata(bar, 'transform', `translate(0 ${f2(y)})`);
+        [[-1, 9.9], [1, 14.1]].forEach(([yon, x], i) => {
+          const S = [x, 11.8]; const W = [12 + yon * 3.8, y];
+          const E = [12 + yon * (5 + 0.6 * (1 - k)), (S[1] + W[1]) / 2 + 1.2 * (1 - k)];
+          ata(kollar[i], 'd', yol(S, E, W));
+        });
+      },
+    };
+  },
+  // Yoga ve pilates: oturan beden nefesle kollarını yükseltir; çevresindeki hale genişleyip daralır.
+  nefes(g) {
+    const hale = sv('circle', { cx: 12, cy: 12.4, r: 9, 'stroke-width': 0.8 }, g);
+    sv('circle', { cx: 12, cy: 6.2, r: 1.8 }, g);
+    const govde = sv('path', {}, g);
+    sv('path', { d: 'M5.4 18.6c2-1.9 4.2-2.6 6.6-2.6s4.6.7 6.6 2.6M7.4 19.8h9.2' }, g);
+    const kollar = [0, 1].map(() => sv('path', {}, g));
+    return {
+      statik: 1.6,
+      ciz(t) {
+        const n = 0.5 - 0.5 * Math.cos((t * TAU) / 5.2);
+        ata(hale, 'r', 8.2 + 1.6 * n); ata(hale, 'opacity', 0.14 + 0.3 * n);
+        const S = [12, 9.6 - 0.3 * n];
+        ata(govde, 'd', yol([12, 8.2 - 0.3 * n], [12, 15.2]));
+        [-1, 1].forEach((yon, i) => {
+          const a = -0.5 + 2.1 * n;
+          const E = [S[0] + yon * 3.4 * Math.cos(a * 0.6), S[1] + 1.6 - 3.2 * Math.sin(a * 0.6)];
+          const W = [E[0] + yon * 2.6 * Math.cos(a) * 0.7, E[1] + 1.2 - 3.6 * Math.sin(a)];
+          ata(kollar[i], 'd', yol(S, E, W));
+        });
+      },
+    };
+  },
+  // HIIT: şimşek kısa aralıklarla çakar; yanında kıvılcımlar.
+  simsek(g) {
+    const k = sv('g', {}, g);
+    sv('path', { d: 'M13.2 2.8L5.6 13.4h6l-1 7.8 7.8-11h-6.2z' }, k);
+    const kiv = [[19, 4.6, 20.8, 3.2], [20.2, 14.4, 22, 15.4], [3.4, 6.4, 1.8, 5.2]].map(([a, b, c, d]) => sv('path', { d: `M${a} ${b}L${c} ${d}`, 'stroke-width': 1.2 }, g));
+    return {
+      statik: 0.05,
+      ciz(t) {
+        const u = (t / 1.3) % 1;
+        const c = Math.exp(-u * 7);
+        ata(k, 'transform', `translate(12 12) scale(${f2(1 + 0.08 * c)}) translate(-12 -12)`);
+        kiv.forEach((p, i) => ata(p, 'opacity', Math.max(0, c * 1.2 - i * 0.15)));
+      },
+    };
+  },
+  // Kardiyo ve diğerleri: kalp atışı çizgisi; parlak bir parça çizgi boyunca koşar.
+  nabiz(g) {
+    const d = 'M2 13.2h4.2l1.7-3.6 2.6 7.6 2.5-10.2 2.1 6.2h6.9';
+    sv('path', { d, opacity: 0.3 }, g);
+    const parlak = sv('path', { d, pathLength: 100, 'stroke-dasharray': '26 100', 'stroke-width': 1.9 }, g);
+    return {
+      statik: 0.55,
+      ciz(t) { ata(parlak, 'stroke-dashoffset', 100 - ((t * 62) % 130)); },
+    };
+  },
+  // Kürek: gövde öne arkaya kayar, kürek suya girip çekilir.
+  kurek(g) {
+    sv('path', { d: 'M3.2 16.6c3.6 1.9 14 1.9 17.6 0', 'stroke-width': 1.5 }, g);
+    const su = sv('path', { d: 'M-4 0c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1', opacity: 0.5 }, g);
+    const kafa = sv('circle', { r: 1.6 }, g);
+    const govde = sv('path', {}, g);
+    const kurek = sv('path', { 'stroke-width': 1.4 }, g);
+    const kol = sv('path', {}, g);
+    return {
+      statik: 0.7,
+      ciz(t) {
+        const n = 0.5 - 0.5 * Math.cos((t * TAU) / 2.6);
+        ata(su, 'transform', `translate(${f2(-((t * 2.2) % 6))} 21)`);
+        // gövde öne-arkaya eğilir; kürek sapı ellerde, ıskarmozdan (P) geçip pala suya iner
+        const kx = 7.4 + 2.6 * n;
+        ata(kafa, 'cx', kx); ata(kafa, 'cy', 7.9 - 0.4 * n);
+        ata(govde, 'd', yol([kx + 0.3, 9.6], [9.6, 15.4]));
+        const El = [kx + 2.4 + 1.6 * n, 12.6]; const P = [14.2, 15.4];
+        ata(kurek, 'd', yol(El, [P[0] + (P[0] - El[0]) * 1.35, P[1] + (P[1] - El[1]) * 1.6]));
+        ata(kol, 'd', yol([kx + 0.6, 10.4], El));
+      },
+    };
+  },
+};
+
+const SIMGE_TUR = {
+  kosu: 'kosu', yuruyus: 'ayak', dag: 'dag', bisiklet: 'bisiklet', yuzme: 'yuzme', kuvvet: 'kuvvet',
+  yoga: 'nefes', pilates: 'nefes', hiit: 'simsek', kardiyo: 'nabiz', eliptik: 'nabiz', kurek: 'kurek', diger: 'nabiz', genel: 'nabiz',
+};
+export const simgeTuru = (grup) => (Object.hasOwn(SIMGE_TUR, grup) ? SIMGE_TUR[grup] : 'nabiz');
 
 // Tür grubuna göre vurgu rengi (yalnız süs; tür adı her zaman yazıyla da verilir).
 const TUR_RENK = {
@@ -339,14 +591,11 @@ const TUR_RENK = {
   yoga: '#bfeedd', pilates: '#bfeedd', hiit: '#ff9fb8', kardiyo: '#ff9fb8', eliptik: '#ffd88a', kurek: '#9ec8ff', diger: '#d9cdea', genel: '#d9cdea',
 };
 
-const NAB_RENK = ['#a9b8ff', '#8fd9c4', '#ffe08a', '#ffa66e', '#ff6f8e'];
-const NAB_AD = ['Çok hafif', 'Hafif', 'Orta', 'Sert', 'Azami'];
-
 /* ================= Stil ================= */
 
 const STIL = `
-.akt{--a-m:#fff6ec;--a-i:#ffc9a6;--a-iyi:#bfeedd;--a-mor:#b597ff;--a-mercan:#ff9d7a;--a-sol:rgba(255,246,236,.7);--a-kenar:rgba(255,246,236,.16);
-  container-type:inline-size;position:relative;min-height:100%;padding:14px 18px 28px;color:var(--a-m);font-family:'Onest',system-ui,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.akt{--a-m:#fff6ec;--a-i:#ffc9a6;--a-iyi:#bfeedd;--a-mor:#b597ff;--a-mercan:#ff9d7a;--a-sol:rgba(255,246,236,.68);--a-kenar:rgba(255,246,236,.14);
+  container-type:inline-size;position:relative;min-height:100%;padding:14px 2px 28px;color:var(--a-m);font-family:'Onest',system-ui,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
 .akt[hidden],.akt [hidden]{display:none!important}
 .akt *{box-sizing:border-box}
 .akt button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:inherit}
@@ -354,61 +603,128 @@ const STIL = `
 .akt svg{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .akt-bas{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;padding-right:100px;min-height:48px}
 .akt-bas h1{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100,'opsz' 144;font-weight:430;font-size:36px;line-height:1.05;letter-spacing:-.025em}
+.akt-bas h1:focus{outline:none}
 .akt-etiket{padding:3px 9px;border:1px solid rgba(255,246,236,.26);border-radius:999px;background:rgba(12,8,18,.48);font:600 10px/1.3 system-ui,sans-serif;letter-spacing:.02em;color:rgba(255,246,236,.85);white-space:nowrap}
 
-/* haftalık özet */
-.akt-ozet{margin-top:14px;padding:16px 16px 12px;border-radius:24px;display:grid;gap:10px;
-  background:linear-gradient(158deg,rgba(255,246,236,.15),rgba(255,246,236,.04) 62%);border:1px solid var(--a-kenar);
-  box-shadow:0 12px 30px rgba(4,2,8,.4),inset 0 1px 0 rgba(255,255,255,.18)}
-.akt-ozetUst .akt-hf{font-size:12.5px;font-weight:500;color:var(--a-sol)}
-.akt-buyuk{display:flex;align-items:baseline;gap:8px;margin-top:2px}
-.akt-buyuk b{font-size:50px;font-weight:600;letter-spacing:-.03em;line-height:1}
-.akt-buyuk span{font-size:13.5px;color:var(--a-sol)}
-.akt-durum{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 11px 5px 9px;border-radius:999px;font-size:13px;font-weight:600;line-height:1.2;border:1px solid currentColor;background:rgba(12,8,18,.28)}
-.akt-suruyor{margin-top:8px;font-size:13px;font-weight:600;line-height:1.2;color:rgba(255,246,236,.72)}
+/* canlı simge kabı: tür renginde yumuşak ışıma, çizgi kremle tür renginin karışımı */
+.akt-kure{position:relative;flex:none;display:grid;place-items:center;border-radius:50%;
+  color:color-mix(in srgb,var(--t) 58%,#fff6ec);
+  background:radial-gradient(circle at 50% 42%,color-mix(in srgb,var(--t) 30%,transparent),color-mix(in srgb,var(--t) 7%,transparent) 68%,transparent 72%);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--t) 34%,transparent),0 0 24px color-mix(in srgb,var(--t) 16%,transparent)}
+.akt-kure svg{stroke:currentColor;stroke-width:1.5;overflow:hidden}
+
+/* kahraman: son antrenman */
+.akt-kahraman{position:relative;margin-top:12px;padding:18px 18px 16px;border-radius:30px;display:grid;gap:16px;isolation:isolate;
+  background:radial-gradient(120% 80% at 0% 0%,color-mix(in srgb,var(--t) 22%,transparent),transparent 58%),
+    radial-gradient(90% 60% at 100% 100%,rgba(181,151,255,.10),transparent 70%),
+    linear-gradient(160deg,rgba(255,246,236,.12),rgba(255,246,236,.03) 64%);
+  border:1px solid color-mix(in srgb,var(--t) 26%,rgba(255,246,236,.12));
+  box-shadow:0 22px 48px rgba(4,2,8,.55),inset 0 1px 0 rgba(255,255,255,.18)}
+.akt-kahraman:has(.akt-kAc:focus-visible){outline:2px solid var(--a-i);outline-offset:3px}
+.akt-kAc{display:flex;align-items:center;gap:14px;width:100%;min-height:64px}
+.akt-kAc::after{content:"";position:absolute;inset:0;border-radius:inherit;z-index:1}
+.akt-kAc:focus-visible{outline:none!important}
+.akt-kAc .akt-kure{width:66px;height:66px}
+.akt-kAc .akt-kure svg{width:42px;height:42px}
+.akt-kAd{flex:1;min-width:0}
+.akt-kAd small{display:block;font-size:12.5px;font-weight:500;color:var(--a-sol)}
+.akt-kAd b{display:block;font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100,'opsz' 144;font-weight:430;font-size:31px;line-height:1.04;letter-spacing:-.02em;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.akt-kAd span{display:block;font-size:13px;color:rgba(255,246,236,.8);margin-top:3px}
+.akt-kahraman .akt-ok{width:20px;height:20px;align-self:center}
+.akt-kSay{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:10px 12px;padding-top:14px;border-top:1px solid rgba(255,246,236,.1)}
+.akt-kSay .akt-s b{font-size:24px;font-weight:600;letter-spacing:-.025em;line-height:1.1}
+.akt-kSay .akt-s b small{font-size:13px;font-weight:500;color:var(--a-sol);margin-left:2px;letter-spacing:0}
+.akt-kSay .akt-s span{font-size:11.5px;margin-top:2px}
+.akt-kGrafik{display:grid;gap:16px}
+
+/* bölge halkası */
+.akt-halkaAlan{display:grid;grid-template-columns:118px minmax(0,1fr);gap:16px;align-items:center}
+.akt-halka{width:118px;height:118px;display:block;overflow:visible}
+.akt-halka circle{fill:none;stroke-linecap:butt}
+.akt-halka text{font-family:'Onest',system-ui,sans-serif;font-variant-numeric:tabular-nums;text-anchor:middle;stroke:none}
+.akt-hY{fill:var(--a-m);font-size:22px;font-weight:600;letter-spacing:-.5px}
+.akt-hA{fill:rgba(255,246,236,.7);font-size:10.5px;font-weight:500}
+.akt-lj{display:grid;gap:5px;min-width:0}
+.akt-ljS{display:grid;grid-template-columns:9px minmax(0,1fr) auto;gap:9px;align-items:center;font-size:13px;line-height:1.25}
+.akt-ljS i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 8px color-mix(in srgb,var(--c) 60%,transparent)}
+.akt-ljS span{color:rgba(255,246,236,.86);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.akt-ljS span em{font-style:normal;color:rgba(255,246,236,.5);margin-right:6px}
+.akt-ljS b{font-weight:600;white-space:nowrap;text-align:right}
+.akt-ljS b em{font-style:normal;font-weight:500;color:var(--a-sol);margin-left:6px;display:inline-block;min-width:3.2ch}
+.akt-ljS.bas span,.akt-ljS.bas b{color:var(--a-m)}
+.akt-ljS.sifir{opacity:.5}
+
+/* etki kadranları */
+.akt-kadranlar{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px}
+.akt-kadran{display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;align-items:center;padding:10px 12px 10px 8px;border-radius:20px;background:rgba(12,8,18,.32);border:1px solid rgba(255,246,236,.08)}
+.akt-kadran svg{width:62px;height:52px;display:block;overflow:visible}
+.akt-kadran text{fill:var(--a-m);font-family:'Onest',system-ui,sans-serif;font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;text-anchor:middle;stroke:none;letter-spacing:-.4px}
+.akt-kadran div{min-width:0}
+.akt-kadran b{display:block;font-size:13.5px;font-weight:600;line-height:1.2}
+.akt-kadran span{display:block;font-size:12px;color:var(--a-sol);margin-top:2px;line-height:1.25}
+
+/* haftalık özet (sıkı) */
+.akt-ozet{margin-top:12px;padding:14px 16px 10px;border-radius:24px;display:grid;gap:4px;
+  background:linear-gradient(158deg,rgba(255,246,236,.1),rgba(255,246,236,.03) 62%);border:1px solid var(--a-kenar);
+  box-shadow:0 10px 26px rgba(4,2,8,.38),inset 0 1px 0 rgba(255,255,255,.14)}
+.akt-ozetUst{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.akt-ozetUst .akt-hf{flex:1 0 100%;font-size:12.5px;font-weight:500;color:var(--a-sol)}
+.akt-buyuk{display:flex;align-items:baseline;gap:7px}
+.akt-buyuk b{font-size:38px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.akt-buyuk span{font-size:13px;color:var(--a-sol)}
+.akt-durum{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;border-radius:999px;font-size:12.5px;font-weight:600;line-height:1.2;border:1px solid currentColor;background:rgba(12,8,18,.28)}
+.akt-suruyor{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;line-height:1.2;color:rgba(255,246,236,.72)}
+.akt-suruyor::before{content:"";width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor;background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
 .akt-durum svg{width:11px;height:11px;stroke:currentColor;stroke-width:1.9;flex:none}
 .akt-durum.lo{color:var(--a-mor)}.akt-durum.ok{color:var(--a-iyi)}.akt-durum.hi{color:var(--a-i)}
-.akt-alt{margin-top:8px;font-size:13.5px;color:rgba(255,246,236,.88)}
+.akt-alt{flex:1 0 100%;font-size:12.5px;color:rgba(255,246,236,.8)}
 .akt-grafik{width:100%;height:auto;display:block;overflow:visible}
 .akt-grafik text{font-family:'Onest',system-ui,sans-serif;font-variant-numeric:tabular-nums}
 .akt-gv{fill:rgba(255,246,236,.72);font-size:10.5px;font-weight:500;text-anchor:middle}
 .akt-gv.bu{fill:var(--a-m);font-weight:700}
-.akt-ge{fill:rgba(255,246,236,.62);font-size:10px;text-anchor:middle}
+.akt-ge{fill:rgba(255,246,236,.6);font-size:10px;text-anchor:middle}
 .akt-ge.bu{fill:var(--a-m);font-weight:600}
-.akt-lejant{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--a-sol);padding-top:2px}
+.akt-lejant{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--a-sol)}
 .akt-lejant span{display:inline-flex;align-items:center;gap:6px}
 .akt-lejant i{width:12px;height:8px;border-radius:3px;background:rgba(191,238,221,.22);border:1px dashed rgba(191,238,221,.6)}
 .akt-lejant i.bu{background:linear-gradient(180deg,#ffb48e,#e9764f);border:0;width:8px;height:8px;border-radius:50%}
 
 /* liste */
-.akt-liste{display:grid;gap:18px;margin-top:22px}
-.akt-kartlar{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
-.akt-gun{margin:0 2px 8px;font-size:13px;font-weight:600;letter-spacing:.01em;color:var(--a-sol)}
-.akt-oge{display:block;width:100%;padding:14px 14px 12px;border-radius:22px;min-height:44px;position:relative;
-  background:linear-gradient(158deg,rgba(255,246,236,.12),rgba(255,246,236,.035) 62%);border:1px solid rgba(255,246,236,.14);
-  box-shadow:0 8px 22px rgba(4,2,8,.3),inset 0 1px 0 rgba(255,255,255,.14);transition:border-color .2s,transform .18s cubic-bezier(.2,.9,.3,1.3)}
-.akt-oge:hover{border-color:rgba(255,246,236,.34)}
+.akt-onceki{margin:26px 2px 0;font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100,'opsz' 144;font-weight:430;font-size:22px;letter-spacing:-.015em}
+.akt-liste{display:grid;gap:16px;margin-top:10px}
+.akt-kartlar{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.akt-gun{margin:0 4px 7px;font-size:12.5px;font-weight:600;letter-spacing:.01em;color:var(--a-sol)}
+.akt-oge{display:block;width:100%;padding:12px 14px 11px 12px;border-radius:22px;min-height:44px;position:relative;
+  background:linear-gradient(158deg,rgba(255,246,236,.09),rgba(255,246,236,.025) 62%);border:1px solid rgba(255,246,236,.11);
+  box-shadow:0 8px 20px rgba(4,2,8,.28),inset 0 1px 0 rgba(255,255,255,.11);transition:border-color .2s,transform .18s cubic-bezier(.2,.9,.3,1.3)}
+.akt-oge:hover{border-color:color-mix(in srgb,var(--t) 45%,rgba(255,246,236,.2))}
 .akt-oge:active{transform:scale(.985)}
 .akt-ogeUst{display:flex;align-items:center;gap:12px}
-.akt-sim{width:40px;height:40px;flex:none;border-radius:13px;display:grid;place-items:center;color:var(--t);background:color-mix(in srgb,var(--t) 16%,transparent);border:1px solid color-mix(in srgb,var(--t) 38%,transparent)}
-.akt-sim svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.6}
+.akt-ogeUst .akt-kure{width:42px;height:42px}
+.akt-ogeUst .akt-kure svg{width:26px;height:26px;stroke-width:1.6}
 .akt-ad{flex:1;min-width:0}
-.akt-ad b{display:block;font-size:16.5px;font-weight:600;line-height:1.2;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.akt-ad span{display:block;font-size:12px;color:var(--a-sol);margin-top:2px}
-.akt-ok{width:16px;height:16px;flex:none;stroke:rgba(255,246,236,.5);stroke-width:1.8}
-.akt-say{display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:8px 10px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,246,236,.1)}
+.akt-ad b{display:block;font-size:16px;font-weight:600;line-height:1.2;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.akt-ad span{display:block;font-size:12px;color:var(--a-sol);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.akt-sag{flex:none;text-align:right}
+.akt-sag b{display:block;font-size:19px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.akt-sag span{display:block;font-size:10.5px;color:var(--a-sol);margin-top:1px}
+.akt-ok{width:16px;height:16px;flex:none;stroke:rgba(255,246,236,.45);stroke-width:1.8}
+.akt-say{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:9px;padding:8px 0 0 54px;border-top:1px solid rgba(255,246,236,.07)}
 .akt-s{display:flex;flex-direction:column;gap:1px;min-width:0}
+.akt-say .akt-s{flex-direction:row;align-items:baseline;gap:5px}
 .akt-s b{font-size:15.5px;font-weight:600;letter-spacing:-.01em;line-height:1.2;white-space:nowrap}
+.akt-say .akt-s b{font-size:14px;order:2}
 .akt-s span{font-size:10.5px;font-weight:500;color:var(--a-sol);letter-spacing:.02em;white-space:nowrap}
+.akt-say .akt-s span{font-size:11.5px;letter-spacing:0;order:1}
 
 /* durumlar */
 .akt-mesaj{margin-top:34px;padding:26px 20px;text-align:center;border-radius:24px;border:1px dashed rgba(255,246,236,.24);display:grid;gap:10px;justify-items:center}
 .akt-mesaj p{font-size:15px;line-height:1.45;color:rgba(255,246,236,.88);max-width:30ch;text-wrap:balance}
 .akt-mesaj .alt{font-size:12.5px;color:var(--a-sol)}
 .akt-tekrar{min-height:44px;padding:0 20px;border-radius:999px;background:var(--a-m)!important;color:#1a1022!important;font-weight:600;font-size:14.5px;text-align:center!important}
-.akt-iskelet{display:grid;gap:10px;margin-top:14px}
+.akt-iskelet{display:grid;gap:10px;margin-top:12px}
 .akt-iskelet i{display:block;border-radius:24px;background:linear-gradient(100deg,rgba(255,246,236,.06) 30%,rgba(255,246,236,.14) 50%,rgba(255,246,236,.06) 70%) 0 0/220% 100%;animation:akt-par 1.4s linear infinite}
-.akt-iskelet i:nth-child(1){height:236px}.akt-iskelet i:nth-child(n+2){height:96px}
+.akt-iskelet i:nth-child(1){height:300px;border-radius:30px}.akt-iskelet i:nth-child(2){height:170px}.akt-iskelet i:nth-child(n+3){height:84px}
 @keyframes akt-par{to{background-position:-220% 0}}
 
 /* ayrıntı */
@@ -418,14 +734,14 @@ const STIL = `
 .akt-geri svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.8}
 .akt-geri:hover{background:rgba(255,246,236,.08)}
 .akt-dBas{display:flex;align-items:center;gap:14px;margin-top:6px}
-.akt-dBas .akt-sim{width:56px;height:56px;border-radius:18px}
-.akt-dBas .akt-sim svg{width:30px;height:30px}
+.akt-dBas .akt-kure{width:62px;height:62px}
+.akt-dBas .akt-kure svg{width:40px;height:40px}
 .akt-dBas h2{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100,'opsz' 144;font-weight:430;font-size:30px;line-height:1.08;letter-spacing:-.02em;text-wrap:balance}
 .akt-dBas p{font-size:13px;color:var(--a-sol);margin-top:3px}
 .akt-dBas>div{min-width:0}
 .akt-izgara{display:grid;gap:12px;margin-top:16px}
-.akt-bolum{padding:15px 16px 14px;border-radius:22px;background:linear-gradient(158deg,rgba(255,246,236,.11),rgba(255,246,236,.035) 62%);border:1px solid rgba(255,246,236,.13);min-width:0}
-.akt-bolum h3{font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--a-sol);margin-bottom:10px}
+.akt-bolum{padding:15px 16px 14px;border-radius:22px;background:linear-gradient(158deg,rgba(255,246,236,.1),rgba(255,246,236,.03) 62%);border:1px solid rgba(255,246,236,.12);min-width:0}
+.akt-bolum h3{font-size:13px;font-weight:600;color:var(--a-sol);margin-bottom:12px}
 .akt-ana{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:10px 14px}
 .akt-ana .akt-s b{font-size:26px;letter-spacing:-.02em}
 .akt-ana .akt-s span{font-size:11.5px}
@@ -433,19 +749,7 @@ const STIL = `
 .akt-sat:first-of-type{border-top:0;padding-top:0}
 .akt-sat span{color:rgba(255,246,236,.82)}
 .akt-sat b{font-weight:600;text-align:right}
-.akt-bolgeBar{display:flex;gap:2px;height:14px;border-radius:7px;overflow:hidden;margin:6px 0 12px;background:rgba(255,246,236,.07)}
-.akt-bolgeBar i{display:block;min-width:4px;background:var(--c)}
-.akt-bolge{display:grid;grid-template-columns:10px minmax(0,1fr) auto;align-items:center;gap:10px;padding:5px 0;font-size:13.5px}
-.akt-bolge i{width:10px;height:10px;border-radius:50%;background:var(--c)}
-.akt-bolge span{color:rgba(255,246,236,.86);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.akt-bolge span em{font-style:normal;color:var(--a-sol)}
-.akt-bolge b{font-weight:600;white-space:nowrap}
-.akt-bolge b em{font-style:normal;font-weight:500;color:var(--a-sol);margin-left:6px}
-.akt-olc{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:7px 0}
-.akt-olc span{font-size:14.5px;color:rgba(255,246,236,.86)}
-.akt-olc b{font-size:17px;font-weight:600}
-.akt-iz{grid-column:1/-1;height:6px;border-radius:3px;background:rgba(255,246,236,.1);overflow:hidden}
-.akt-iz i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--a-mor),var(--a-i))}
+.akt-bolum .akt-kadranlar{margin-top:12px}
 .akt-set{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;padding:9px 0;border-top:1px solid rgba(255,246,236,.09);font-size:14px}
 .akt-set:first-of-type{border-top:0}
 .akt-set em{font-style:normal;font-weight:600;color:var(--a-sol);min-width:44px}
@@ -453,22 +757,33 @@ const STIL = `
 .akt-set small{grid-column:2;font-size:12.5px;color:var(--a-sol)}
 .akt-bosDetay{margin-top:20px;font-size:14px;color:var(--a-sol);text-align:center}
 
-/* geniş panel (kapsayıcı ≥ 620px): liste iki sütun, özet yan yana */
+@container (max-width:340px){
+  .akt-halkaAlan{grid-template-columns:100px minmax(0,1fr);gap:12px}
+  .akt-halka{width:100px;height:100px}
+  .akt-kAd b{font-size:27px}
+}
+/* geniş panel (kapsayıcı ≥ 620px): kahraman iki sütun, özet yan yana, liste iki sütun */
 @container (min-width:620px){
-  .akt{padding:18px 28px 36px}
-  .akt-ozet{grid-template-columns:minmax(220px,.8fr) minmax(0,1.5fr);column-gap:26px;align-items:center;padding:20px 24px 18px}
+  .akt{padding:18px 8px 36px}
+  .akt-kahraman{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);column-gap:30px;padding:22px 24px 20px;align-items:start}
+  .akt-kahraman>.akt-kAc{grid-column:1}
+  .akt-kahraman>.akt-kSay{grid-column:1;border-top:0;padding-top:4px}
+  .akt-kahraman>.akt-kGrafik{grid-column:2;grid-row:1/span 3}
+  .akt-kAd b{font-size:38px}
+  .akt-kSay{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 16px}
+  .akt-kSay .akt-s b{font-size:26px}
+  .akt-ozet{grid-template-columns:minmax(200px,.7fr) minmax(0,1.5fr);column-gap:26px;align-items:center;padding:18px 24px 14px}
   .akt-ozetSag{display:grid;gap:6px}
-  .akt-liste{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 14px;align-items:start}
+  .akt-liste{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 14px;align-items:start}
   .akt-izgara{grid-template-columns:repeat(2,minmax(0,1fr))}
   .akt-izgara .akt-genis{grid-column:1/-1}
 }
 @media (prefers-reduced-motion:reduce){
-  .akt-iskelet i,.akt-detay,.akt-gir{animation:none}
+  .akt-iskelet i,.akt-detay{animation:none}
   .akt-oge{transition:none}.akt-oge:active{transform:none}
 }
-.akt-rm .akt-iskelet i,.akt-rm .akt-detay,.akt-rm .akt-gir{animation:none}
+.akt-rm .akt-iskelet i,.akt-rm .akt-detay{animation:none}
 .akt-rm .akt-oge{transition:none}.akt-rm .akt-oge:active{transform:none}
-.akt-gir{animation:akt-ac .4s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(var(--n,0)*28ms)}
 `;
 
 function stilEkle() {
@@ -495,15 +810,10 @@ function sv(tag, at, ebeveyn) {
   if (ebeveyn) ebeveyn.appendChild(e);
   return e;
 }
-function simgeKur(grup, boyut = 24) {
-  const s = sv('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true', width: boyut, height: boyut });
-  for (const [tag, at] of SIMGE[grup] || SIMGE.genel) sv(tag, at, s);
-  return s;
-}
 function durumOku(d, boyut = 10) {
   const s = sv('svg', { viewBox: '0 0 10 10', 'aria-hidden': 'true', width: boyut, height: boyut });
-  const yol = d === 'lo' ? 'M5 1v8M1.5 5.5L5 9l3.5-3.5' : d === 'hi' ? 'M5 9V1M1.5 4.5L5 1l3.5 3.5' : 'M1.3 5.4l2.5 2.5L8.7 2.7';
-  sv('path', { d: yol }, s);
+  const yol_ = d === 'lo' ? 'M5 1v8M1.5 5.5L5 9l3.5-3.5' : d === 'hi' ? 'M5 9V1M1.5 4.5L5 1l3.5 3.5' : 'M1.3 5.4l2.5 2.5L8.7 2.7';
+  sv('path', { d: yol_ }, s);
   return s;
 }
 function geriOku() {
@@ -517,13 +827,17 @@ function ileriOku() {
   return s;
 }
 
-// [değer, etiket] çiftlerinden yalnız dolu olanlar.
+// [değer, etiket] çiftlerinden yalnız dolu olanlar. Değer [sayı, birim] olabilir (birim küçük yazılır).
 function sayiBlogu(cift, sinif = 'akt-say') {
   const kap = el('div', sinif);
   for (const [deger, etiket] of cift) {
     if (deger == null) continue;
     const s = el('div', 'akt-s');
-    s.appendChild(el('b', null, deger));
+    if (Array.isArray(deger)) {
+      const b = el('b', null, deger[0]);
+      b.appendChild(el('small', null, deger[1]));
+      s.appendChild(b);
+    } else s.appendChild(el('b', null, deger));
     s.appendChild(el('span', null, etiket));
     kap.appendChild(s);
   }
@@ -539,7 +853,7 @@ const veriYok = (h) => sonlu(h.adet) && h.adet > 0 && !(sonlu(h.yuk) && h.yuk > 
 export function haftalikGrafik(haftalar, bant) {
   const liste = haftalar.slice(0, 8).reverse(); // eskiden yeniye, sağ uç = bu hafta
   const n = liste.length;
-  const W = 340; const H = 150; const taban = 112; const ust = 22;
+  const W = 340; const H = 128; const taban = 102; const ust = 18;
   const id = `akt-g${++grafikSayac}`;
   const svg = sv('svg', { class: 'akt-grafik', viewBox: `0 0 ${W} ${H}`, role: 'img' });
   const yukler = liste.map((h) => (sonlu(h.yuk) && h.yuk > 0 ? h.yuk : null));
@@ -553,21 +867,21 @@ export function haftalikGrafik(haftalar, bant) {
 
   if (bant) {
     const y1 = yOf(bant.max); const y2 = yOf(bant.min);
-    sv('rect', { x: 0, y: y1, width: W, height: Math.max(1, y2 - y1), rx: 6, fill: 'rgba(191,238,221,.11)' }, svg);
-    for (const y of [y1, y2]) sv('line', { x1: 0, x2: W, y1: y, y2: y, stroke: 'rgba(191,238,221,.5)', 'stroke-width': 1, 'stroke-dasharray': '3 4' }, svg);
+    sv('rect', { x: 0, y: y1, width: W, height: Math.max(1, y2 - y1), rx: 6, fill: 'rgba(191,238,221,.1)' }, svg);
+    for (const y of [y1, y2]) sv('line', { x1: 0, x2: W, y1: y, y2: y, stroke: 'rgba(191,238,221,.45)', 'stroke-width': 1, 'stroke-dasharray': '3 4' }, svg);
   }
-  sv('line', { x1: 0, x2: W, y1: taban, y2: taban, stroke: 'rgba(255,246,236,.2)', 'stroke-width': 1 }, svg);
+  sv('line', { x1: 0, x2: W, y1: taban, y2: taban, stroke: 'rgba(255,246,236,.18)', 'stroke-width': 1 }, svg);
 
   const slot = n ? W / Math.max(n, 8) : W / 8;
   const x0 = W - slot * n; // 8'den az hafta varsa sağa yaslı
   liste.forEach((h, i) => {
     const bu = i === n - 1;
     const cx = x0 + slot * i + slot / 2;
-    const bw = Math.min(24, slot * 0.58);
+    const bw = Math.min(22, slot * 0.54);
     const v = yukler[i];
     if (v != null) {
       const y = yOf(v);
-      sv('rect', { x: cx - bw / 2, y, width: bw, height: Math.max(3, taban - y), rx: 6, fill: bu ? `url(#${id})` : 'rgba(255,246,236,.3)' }, svg);
+      sv('rect', { x: cx - bw / 2, y, width: bw, height: Math.max(3, taban - y), rx: 6, fill: bu ? `url(#${id})` : 'rgba(255,246,236,.26)' }, svg);
       const t = sv('text', { x: cx, y: Math.max(11, y - 6), class: bu ? 'akt-gv bu' : 'akt-gv' }, svg);
       t.textContent = tam(v);
     } else {
@@ -583,6 +897,103 @@ export function haftalikGrafik(haftalar, bant) {
   if (bant) aria += ` Normal aralık ${tam(bant.min)} ile ${tam(bant.max)} arası.`;
   svg.setAttribute('aria-label', aria);
   return { svg, aria };
+}
+
+/* ================= Halka ve kadranlar ================= */
+
+// Beş dilimli nabız bölgesi halkası + lejant. `canlan(f)` dilimlerin süpürülerek gelmesi için ilerleme (0→1) verir.
+function halkaKur(bolgeler, canlan, yuzdeli) {
+  const oz = bolgeOzet(bolgeler);
+  if (!oz) return null;
+  const { s, toplam, baskin } = oz;
+  const alan = el('div', 'akt-halkaAlan');
+  const R = 39; const C = TAU * R; const BOS = 1.6;
+  const svg = sv('svg', { class: 'akt-halka', viewBox: '0 0 100 100', role: 'img' }, alan);
+  svg.setAttribute('aria-label', `Nabız bölgeleri: ${s.map((v, i) => `${NAB_AD[i]} ${bolgeDakika(v)}`).join(', ')}. En çok ${NAB_AD[baskin]}, yüzde ${Math.round((s[baskin] / toplam) * 100)}.`);
+  sv('circle', { cx: 50, cy: 50, r: R, stroke: 'rgba(255,246,236,.07)', 'stroke-width': 12 }, svg);
+  const dilimler = [];
+  let bas = 0;
+  s.forEach((v, i) => {
+    const pay = (v / toplam) * C;
+    if (pay > 0) {
+      const c = sv('circle', { cx: 50, cy: 50, r: R, stroke: NAB_RENK[i], 'stroke-width': i === baskin ? 13 : 10, transform: 'rotate(-90 50 50)' }, svg);
+      dilimler.push([c, bas, Math.max(0.6, pay - BOS)]);
+    }
+    bas += pay;
+  });
+  const metinY = sv('text', { x: 50, y: 52, class: 'akt-hY' }, svg);
+  metinY.textContent = `%${Math.round((s[baskin] / toplam) * 100)}`;
+  const metinA = sv('text', { x: 50, y: 66, class: 'akt-hA' }, svg);
+  metinA.textContent = NAB_AD[baskin];
+  const ciz = (p) => {
+    for (const [c, b, u] of dilimler) {
+      ata(c, 'stroke-dasharray', `${f2(u * p)} ${f2(C)}`);
+      ata(c, 'stroke-dashoffset', f2(-b * p));
+    }
+  };
+  canlan(ciz, 1100);
+
+  const lj = el('div', 'akt-lj');
+  lj.setAttribute('aria-hidden', 'true');
+  s.forEach((v, i) => {
+    const r = el('div', `akt-ljS${i === baskin ? ' bas' : ''}${v > 0 ? '' : ' sifir'}`);
+    const nokta = el('i'); nokta.style.setProperty('--c', NAB_RENK[i]);
+    r.appendChild(nokta);
+    const ad = el('span');
+    ad.appendChild(el('em', null, String(i + 1)));
+    ad.appendChild(el('span', null, NAB_AD[i]));
+    r.appendChild(ad);
+    const d = el('b', null, bolgeDakika(v));
+    if (yuzdeli && v > 0) d.appendChild(el('em', null, `%${Math.round((v / toplam) * 100)}`));
+    r.appendChild(d);
+    lj.appendChild(r);
+  });
+  alan.appendChild(lj);
+  return alan;
+}
+
+const KADRAN_RENK = { aerobik: '#bfeedd', anaerobik: '#c8a8ff' };
+// Aerobik ve anaerobik etki: 240° yay, değer kadar dolar. Değeri olmayan kadran çizilmez.
+function kadranlarKur(a, canlan) {
+  const olcek = [['aerobik', 'Aerobik', a.aerobik], ['anaerobik', 'Anaerobik', a.anaerobik]].filter(([, , v]) => sonlu(v));
+  if (!olcek.length) return null;
+  const kap = el('div', 'akt-kadranlar');
+  const R = 25; const cx = 31; const cy = 30; const SUP = (240 / 360) * TAU; const L = R * SUP;
+  const nokta = (aci) => [cx + R * Math.cos(aci), cy + R * Math.sin(aci)];
+  const A0 = (150 / 180) * Math.PI;
+  const [x0, y0] = nokta(A0); const [x1, y1] = nokta(A0 + SUP);
+  const d = `M${f2(x0)} ${f2(y0)}A${R} ${R} 0 1 1 ${f2(x1)} ${f2(y1)}`;
+  for (const [k, ad, v] of olcek) {
+    const oran = Math.max(0, Math.min(1, v / 5));
+    const kutu = el('div', 'akt-kadran');
+    kutu.setAttribute('role', 'img');
+    kutu.setAttribute('aria-label', `${ad} etki ${bir(v)} / 5, ${etkiEtiketi(v)}`);
+    const svg = sv('svg', { viewBox: '0 0 62 52', 'aria-hidden': 'true' }, kutu);
+    sv('path', { d, stroke: 'rgba(255,246,236,.1)', 'stroke-width': 6 }, svg);
+    for (let i = 1; i < 5; i++) {
+      const [px, py] = nokta(A0 + (SUP * i) / 5);
+      sv('circle', { cx: f2(px), cy: f2(py), r: 0.9, fill: 'rgba(255,246,236,.32)', stroke: 'none' }, svg);
+    }
+    const isik = sv('path', { d, stroke: KADRAN_RENK[k], 'stroke-width': 11, opacity: 0.16 }, svg);
+    const dolgu = sv('path', { d, stroke: KADRAN_RENK[k], 'stroke-width': 6 }, svg);
+    const uc = sv('circle', { r: 2.1, fill: '#fff6ec', stroke: 'none' }, svg);
+    const t = sv('text', { x: cx, y: cy + 6 }, svg);
+    t.textContent = bir(v);
+    const yaz = el('div');
+    yaz.appendChild(el('b', null, ad));
+    yaz.appendChild(el('span', null, etkiEtiketi(v)));
+    kutu.appendChild(yaz);
+    kap.appendChild(kutu);
+    canlan((p) => {
+      const o = oran * p;
+      const dash = `${f2(L * o)} ${f2(L + 4)}`;
+      ata(dolgu, 'stroke-dasharray', dash); ata(isik, 'stroke-dasharray', dash);
+      ata(dolgu, 'opacity', o > 0.004 ? 1 : 0); ata(isik, 'opacity', o > 0.004 ? 0.16 : 0);
+      const [ux, uy] = nokta(A0 + SUP * o);
+      ata(uc, 'cx', ux); ata(uc, 'cy', uy); ata(uc, 'opacity', o > 0.004 ? 1 : 0);
+    }, 1300);
+  }
+  return kap;
 }
 
 /* ================= Modül ================= */
@@ -607,11 +1018,93 @@ export function aktiviteKur(kap, baglam = {}) {
   let acik = null; // { acan, kaydirma }
   let bugun = bugunTarih();
 
+  /* ---- hareket motoru: tek rAF döngüsü; görünmeyen simge ve gizli ekran durur ---- */
+  const mq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const hareketsiz = () => !!baglam.rm || !!(mq && mq.matches);
+  const rafVar = () => typeof requestAnimationFrame === 'function';
+  const simgeler = new Map(); // kap elemanı → { ciz, statik, faz, alan, gorunur }
+  const tweenler = new Set(); // { f, sure, bas }
+  let raf = 0; let sonKare = 0; let saat0 = null;
+  const io = typeof IntersectionObserver === 'function'
+    ? new IntersectionObserver((es) => {
+      for (const e of es) { const s = simgeler.get(e.target); if (s) s.gorunur = e.isIntersecting; }
+      uyandir();
+    }) : null;
+
+  const ekranAcik = () => !olu && !kok.hidden && !(typeof document !== 'undefined' && document.hidden);
+  const oynayanVar = () => { for (const s of simgeler.values()) if (s.gorunur) return true; return false; };
+  const calismali = () => ekranAcik() && rafVar() && (tweenler.size > 0 || (!hareketsiz() && oynayanVar()));
+
+  function kare(simdi) {
+    raf = 0;
+    if (!calismali()) { tweenleriBitir(); return; }
+    if (saat0 == null) saat0 = simdi;
+    for (const tw of tweenler) {
+      if (tw.bas == null) tw.bas = simdi;
+      const p = Math.min(1, (simdi - tw.bas) / tw.sure);
+      tw.f(1 - (1 - p) ** 3);
+      if (p >= 1) tweenler.delete(tw);
+    }
+    // simgeler ~30 kare/sn: sakin hareket, pil dostu
+    if (!hareketsiz() && simdi - sonKare > 30) {
+      sonKare = simdi;
+      const t = (simdi - saat0) / 1000;
+      for (const s of simgeler.values()) if (s.gorunur) s.ciz(t + s.faz);
+    }
+    raf = requestAnimationFrame(kare);
+  }
+  function uyandir() {
+    if (raf || !calismali()) return;
+    raf = requestAnimationFrame(kare);
+  }
+  function durdur() {
+    if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
+    raf = 0;
+    tweenleriBitir();
+  }
+  function tweenleriBitir() { for (const tw of tweenler) tw.f(1); tweenler.clear(); }
+  // İlerleme fonksiyonunu 0→1 yürütür; hareket kapalıysa ya da çizilemiyorsa doğrudan son kare.
+  function canlan(f, sure) {
+    if (hareketsiz() || !rafVar() || !ekranAcik()) { f(1); return; }
+    f(0);
+    tweenler.add({ f, sure, bas: null });
+    uyandir();
+  }
+  function statikle() { for (const s of simgeler.values()) s.ciz(s.statik); }
+  const mqDegisti = () => { if (hareketsiz()) statikle(); uyandir(); };
+  if (mq && mq.addEventListener) mq.addEventListener('change', mqDegisti);
+  const gorunurlukDegisti = () => { if (typeof document !== 'undefined' && document.hidden) durdur(); else uyandir(); };
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('visibilitychange', gorunurlukDegisti);
+
+  let simgeNo = 0;
+  // Türün canlı simgesini bir ışıklı kürenin içine koyar; ilk kare hemen çizilir (hareket kapalıyken de görünür).
+  function canliSimge(grup, alan) {
+    const kure = el('span', 'akt-kure');
+    kure.setAttribute('aria-hidden', 'true');
+    const svg = sv('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' }, kure);
+    const g = sv('g', {}, svg);
+    const tanim = CANLI[simgeTuru(grup)](g);
+    const kayit = { ciz: tanim.ciz, statik: tanim.statik, faz: (simgeNo++ * 0.61) % 7, alan, gorunur: !io };
+    tanim.ciz(tanim.statik);
+    simgeler.set(kure, kayit);
+    if (io) io.observe(kure);
+    return kure;
+  }
+  function simgeleriBirak(alan) {
+    for (const [k, s] of simgeler) {
+      if (s.alan !== alan) continue;
+      if (io) io.unobserve(k);
+      simgeler.delete(k);
+    }
+  }
+
   const bosalt = (e) => { while (e.firstChild) e.removeChild(e.firstChild); };
   // Ana alanı temizleyip başlığı yeniden koyar; odak başlıktaysa yeni başlığa taşınır (yüklenince body'ye düşmez)
   function anaBaslikla() {
     const eski = ana.firstChild && ana.firstChild.firstChild;
     const odakta = !!eski && typeof document !== 'undefined' && document.activeElement === eski;
+    simgeleriBirak('ana');
+    tweenleriBitir();
     bosalt(ana);
     const b = baslik();
     ana.appendChild(b);
@@ -650,6 +1143,45 @@ export function aktiviteKur(kap, baglam = {}) {
       m.appendChild(d);
     }
     ana.appendChild(m);
+  }
+
+  // En son antrenman: canlı simge, ana sayılar, bölge halkası ve etki kadranları. Bütün kart dokunulabilir.
+  function kahramanKart(a) {
+    const grup = turGrubu(a.tur);
+    const k = el('section', 'akt-kahraman');
+    k.setAttribute('aria-label', 'Son antrenman');
+    k.style.setProperty('--t', TUR_RENK[grup]);
+    const ad = turAdi(a.tur);
+    const zaman = [gunBaslik(a.tarih, bugun), saatBicim(a.baslangic)].filter(Boolean).join(', ');
+
+    const ac = el('button', 'akt-kAc');
+    ac.type = 'button';
+    ac.setAttribute('aria-label', `Son antrenman: ${[ad, zaman].filter(Boolean).join(', ')}. Ayrıntıyı aç`);
+    ac.appendChild(canliSimge(grup, 'ana'));
+    const yaz = el('div', 'akt-kAd');
+    yaz.appendChild(el('small', null, 'Son antrenman'));
+    yaz.appendChild(el('b', null, ad));
+    if (zaman) yaz.appendChild(el('span', null, zaman));
+    ac.appendChild(yaz);
+    ac.appendChild(ileriOku());
+    ac.addEventListener('click', () => detayAc(a, ac));
+    k.appendChild(ac);
+
+    const sayilar = sayiBlogu([
+      [sureBicim(a.sure_s), 'Süre'], [mesafeBicim(a.mesafe_m), 'Mesafe'],
+      [tam(a.yuk), 'Yük'], [tam(a.ort_nabiz), 'Ort. nabız'],
+    ], 'akt-kSay');
+    if (sayilar) k.appendChild(sayilar);
+
+    const halka = halkaKur(a.bolgeler, canlan, false);
+    const kadran = kadranlarKur(a, canlan);
+    if (halka || kadran) {
+      const gr = el('div', 'akt-kGrafik');
+      if (halka) gr.appendChild(halka);
+      if (kadran) gr.appendChild(kadran);
+      k.appendChild(gr);
+    }
+    return k;
   }
 
   function ozetKart() {
@@ -699,12 +1231,11 @@ export function aktiviteKur(kap, baglam = {}) {
     return kart;
   }
 
-  function ogeKart(a, sira) {
+  function ogeKart(a) {
     const grup = turGrubu(a.tur);
-    const d = el('button', 'akt-oge akt-gir');
+    const d = el('button', 'akt-oge');
     d.type = 'button';
     d.style.setProperty('--t', TUR_RENK[grup]);
-    d.style.setProperty('--n', String(Math.min(sira, 12)));
     const ad = turAdi(a.tur);
     const saat = saatBicim(a.baslangic);
     const sure = sureBicim(a.sure_s);
@@ -713,55 +1244,64 @@ export function aktiviteKur(kap, baglam = {}) {
     d.setAttribute('aria-label', `${etiket}. Ayrıntıyı aç`);
 
     const ust = el('div', 'akt-ogeUst');
-    const sim = el('span', 'akt-sim'); sim.appendChild(simgeKur(grup));
-    ust.appendChild(sim);
+    ust.appendChild(canliSimge(grup, 'ana'));
     const adk = el('div', 'akt-ad');
     adk.appendChild(el('b', null, ad));
-    if (saat) adk.appendChild(el('span', null, saat));
+    const alt = [saat, mesafe].filter(Boolean).join(' · ');
+    if (alt) adk.appendChild(el('span', null, alt));
     ust.appendChild(adk);
+    if (sure) {
+      const sag = el('div', 'akt-sag');
+      sag.appendChild(el('b', null, sure));
+      sag.appendChild(el('span', null, 'süre'));
+      ust.appendChild(sag);
+    }
     ust.appendChild(ileriOku());
     d.appendChild(ust);
 
     const sayilar = sayiBlogu([
-      [sure, 'Süre'], [mesafe, 'Mesafe'],
-      [sonlu(a.ort_nabiz) ? `${tam(a.ort_nabiz)}` : null, 'Nabız'],
-      [tam(a.yuk), 'Yük'], [bir(a.aerobik), 'Aerobik'],
+      [tam(a.ort_nabiz), 'Nabız'], [tam(a.yuk), 'Yük'], [bir(a.aerobik), 'Aerobik'],
     ]);
     if (sayilar) d.appendChild(sayilar);
     d.addEventListener('click', () => detayAc(a, d));
     return d;
   }
 
-  function listeKur() {
+  function listeKur(aktiviteler) {
     const liste = el('div', 'akt-liste');
-    liste.setAttribute('aria-label', 'Aktivite listesi');
-    let onceki = null; let sira = 0; let kartlar = null;
-    for (const a of veri.aktiviteler) {
+    liste.setAttribute('aria-label', 'Önceki antrenmanlar');
+    let onceki = null; let kartlar = null;
+    for (const a of aktiviteler) {
       if (!kartlar || a.tarih !== onceki) {
         const grup = el('div', 'akt-grup');
         const b = gunBaslik(a.tarih, bugun);
-        if (b) grup.appendChild(el('h2', 'akt-gun', b));
+        if (b) grup.appendChild(el('h3', 'akt-gun', b));
         kartlar = el('div', 'akt-kartlar');
         grup.appendChild(kartlar);
         liste.appendChild(grup);
         onceki = a.tarih;
       }
-      kartlar.appendChild(ogeKart(a, sira++));
+      kartlar.appendChild(ogeKart(a));
     }
     return liste;
   }
 
   function cizHazir() {
     anaBaslikla();
-    const haftaVar = veri.haftalar.length > 0;
-    if (haftaVar) ana.appendChild(ozetKart());
-    if (veri.aktiviteler.length) ana.appendChild(listeKur());
-    else {
+    const [son, ...kalan] = veri.aktiviteler;
+    if (son) ana.appendChild(kahramanKart(son));
+    if (veri.haftalar.length > 0) ana.appendChild(ozetKart());
+    if (kalan.length) {
+      ana.appendChild(el('h2', 'akt-onceki', 'Önceki antrenmanlar'));
+      ana.appendChild(listeKur(kalan));
+    }
+    if (!son) {
       const m = el('div', 'akt-mesaj');
       m.appendChild(el('p', null, 'Bu aralıkta kayıtlı aktivite yok.'));
       m.appendChild(el('p', 'alt', 'Veri yok'));
       ana.appendChild(m);
     }
+    uyandir();
   }
 
   function ciz() {
@@ -795,35 +1335,11 @@ export function aktiviteKur(kap, baglam = {}) {
   /* ---- ayrıntı ---- */
 
   function bolgeBolumu(a) {
-    if (!Array.isArray(a.bolgeler)) return null;
-    const s = a.bolgeler.slice(0, 5).map((v) => (sonlu(v) && v > 0 ? v : 0));
-    const toplam = s.reduce((x, y) => x + y, 0);
-    if (toplam <= 0) return null;
-    const b = el('section', 'akt-bolum akt-genis');
+    const halka = halkaKur(a.bolgeler, canlan, true);
+    if (!halka) return null;
+    const b = el('section', 'akt-bolum');
     b.appendChild(el('h3', null, 'Nabız bölgeleri'));
-    const cubuk = el('div', 'akt-bolgeBar');
-    cubuk.setAttribute('role', 'img');
-    cubuk.setAttribute('aria-label', `Nabız bölgeleri: ${s.map((v, i) => `Bölge ${i + 1} ${sureBicim(v)}`).join(', ')}`);
-    s.forEach((v, i) => {
-      if (v <= 0) return;
-      const p = el('i');
-      p.style.setProperty('--c', NAB_RENK[i]);
-      p.style.flex = `${v} 1 0`;
-      cubuk.appendChild(p);
-    });
-    b.appendChild(cubuk);
-    s.forEach((v, i) => {
-      const r = el('div', 'akt-bolge');
-      const nokta = el('i'); nokta.style.setProperty('--c', NAB_RENK[i]);
-      r.appendChild(nokta);
-      const ad = el('span', null, `Bölge ${i + 1}`);
-      ad.appendChild(el('em', null, ` · ${NAB_AD[i]}`));
-      r.appendChild(ad);
-      const d = el('b', null, v > 0 ? sureBicim(v) : '—');
-      if (v > 0) d.appendChild(el('em', null, `%${Math.round((v / toplam) * 100)}`));
-      r.appendChild(d);
-      b.appendChild(r);
-    });
+    b.appendChild(halka);
     return b;
   }
 
@@ -842,9 +1358,9 @@ export function aktiviteKur(kap, baglam = {}) {
   }
 
   function etkiBolumu(a) {
-    const olcekler = [['Aerobik etki', a.aerobik], ['Anaerobik etki', a.anaerobik]].filter(([, v]) => sonlu(v));
+    const kadran = kadranlarKur(a, canlan);
     const yuk = tam(a.yuk);
-    if (!olcekler.length && yuk == null) return null;
+    if (!kadran && yuk == null) return null;
     const b = el('section', 'akt-bolum');
     b.appendChild(el('h3', null, 'Antrenman etkisi'));
     if (yuk != null) {
@@ -853,19 +1369,7 @@ export function aktiviteKur(kap, baglam = {}) {
       r.appendChild(el('b', null, yuk));
       b.appendChild(r);
     }
-    for (const [ad, v] of olcekler) {
-      const r = el('div', 'akt-olc');
-      r.appendChild(el('span', null, ad));
-      r.appendChild(el('b', null, bir(v)));
-      const iz = el('div', 'akt-iz');
-      iz.setAttribute('role', 'img');
-      iz.setAttribute('aria-label', `${ad} ${bir(v)} / 5`);
-      const dolgu = el('i');
-      dolgu.style.width = `${Math.max(0, Math.min(1, v / 5)) * 100}%`;
-      iz.appendChild(dolgu);
-      r.appendChild(iz);
-      b.appendChild(r);
-    }
+    if (kadran) b.appendChild(kadran);
     return b;
   }
 
@@ -909,8 +1413,7 @@ export function aktiviteKur(kap, baglam = {}) {
     k.appendChild(geri);
 
     const bas = el('div', 'akt-dBas');
-    const sim = el('span', 'akt-sim'); sim.appendChild(simgeKur(grup));
-    bas.appendChild(sim);
+    bas.appendChild(canliSimge(grup, 'detay'));
     const yaz = el('div');
     yaz.appendChild(el('h2', null, turAdi(a.tur)));
     const alt = [gunBaslik(a.tarih, bugun), saatBicim(a.baslangic)].filter(Boolean).join(' · ');
@@ -933,7 +1436,7 @@ export function aktiviteKur(kap, baglam = {}) {
       ['Güç', sonlu(a.guc) ? `${tam(a.guc)} W` : null],
     ]);
     const setler = setBolumu(a);
-    const parcalar = [nabiz, etki, bolge, hareket, setler].filter(Boolean);
+    const parcalar = [bolge, etki, nabiz, hareket, setler].filter(Boolean);
     for (const p of parcalar) izgara.appendChild(p);
 
     if (!parcalar.length && !ozet) k.appendChild(el('p', 'akt-bosDetay', 'Bu antrenman için ayrıntı yok.'));
@@ -946,15 +1449,17 @@ export function aktiviteKur(kap, baglam = {}) {
   function detayAc(a, acan) {
     if (olu || acik) return;
     acik = { acan, kaydirma: scroller().scrollTop || 0 };
+    simgeleriBirak('detay');
     bosalt(detay);
-    const k = detayKur(a);
-    detay.appendChild(k);
     ana.hidden = true;
     detay.hidden = false;
+    const k = detayKur(a);
+    detay.appendChild(k);
     scroller().scrollTop = 0;
     document.addEventListener('keydown', tusDinle);
     const g = k.firstChild;
     if (g && g.focus) g.focus({ preventScroll: true });
+    uyandir();
   }
 
   function detayKapat() {
@@ -962,6 +1467,8 @@ export function aktiviteKur(kap, baglam = {}) {
     const { acan, kaydirma } = acik;
     acik = null;
     document.removeEventListener('keydown', tusDinle);
+    simgeleriBirak('detay');
+    tweenleriBitir();
     detay.hidden = true;
     bosalt(detay);
     ana.hidden = false;
@@ -983,16 +1490,23 @@ export function aktiviteKur(kap, baglam = {}) {
     kok.hidden = false;
     // İlk açılışta ya da veri bayatladıysa (5 dk) yenile; açık ayrıntı varken liste yeniden kurulmaz.
     if (!acik && (!yuklendi || Date.now() - sonYukleme > 5 * 60 * 1000)) yukle();
+    else uyandir();
   }
   function gizle() {
     if (olu) return;
     detayKapat();
     kok.hidden = true;
+    durdur();
   }
   function yokEt() {
     if (olu) return;
     olu = true;
     yuklemeNo++;
+    durdur();
+    simgeleriBirak('ana'); simgeleriBirak('detay');
+    if (io) io.disconnect();
+    if (mq && mq.removeEventListener) mq.removeEventListener('change', mqDegisti);
+    if (typeof document !== 'undefined' && document.removeEventListener) document.removeEventListener('visibilitychange', gorunurlukDegisti);
     document.removeEventListener('keydown', tusDinle);
     if (kok.parentNode) kok.parentNode.removeChild(kok);
   }

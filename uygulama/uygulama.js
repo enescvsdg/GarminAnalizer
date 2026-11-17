@@ -1,4 +1,4 @@
-import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, modulKur, kayanMi } from './duzen.js';
+import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
 import { simgeKur } from './simgeler.js';
 import { ACIKLAMA } from './aciklama.js';
 const $ = (id) => document.getElementById(id);
@@ -159,8 +159,10 @@ gunSayisi = N;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const TIK = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.5l2.5 2.5 4.5-6"/></svg>';
-const KISA = { nabiz: 'Nabız', yuk: 'Yük' };
+const KISA = { nabiz: 'Nabız', yuk: 'Yük', adim: 'Adım', kat: 'Kat', kalori: 'Kalori', yogun: 'Yoğun dk', maxnabiz: 'Maks. nabız' };
 const bicim = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 10) / 10));
+const SAYIM = new Set(['adim', 'kat', 'kalori', 'yogun', 'maxnabiz']); // Trend'de tam sayı ve binlik ayırıcıyla yazılan sayım ölçümleri
+const trSayi = (o, v) => (SAYIM.has(o.id) ? CANLI.binlik(v) : bicim(v));
 const bpmDe = (g) => g.d.nabiz ?? 60; // nabız verisi yoksa nötr tempo
 const tel = $('tel'), cv = $('gl'), bKok = GENIS ? $('bolgeB') : tel; // bKok: Bugün koordinatlarının kökü
 let H = 844, S = 1;
@@ -284,7 +286,7 @@ function titret(ms) {
   } catch (e) {}
 }
 const telY = (el, kenar) => (el.getBoundingClientRect()[kenar] - tel.getBoundingClientRect().top) / S;
-function durumHtml(du, uzun) { return du === 'ok' ? TIK + 'normalde' : OK[du] + (uzun ? 'normalin ' : '') + DURUM_METIN[du]; }
+function durumHtml(du, uzun, iyi) { return du === 'ok' ? TIK + 'normalde' : OK[du] + (uzun ? (iyi === 0 ? 'aralığın ' : 'normalin ') : '') + DURUM_METIN[du]; }
 
 /* ================= BUGÜN: kartlar ================= */
 const L = O.filter((o) => o.kart).map((o, i) => {
@@ -432,10 +434,9 @@ const T = O.map((o) => {
   const n = (x) => (x - lo) / (hi - lo);
   const dis = dolular.filter((x) => durum(o, x) !== 'ok').length;
   const eksik = N - dolular.length, not = eksik ? ` ${eksik} günün verisi yok.` : '';
-  const ort0 = bos ? 0 : toplam(dolular) / dolular.length, ortalama = o.id === 'spo2' || o.id === 'solunum' ? bicim(Math.round(ort0 * 10) / 10) : Math.round(ort0);
+  const ort0 = bos ? 0 : toplam(dolular) / dolular.length, ortalama = o.id === 'spo2' || o.id === 'solunum' ? bicim(Math.round(ort0 * 10) / 10) : SAYIM.has(o.id) ? CANLI.binlik(ort0) : Math.round(ort0);
   const ozet = bos ? 'Bu ölçüm için henüz veri yok.'
-    : (dis === 0 ? `Son ${N} günde hep normal aralığında kaldın. Ortalaman ${ortalama}${o.birim}.`
-      : `Son ${N} günde ${dis} gün normal aralığının dışında. Ortalaman ${ortalama}${o.birim}.`) + not;
+    : `${ozetCumlesi(o.iyi, dis, N)} Ortalaman ${ortalama}${o.birim}.` + not;
   const yarim = ((o.max - o.min) / 2) * 2.4 || 1;
   const iyi = vf.map((x) => clamp(((x - orta) / yarim) * o.iyi, -1, 1) * 0.5 + 0.5);
   return { o, v, nv: vf.map(n), na: af.map(n), bant: [n(o.min), n(o.max)], iyi, ozet };
@@ -460,7 +461,7 @@ function yollar() {
   $('arkaSirt').setAttribute('d', da); $('arkaDolgu').setAttribute('d', da + kap);
   const t = T[sonOlcum];
   gunNokta.forEach((c, i) => {
-    const du = durum(t.o, t.v[i]), dis = du === 'lo' || du === 'hi';
+    const du = durum(t.o, t.v[i]), dis = sapmaVurgusu(t.o.iyi, du);
     c.setAttribute('visibility', du === null ? 'hidden' : 'visible'); // veri olmayan günde nokta yok
     c.setAttribute('cx', i * DW); c.setAttribute('cy', yy(cur.v[i]).toFixed(1));
     c.setAttribute('fill', dis ? '#ffc9a6' : 'rgba(255,246,236,.55)'); c.setAttribute('r', dis ? 3.4 : 2.4);
@@ -526,7 +527,7 @@ function olcumSec(oi, animasyon) {
   secBtn.forEach((b, j) => b.setAttribute('aria-pressed', j === oi));
   const sc = $('secici'), b = secBtn[oi];
   sc.scrollTo({ left: b.offsetLeft - (sc.clientWidth - b.offsetWidth) / 2, behavior: animasyon && !RM ? 'smooth' : 'auto' });
-  $('bantYazi').textContent = `${t.o.kisisel === false ? 'genel aralık' : 'normal'} ${t.o.min}–${t.o.max}${t.o.birim}`;
+  $('bantYazi').textContent = `${t.o.kisisel === false ? 'genel aralık' : 'normal'} ${SAYIM.has(t.o.id) ? CANLI.binlik(t.o.min) + '–' + CANLI.binlik(t.o.max) : t.o.min + '–' + t.o.max}${t.o.birim}`;
   ekDestek = GUNLER.some((g) => CANLI.ekSatiri(t.o.id, g.ek) !== null);
   trendMetin(t);
   if (animasyon && !RM) {
@@ -544,14 +545,14 @@ function olcumSec(oi, animasyon) {
   yerlesimT(); selT = -1; gunYaz(clamp(Math.round(st.P), 0, N - 1));
 }
 function gunYaz(i, canli) {
-  if (i === selT) return; const ilk = selT < 0; selT = i; const g = GUNLER[i], t = T[sonOlcum], v = t.v[i], du = durum(t.o, v), yok = v === null, sap = du === 'lo' || du === 'hi';
+  if (i === selT) return; const ilk = selT < 0; selT = i; const g = GUNLER[i], t = T[sonOlcum], v = t.v[i], du = durum(t.o, v), yok = v === null, sap = sapmaVurgusu(t.o.iyi, du);
   simgeYaz(t.o, v, du);
   $('tGunMetni').textContent = `${g.gunUzun}, ${g.gun} ${g.ay}`;
   $('cip').textContent = i === N - 1 ? `Bugün, ${g.gun} ${g.ay}` : `${g.gunKisa} ${g.gun} ${g.ay}`;
-  const bl = $('balon'); bl.querySelector('b').textContent = yok ? '–' : bicim(v); bl.querySelector('.br').textContent = yok ? '' : t.o.birim.trim();
-  bl.querySelector('.dr').innerHTML = yok ? 'veri yok' : durumHtml(du, true); bl.classList.toggle('sap', sap); $('nokta').classList.toggle('sap', sap);
+  const bl = $('balon'); bl.querySelector('b').textContent = yok ? '–' : trSayi(t.o, v); bl.querySelector('.br').textContent = yok ? '' : t.o.birim.trim();
+  bl.querySelector('.dr').innerHTML = yok ? 'veri yok' : durumHtml(du, true, t.o.iyi); bl.classList.toggle('sap', sap); $('nokta').classList.toggle('sap', sap);
   trend.setAttribute('aria-valuenow', i + 1);
-  trend.setAttribute('aria-valuetext', yok ? `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} için veri yok` : `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} ${bicim(v)}${t.o.birim}, ${du === 'ok' ? 'normal aralıkta' : 'normalin ' + DURUM_METIN[du]}`);
+  trend.setAttribute('aria-valuetext', yok ? `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} için veri yok` : `${g.gunUzun} ${g.gun} ${g.ay}: ${t.o.ad} ${trSayi(t.o, v)}${t.o.birim}, ${sapmaMetni(t.o.iyi, du)}`);
   ekYaz(g); if (GENIS || aciklamaAcik) aciklamaYerlesim();
   if (GENIS) balonW = bl.offsetWidth; // balonun sağa mı sola mı açılacağı için; gün değişince bir kez ölçülür
   if (!ilk && canli && (ekran === 'trend' || GENIS) && !mesgul && !yok) SES.nota(t.iyi[i]);
@@ -659,14 +660,29 @@ if (GENIS) {
 }
 
 /* ================= Ekran geçişleri ================= */
-// Alt menü: Bugün, Trend, Aktiviteler, Takvim. Her sekmenin kendi aktif zemini ve rengi var (CSS); kayan hap yok.
+// Alt menü: Bugün, Trend, Aktiviteler, Takvim. Seçili sekmenin altında cam kapsül var (CSS); kayan hap yok.
+// Seçili sekmenin simgesi yavaşça yaşar; yeni seçilen sekme bir kez giriş hareketi (.gir, ≤ 600 ms) yapar, sonra döngüye geçer.
+// Döngü ve giriş yalnız .oynar varken: azaltılmış hareket yok, telefon düzeni ve ekran görünür.
 const SEKME = { bugun: 'sBugun', trend: 'sTrend', aktivite: 'sAktivite', takvim: 'sTakvim' };
+const SEKME_SIRA = Object.keys(SEKME);
+let sekmeSon = ekran, girZaman = 0;
 function sekmeGuncelle() {
   for (const [e, id] of Object.entries(SEKME)) {
     if (e === ekran) $(id).setAttribute('aria-current', 'page'); else $(id).removeAttribute('aria-current');
   }
+  if (ekran === sekmeSon || !SEKME[ekran]) return;
+  sekmeSon = ekran;
+  for (const id of Object.values(SEKME)) $(id).classList.remove('gir');
+  if (RM || GENIS) return;
+  const b = $(SEKME[ekran]);
+  void b.offsetWidth; // aynı sınıf hemen yeniden eklenirse giriş baştan oynasın
+  b.classList.add('gir'); clearTimeout(girZaman);
+  girZaman = setTimeout(() => b.classList.remove('gir'), 600);
 }
-function trendeGec(oi, kaynak, anlik) {
+const menuOynar = () => tel.querySelector('.sekme').classList.toggle('oynar', !RM && !GENIS && !document.hidden);
+document.addEventListener('visibilitychange', menuOynar);
+menuOynar();
+function trendeGec(oi, kaynak, anlik, menuden) { // menuden: menü kendi rüzgâr sesini çalar, geçişin tık ve süpürme sesi çalmaz
   if (mesgul || ekran === 'trend' || GENIS) return; // geniş ekranda ekran geçişi yok: Trend hep açık
   dokunBirak(); ekran = 'trend'; sekmeGuncelle();
   st.P = hedef = G0 + sel7; pA = st.P;
@@ -678,12 +694,13 @@ function trendeGec(oi, kaynak, anlik) {
     st.yuk = st.yukA = 1; st.flat = 1; st.cy = ufuk;
     gsap.set(trend, { autoAlpha: 1 }); gsap.set([cv, '#bugun'], { autoAlpha: 0 }); return;
   }
-  mesgul = true; SES.tik(); st.yuk = st.yukA = 0;
+  mesgul = true; if (!menuden) SES.tik();
+  st.yuk = st.yukA = 0;
   gsap.set('#balon', { autoAlpha: kaynak ? 0 : 1 });
   const z = gsap.timeline({ onComplete: () => (mesgul = false) });
   z.to(L, { r: 0, duration: 0.42, stagger: 0.03, ease: 'power2.in' }, 0)
     .to('#bugunUst', { autoAlpha: 0, duration: 0.3 }, 0)
-    .add(() => SES.gecis(true), 0.12)
+    .add(() => { if (!menuden) SES.gecis(true); }, 0.12)
     .to(st, { flat: 1, cy: ufuk, duration: 0.62, ease: 'power3.inOut' }, 0.12)
     .to(trend, { autoAlpha: 1, duration: 0.45 }, 0.58)
     .to(cv, { autoAlpha: 0, duration: 0.5 }, 0.72)
@@ -702,7 +719,7 @@ function trendeGec(oi, kaynak, anlik) {
       .fromTo('#balon .dr', { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 1.1);
   }
 }
-function bugunGec(anlik) {
+function bugunGec(anlik, menuden) {
   if (mesgul || ekran === 'bugun') return;
   aciklamaKapat(false); if (simge) simge.durdur();
   ekran = 'bugun'; sekmeGuncelle();
@@ -712,7 +729,7 @@ function bugunGec(anlik) {
     st.flat = 0; st.cy = lay.cy; L.forEach((l) => (l.r = 1));
     gsap.set(trend, { autoAlpha: 0 }); gsap.set([cv, '#bugun', '#bugunUst'], { autoAlpha: 1 }); return;
   }
-  mesgul = true; SES.gecis(false);
+  mesgul = true; if (!menuden) SES.gecis(false);
   gsap.timeline({ onComplete: () => (mesgul = false) })
     .to(st, { yuk: 0, duration: 0.5, ease: 'power3.in' }, 0)
     .to(st, { yukA: 0, duration: 0.5, ease: 'power3.in' }, 0.06)
@@ -797,13 +814,13 @@ for (const k of Object.values(KAYAN)) {
 }
 const anaPasif = (p) => { $('bugun').inert = p; trend.inert = p; }; // örtülen ana ekran odak ve erişilebilirlik ağacından çıkar
 // Telefon: dört ekran arasında geçiş. Bugün ↔ Trend eski geçişlerini (uçan sayı dahil) kullanır; yeni ekranlar solarak gelir.
-function ekranGit(hedefEkran) {
+function ekranGit(hedefEkran, menuden) {
   if (mesgul) return false;
   const g = ekranGecisi(ekran, hedefEkran, altEkran);
   if (!g) return false;
   dokunBirak(); aciklamaKapat(false);
   const onceki = ekran;
-  if (g.tur === 'ana') { if (hedefEkran === 'trend') trendeGec(null, null); else bugunGec(); return true; }
+  if (g.tur === 'ana') { if (hedefEkran === 'trend') trendeGec(null, null, false, menuden); else bugunGec(false, menuden); return true; }
   if (g.tur === 'ac') {
     altEkran = g.alt; if (onceki === 'trend' && simge) simge.durdur();
     ekran = hedefEkran; sekmeGuncelle(); mesgul = true; anaPasif(true);
@@ -836,7 +853,14 @@ function genisKayan(ad) {
   $('wAktivite').setAttribute('aria-pressed', kayanAcik === 'aktivite'); $('wTakvim').setAttribute('aria-pressed', kayanAcik === 'takvim');
   $('wTrend').hidden = !kayanAcik;
 }
-for (const [e, id] of Object.entries(SEKME)) $(id).addEventListener('click', () => { ayarKapat(); odakIste = null; if (ekranGit(e) && KAYAN[e]) odakIste = e; });
+// Gerçek bir sekme değişiminde (seçili sekmeye dokunmak ya da geçiş sürerken dokunmak değil) kısa rüzgâr sesi; yönü sekmelerin sırasından
+for (const [e, id] of Object.entries(SEKME)) $(id).addEventListener('click', () => {
+  ayarKapat(); odakIste = null;
+  const once = ekran;
+  if (!ekranGit(e, true)) return;
+  SES.ruzgar(SEKME_SIRA.indexOf(e) > SEKME_SIRA.indexOf(once) ? 1 : -1);
+  if (KAYAN[e]) odakIste = e;
+});
 if (GENIS) {
   $('wAktivite').addEventListener('click', () => genisKayan('aktivite'));
   $('wTakvim').addEventListener('click', () => genisKayan('takvim'));
@@ -1277,7 +1301,7 @@ function ac(v, bag) {
       baglantiOku() { try { const o = JSON.parse(localStorage.getItem('gk-baglanti')); return o && o.adres && o.anahtar ? o : null; } catch (x) { return null; } },
       baglantiSil() { try { localStorage.removeItem('gk-baglanti'); localStorage.removeItem('gk-son-veri'); localStorage.removeItem('gk-son-aktivite'); localStorage.removeItem('gk-son-takvim'); } catch (x) {} },
       baglantiYaz: () => false, baglantiKarar: () => ({ tamam: false, hata: 'Bağlantı modülü yüklenemedi.' }),
-      adresDuzelt: () => null, ekSatiri: () => null, eskilikSaat: () => null, sonEsitlemeMetni: () => null,
+      adresDuzelt: () => null, binlik: (v) => String(Math.round(v)), ekSatiri: () => null, eskilikSaat: () => null, sonEsitlemeMetni: () => null,
       veriGetir: async () => null, aktiviteGetir: async () => null, takvimGetir: async () => null, veriYukle: async () => ({ veri: null, kaynak: 'yok', zaman: null, neden: null }), ayarGetir: async () => null, ayarYaz: async () => null,
       abonelikKaydet: async () => false, abonelikSil: async () => false, denemeBildirimi: async () => null,
     };

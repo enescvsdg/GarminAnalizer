@@ -55,10 +55,12 @@ const dk = (v) => (dolu(v) ? Math.round(v / 60) : null);
 function ekKur(satirlar, tarih) {
   const r = satirlar.find((x) => x.date === tarih) ?? {};
   return {
-    uyku: { toplam: dk(r.sleep_seconds), derin: dk(r.sleep_deep_s), hafif: dk(r.sleep_light_s), rem: dk(r.sleep_rem_s), uyanik: dk(r.sleep_awake_s), ihtiyac: say(r.sleep_need_min) },
+    uyku: { toplam: dk(r.sleep_seconds), derin: dk(r.sleep_deep_s), hafif: dk(r.sleep_light_s), rem: dk(r.sleep_rem_s), uyanik: dk(r.sleep_awake_s), ihtiyac: say(r.sleep_need_min), sekerleme: dk(r.nap_seconds), stres: say(r.sleep_stress_avg) },
     bb: { dolan: say(r.bb_charged), biten: say(r.bb_drained) },
     stres: { dinlenme: dk(r.stress_rest_s), dusuk: dk(r.stress_low_s), orta: dk(r.stress_med_s), yuksek: dk(r.stress_high_s) },
     hrv: { durum: typeof r.hrv_status === 'string' && r.hrv_status ? r.hrv_status : null, haftalik: say(r.hrv_weekly_avg) },
+    spo2: { en_dusuk: say(r.spo2_min) },
+    kalori: { toplam: say(r.calories) },
   };
 }
 

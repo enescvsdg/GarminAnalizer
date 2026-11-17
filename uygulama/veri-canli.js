@@ -47,12 +47,16 @@ function ekKur(ek) {
   const e = ek && typeof ek === 'object' ? ek : {};
   const k = (n) => (e[n] && typeof e[n] === 'object' ? e[n] : {});
   return {
-    uyku: { toplam: say(k('uyku').toplam), derin: say(k('uyku').derin), hafif: say(k('uyku').hafif), rem: say(k('uyku').rem), uyanik: say(k('uyku').uyanik), ihtiyac: say(k('uyku').ihtiyac) },
+    uyku: { toplam: say(k('uyku').toplam), derin: say(k('uyku').derin), hafif: say(k('uyku').hafif), rem: say(k('uyku').rem), uyanik: say(k('uyku').uyanik), ihtiyac: say(k('uyku').ihtiyac), sekerleme: say(k('uyku').sekerleme), stres: say(k('uyku').stres) },
     bb: { dolan: say(k('bb').dolan), biten: say(k('bb').biten) },
     stres: { dinlenme: say(k('stres').dinlenme), dusuk: say(k('stres').dusuk), orta: say(k('stres').orta), yuksek: say(k('stres').yuksek) },
     hrv: { durum: metinMi(k('hrv').durum) ? k('hrv').durum : null, haftalik: say(k('hrv').haftalik) },
+    spo2: { en_dusuk: say(k('spo2').en_dusuk) },
+    kalori: { toplam: say(k('kalori').toplam) },
   };
 }
+
+const SAYIM_IDLERI = new Set(['adim', 'kat', 'kalori', 'yogun']);
 
 export function veriCevir(yanit) {
   if (!yanit || typeof yanit !== 'object' || !Array.isArray(yanit.olcumler) || !Array.isArray(yanit.gunler)) {
@@ -63,7 +67,9 @@ export function veriCevir(yanit) {
     if (!o || !metinMi(o.id) || !metinMi(o.ad) || typeof o.birim !== 'string' || !sonlu(o.iyi) || !sonlu(o.min) || !sonlu(o.max)) {
       throw new TypeError('ölçüm geçersiz');
     }
-    return { id: o.id, ad: o.ad, birim: o.birim, min: o.min, max: o.max, iyi: o.iyi, kisisel: o.kisisel === true, kart: o.kart === true };
+    // Sayım ölçümlerinin kişisel bandı sıfırın altına düşebilir (ör. kat −2); çizilen bant ve etiketi 0'dan başlar.
+    const min = SAYIM_IDLERI.has(o.id) ? Math.max(0, o.min) : o.min;
+    return { id: o.id, ad: o.ad, birim: o.birim, min, max: Math.max(min, o.max), iyi: o.iyi, kisisel: o.kisisel === true, kart: o.kart === true };
   });
   // Eski Worker'lar bu alanı vermeyebilir. Yalnızca bu yanıttaki ölçümlerin
   // bilinen dokuz kimliğini ve metin yorumlarını aktar; başka şekiller boş kalır.
@@ -401,6 +407,13 @@ function dilimle(kaynak, tanim) {
   return dilimler.some((d) => d.dk > 0) ? dilimler : null;
 }
 
+// 2350 → "2.350" (Türkçe binlik ayırıcı; Intl'e bağlı kalmaz).
+export function binlik(v) {
+  if (!sonlu(v)) return null;
+  const n = Math.round(v), m = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return n < 0 ? `−${m}` : m;
+}
+
 // Trend'de seçili günün ek ayrıntı satırı. Gösterilecek bir şey yoksa null.
 export function ekSatiri(olcumId, ek) {
   if (!ek || typeof ek !== 'object') return null;
@@ -429,12 +442,23 @@ export function ekSatiri(olcumId, ek) {
     metin = parcalar.length ? parcalar.join(', ') : null;
   } else if (olcumId === 'hrv' && ek.hrv) {
     if (sonlu(ek.hrv.haftalik)) metin = `Haftalık ortalama ${ek.hrv.haftalik} ms`;
+  } else if (olcumId === 'spo2' && ek.spo2) {
+    if (sonlu(ek.spo2.en_dusuk) && ek.spo2.en_dusuk > 0) metin = `En düşük %${Math.round(ek.spo2.en_dusuk)}`;
+  } else if (olcumId === 'kalori' && ek.kalori) {
+    if (sonlu(ek.kalori.toplam)) metin = `Toplam ${binlik(ek.kalori.toplam)} kcal`;
+  }
+  if (olcumId === 'uyku' && ek.uyku) {
+    // Şekerleme ve uykudaki stres aynı satıra eklenir; null olanlar yazılmaz.
+    const ekler = [];
+    if (sonlu(ek.uyku.sekerleme) && ek.uyku.sekerleme > 0) ekler.push(`Şekerleme ${sureMetni(ek.uyku.sekerleme)}`);
+    if (sonlu(ek.uyku.stres)) ekler.push(`Uykuda stres ${Math.round(ek.uyku.stres)}`);
+    if (ekler.length) metin = [metin, ...ekler].filter(Boolean).join(' · ');
   }
   return dilimler || metin ? { dilimler, metin, ayrinti } : null;
 }
 
 export const CANLI = {
   veriCevir, durum, veriGetir, veriYukle, aktiviteGetir, takvimGetir, tumOnbellekSil, sonVeriYaz, sonVeriOku, sonVeriSil, ayarGetir, ayarYaz, abonelikKaydet, abonelikSil, denemeBildirimi, baglantiOku, baglantiYaz, baglantiSil, baglantiKarar, adresDuzelt,
-  sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, OK, DURUM_METIN,
+  sureMetni, sonEsitlemeMetni, eskilikSaat, ekSatiri, binlik, OK, DURUM_METIN,
 };
 globalThis.CANLI = CANLI;

@@ -1,9 +1,9 @@
 (() => {
-  const AD = { tik: 'Buton', gecis: 'Geçiş', can: 'Oturma' };
+  const AD = { tik: 'Buton', gecis: 'Geçiş', can: 'Oturma', ruzgar: 'Menü' };
   function ozet() {
-    document.getElementById('ozet').textContent = ['tik', 'gecis', 'can'].map((t) => `${AD[t]}: ${(SES.SECENEK[t][SES.ayar[t]] || {}).ad || '?'}`).join('  |  ');
+    document.getElementById('ozet').textContent = ['tik', 'gecis', 'can', 'ruzgar'].map((t) => `${AD[t]}: ${(SES.SECENEK[t][SES.ayar[t]] || {}).ad || '?'}`).join('  |  ');
   }
-  for (const tur of ['tik', 'gecis', 'can']) {
+  for (const tur of ['tik', 'gecis', 'can', 'ruzgar']) {
     const kap = document.getElementById(tur);
     for (const [id, s] of Object.entries(SES.SECENEK[tur])) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'ses';
@@ -13,6 +13,7 @@
         SES.ac(); SES.ayar.acik = true; SES.ayar[tur] = id; SES.kaydet();
         kap.querySelectorAll('.ses').forEach((x) => x.setAttribute('aria-pressed', x === b));
         if (tur === 'gecis') { SES.cal(tur, id, true); setTimeout(() => SES.cal(tur, id, false), 1100); }
+        else if (tur === 'ruzgar') { SES.cal(tur, id, 1); setTimeout(() => SES.cal(tur, id, -1), 700); }
         else if (tur === 'can') SES.cal(tur, id, 0.6);
         else SES.cal(tur, id);
         ozet();
