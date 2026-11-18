@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
 
 const hepsiSonlu = (o) => Object.entries(o).every(([, v]) => typeof v === 'number' && Number.isFinite(v));
 
@@ -362,4 +362,18 @@ test('sapmaMetni / ozetCumlesi: yönlü ölçümde "normalin", yönsüz (iyi 0) 
   assert.equal(sapmaVurgusu(0, 'hi'), false);
   assert.equal(sapmaVurgusu(0, 'lo'), false);
   assert.equal(sapmaVurgusu(1, null), false);
+});
+
+test('bugunSecimi: menüden Bugün her zaman son günü seçer', () => {
+  // N=28, G0=21 → şeritte 0..6; son gün 6
+  assert.equal(bugunSecimi(22, 21, 28, 1, true), 6);      // Trend'de eski gün
+  assert.equal(bugunSecimi(5, 21, 28, 2, true), 6);       // Trend şeridin dışında
+  assert.equal(bugunSecimi(NaN, 21, 28, 0, true), 6);     // Takvim'den açılmış eski gün
+  assert.equal(bugunSecimi(27, 21, 28, 6, true), 6);
+});
+test('bugunSecimi: menü dışı dönüşte Trend konumu korunur', () => {
+  assert.equal(bugunSecimi(23.4, 21, 28, 6, false), 2);
+  assert.equal(bugunSecimi(5, 21, 28, 4, false), 4);      // şeridin dışında: mevcut seçim
+  assert.equal(bugunSecimi(99, 21, 28, 1, false), 6);     // sınır kırpılır
+  assert.equal(bugunSecimi(undefined, 21, 28, 3, false), 3);
 });

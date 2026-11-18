@@ -187,6 +187,16 @@ export function ekranGecisi(ekran, hedef, alt = 'bugun') {
   return { tur: hedef === altE ? 'kapat' : 'kapatGec', alt: altE };
 }
 
+// Bugün ekranına geçerken hangi gün seçili olsun (7 günlük şeritteki sıra, 0..N-1-G0).
+// Menüden gelindiyse her zaman bugün (son gün); başka yoldan (Trend'den geri dönüş) Trend'deki konum şeritteyse o gün, değilse mevcut seçim.
+export function bugunSecimi(P, G0, N, sel7, menuden) {
+  const son = N - 1 - G0;
+  if (menuden) return son;
+  if (!sonlu(P)) return sel7;
+  const gi = Math.min(Math.max(Math.round(P), 0), N - 1);
+  return gi >= G0 ? gi - G0 : sel7;
+}
+
 // Kaydırılabilir ekranda menü: aşağı kaydırınca daralır, yukarı kaydırınca ya da en üstte açılır; küçük oynamalar durumu korur.
 export function menuToplan(onceki, simdi, toplu, esik = 8) {
   if (!sonlu(onceki) || !sonlu(simdi)) return !!toplu;
@@ -223,7 +233,7 @@ export async function modulKur(ice, kurAdi, kap, baglam) {
   } catch { return null; }
 }
 
-export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
+export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
 globalThis.DUZEN = DUZEN;
 
 /* ---------- Trend: yönsüz ölçümlerde (iyi 0, ör. en yüksek nabız) sapma nötrdür ---------- */

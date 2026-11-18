@@ -1,4 +1,4 @@
-import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
+import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
 import { simgeKur } from './simgeler.js';
 import { ACIKLAMA } from './aciklama.js';
 const $ = (id) => document.getElementById(id);
@@ -723,7 +723,7 @@ function bugunGec(anlik, menuden) {
   if (mesgul || ekran === 'bugun') return;
   aciklamaKapat(false); if (simge) simge.durdur();
   ekran = 'bugun'; sekmeGuncelle();
-  const gi = clamp(Math.round(st.P), 0, N - 1); if (gi >= G0 && gi - G0 !== sel7) sec(gi - G0, true);
+  const yeni = bugunSecimi(st.P, G0, N, sel7, menuden); if (yeni !== sel7) sec(yeni, true);
   yerlesimB(false);
   if (RM || anlik) {
     st.flat = 0; st.cy = lay.cy; L.forEach((l) => (l.r = 1));
@@ -835,9 +835,9 @@ function ekranGit(hedefEkran, menuden) {
   }
   ekran = g.alt; sekmeGuncelle(); anaPasif(false); menu.classList.remove('toplandi');
   if (g.tur === 'kapat') {
-    if (g.alt === 'trend') { if (simge) simge.baslat(); yerlesimT(); st.cy = yy(cur.v[hedef]); } else { yerlesimB(false); st.cy = lay.cy; }
+    if (g.alt === 'trend') { if (simge) simge.baslat(); yerlesimT(); st.cy = yy(cur.v[hedef]); } else { const yeni = bugunSecimi(st.P, G0, N, sel7, menuden); if (menuden && yeni !== sel7) sec(yeni, true); yerlesimB(false); st.cy = lay.cy; }
   } else if (hedefEkran === 'trend') trendeGec(null, null, true); // kapsayıcının altında anlık, sonra kapsayıcı solar
-  else bugunGec(true);
+  else bugunGec(true, menuden);
   mesgul = true;
   kayanKapat(onceki, () => { mesgul = false; });
   return true;
@@ -853,10 +853,19 @@ function genisKayan(ad) {
   $('wAktivite').setAttribute('aria-pressed', kayanAcik === 'aktivite'); $('wTakvim').setAttribute('aria-pressed', kayanAcik === 'takvim');
   $('wTrend').hidden = !kayanAcik;
 }
+// Bugün ekranında eski bir gün seçiliyken menüdeki Bugün'e dokunmak bugüne döndürür (şeritteki dokunuşla aynı his)
+function bugunDon() {
+  if (mesgul) return;
+  const son = bugunSecimi(st.P, G0, N, sel7, true);
+  if (son === sel7) return;
+  titret(8); sec(son); const g = GUNLER[G0 + son]; if (!g.veriYok) SES.akor(g.e);
+  if (GENIS) git(G0 + son, carkSure(Math.abs(G0 + son - st.P)));
+}
 // Gerçek bir sekme değişiminde (seçili sekmeye dokunmak ya da geçiş sürerken dokunmak değil) kısa rüzgâr sesi; yönü sekmelerin sırasından
 for (const [e, id] of Object.entries(SEKME)) $(id).addEventListener('click', () => {
   ayarKapat(); odakIste = null;
   const once = ekran;
+  if (e === 'bugun' && ekran === 'bugun') { bugunDon(); return; } // zaten Bugün'de: eski bir gün açıksa bugüne dön
   if (!ekranGit(e, true)) return;
   SES.ruzgar(SEKME_SIRA.indexOf(e) > SEKME_SIRA.indexOf(once) ? 1 : -1);
   if (KAYAN[e]) odakIste = e;
