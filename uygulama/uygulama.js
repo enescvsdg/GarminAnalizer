@@ -1341,6 +1341,11 @@ gsap.ticker.add((time, dt) => {
 /* ================= Açılış ================= */
 seritKur(); sigdir(); olcumSec(0, false); sec(6, true); st.cy = lay.cy;
 if (GENIS) { gsap.set(trend, { autoAlpha: 1 }); st.yuk = st.yukA = st.gunesY = 1; } // geniş ekranda Trend hep açık
+// Bekleme ekranı açıksa küresi Bugün küresinin yerine büyüyüp solar; açılış (delay 0.3) bununla örtüşür.
+{
+  const kok = bKok.getBoundingClientRect(), k = kok.width / W || 1;
+  bekleDevret(kok.left + cx * k, kok.top + lay.cy * k, 0.19 * lay.rs * W * k, RM);
+}
 // Başlık sözcük animasyonu ve yazı tipi yüklemesi satır sayısını değiştirebilir.
 if (typeof ResizeObserver === 'function') {
   let olcumBekliyor = false;
@@ -1379,6 +1384,51 @@ if (!RM) {
 }
 }
 
+/* ================= Bekleme ekranı ================= */
+// Altı ışık noktası (ölçüm kartlarının paleti) yörüngede dönerek merkezde toplanır ve küreyi oluşturur;
+// cam halka veri isteğinin zaman aşımı (6 sn) boyunca dolar; yazı harf harf yükselir. Yalnız transform/opacity
+// (halka: küçük SVG'de stroke-dashoffset). Bağlantı yoksa hiç gösterilmez.
+const BEKLE_SURE = 6;
+let bekleTl = null, bekleDurum = 'kapali'; // 'acik' → 'devir' → 'kapali'
+function bekleAc() {
+  const b = $('bekle'), p = b.querySelector('p');
+  b.hidden = false; bekleDurum = 'acik';
+  if (!p.querySelector('.h')) { // harflere bölünür; ekran okuyucu tek metni okur
+    const metin = p.textContent; p.textContent = ''; p.setAttribute('aria-label', metin);
+    [...metin].forEach((ch) => { const s = document.createElement('span'); s.className = 'h'; s.setAttribute('aria-hidden', 'true'); s.textContent = ch === ' ' ? '\u00a0' : ch; p.appendChild(s); });
+  }
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return; // RM: küre, iz halkası ve yazı durağan
+  const yor = b.querySelector('.bYor'), noktalar = b.querySelectorAll('.bYor em');
+  gsap.set(b.querySelector('.bKure'), { scale: 0, autoAlpha: 0 });
+  gsap.set(noktalar, { x: 78, autoAlpha: 0, scale: 0.6 });
+  gsap.set(p.querySelectorAll('.h'), { yPercent: 85, autoAlpha: 0, rotation: 7 });
+  bekleTl = gsap.timeline()
+    .to(yor, { rotation: 300, duration: 1.7, ease: 'power2.in' }, 0)
+    .to(noktalar, { autoAlpha: 1, scale: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out' }, 0)
+    .to(noktalar, { x: 0, duration: 1.4, stagger: 0.04, ease: 'power3.in' }, 0.3)
+    .to(noktalar, { autoAlpha: 0, scale: 0.4, duration: 0.25 }, 1.65)
+    .to(b.querySelector('.bKure'), { scale: 1, autoAlpha: 1, duration: 0.9, ease: 'back.out(1.6)' }, 1.6)
+    .fromTo(b.querySelector('.bHalka .dol'), { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: BEKLE_SURE, ease: 'none' }, 0)
+    .to(p.querySelectorAll('.h'), { yPercent: 0, autoAlpha: 1, rotation: 0, duration: 0.65, stagger: 0.03, ease: 'back.out(1.8)' }, 0.45);
+}
+// Bekleme açıksa küre (x, y ekran koordinatı, r ekran yarıçapı) hedefine büyüyüp solarken ekran kalkar.
+function bekleDevret(x, y, r, anlik) {
+  const b = $('bekle');
+  if (bekleDurum !== 'acik') return;
+  const tl = bekleTl; bekleTl = null; bekleDurum = 'devir';
+  const temizle = () => { if (tl) tl.kill(); b.hidden = true; bekleDurum = 'kapali'; gsap.set([b, ...b.querySelectorAll('.bKure,.bYor,.bYor em,.bHalka,.bHalka .dol,p,p .h')], { clearProps: 'all' }); };
+  const kure = b.querySelector('.bKure'), kk = kure.getBoundingClientRect(), olcek = b.getBoundingClientRect().width / (b.offsetWidth || 1) || 1;
+  const yaricap = (kure.offsetWidth / 2) * olcek;
+  if (anlik || !(yaricap > 0) || ![x, y, r].every(Number.isFinite)) { temizle(); return; }
+  if (tl) tl.pause();
+  const sx = (kk.left + kk.width / 2), sy = (kk.top + kk.height / 2);
+  gsap.timeline({ onComplete: temizle })
+    .to(b.querySelectorAll('.bYor em'), { autoAlpha: 0, duration: 0.2 }, 0)
+    .to([b.querySelector('.bHalka'), b.querySelector('p')], { autoAlpha: 0, scale: 1.06, duration: 0.35, ease: 'power2.in' }, 0)
+    .to(kure, { x: (x - sx) / olcek, y: (y - sy) / olcek, scale: Math.max(0.4, r / yaricap), autoAlpha: 1, duration: 0.6, ease: 'power3.inOut' }, 0)
+    .to(b, { autoAlpha: 0, duration: 0.45, ease: 'power1.in' }, 0.3);
+}
+
 // Başlangıç: bağlantı varsa veri gelene kadar nötr bekleme durumu; açılış animasyonu örnek veriyle başlamaz.
 // Her koşulda uygulama bir kez açılır: modül yüklenemezse, veri alınamazsa ya da gerçek veriyle başlatma patlarsa örnek veriyle.
 let basladi = false;
@@ -1409,13 +1459,16 @@ function ac(v, bag) {
   let canliHata = false;
   try { canliHata = sessionStorage.getItem('gk-canli-hata') === '1'; sessionStorage.removeItem('gk-canli-hata'); } catch (x) {}
   if (canliHata) return ac(window.VERI, { ...ORNEK, baglanti: true });
-  telOlcek(); addEventListener('resize', telOlcek); $('bekle').hidden = false;
+  telOlcek(); addEventListener('resize', telOlcek); bekleAc();
   let r = null;
   try { r = await CANLI.veriYukle(); } catch (e) { r = null; }
-  removeEventListener('resize', telOlcek); $('bekle').hidden = true;
-  if (r && r.veri && (r.kaynak === 'canli' || r.kaynak === 'onbellek')) {
-    ac(r.veri, { baglanti: true, canli: r.kaynak === 'canli', kaynak: r.kaynak, neden: r.neden || null, zaman: typeof r.zaman === 'number' ? r.zaman : null });
-  } else {
-    ac(window.VERI, { ...ORNEK, baglanti: true, neden: r && r.neden ? r.neden : null });
-  }
+  removeEventListener('resize', telOlcek);
+  // Bekleme ekranı burada kapanmaz: baslat açılışında bekleDevret küreyi Bugün'ün küresine devreder.
+  try {
+    if (r && r.veri && (r.kaynak === 'canli' || r.kaynak === 'onbellek')) {
+      ac(r.veri, { baglanti: true, canli: r.kaynak === 'canli', kaynak: r.kaynak, neden: r.neden || null, zaman: typeof r.zaman === 'number' ? r.zaman : null });
+    } else {
+      ac(window.VERI, { ...ORNEK, baglanti: true, neden: r && r.neden ? r.neden : null });
+    }
+  } finally { bekleDevret(NaN, NaN, NaN, true); } // açılış devralmadıysa (ör. hata) bekleme anında kalkar
 })();
