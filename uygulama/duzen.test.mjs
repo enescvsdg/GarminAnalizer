@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, sahneGecisi, sahneSirasi, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
 
 const hepsiSonlu = (o) => Object.entries(o).every(([, v]) => typeof v === 'number' && Number.isFinite(v));
 
@@ -376,4 +376,40 @@ test('bugunSecimi: menü dışı dönüşte Trend konumu korunur', () => {
   assert.equal(bugunSecimi(5, 21, 28, 4, false), 4);      // şeridin dışında: mevcut seçim
   assert.equal(bugunSecimi(99, 21, 28, 1, false), 6);     // sınır kırpılır
   assert.equal(bugunSecimi(undefined, 21, 28, 3, false), 3);
+});
+
+test('sahneGecisi: telefonda beş sahneli geçiş türü; Bugün ↔ Trend ve geçersiz null', () => {
+  assert.equal(sahneGecisi('bugun', 'aktivite'), 'bugun-kayan');
+  assert.equal(sahneGecisi('trend', 'takvim'), 'trend-kayan');
+  assert.equal(sahneGecisi('aktivite', 'takvim', 'trend'), 'kayan-kayan');
+  assert.equal(sahneGecisi('takvim', 'aktivite', 'bugun'), 'kayan-kayan');
+  assert.equal(sahneGecisi('takvim', 'bugun', 'bugun'), 'kayan-bugun');
+  assert.equal(sahneGecisi('aktivite', 'bugun', 'trend'), 'kayan-bugun');
+  assert.equal(sahneGecisi('takvim', 'trend', 'trend'), 'kayan-trend');
+  assert.equal(sahneGecisi('aktivite', 'trend', 'bugun'), 'kayan-trend');
+  assert.equal(sahneGecisi('bugun', 'trend'), null);
+  assert.equal(sahneGecisi('trend', 'bugun'), null);
+  assert.equal(sahneGecisi('takvim', 'takvim'), null);
+  assert.equal(sahneGecisi('ayar', 'bugun'), null);
+  assert.equal(sahneGecisi(undefined, null), null);
+  assert.equal(DUZEN.sahneGecisi, sahneGecisi);
+});
+
+test('sahneSirasi: görünen öğeler sıra değerine göre, eşitlerde belge sırası; görünmeyen, boyutsuz ve bozuk öğeler atlanır', () => {
+  const l = [
+    { sira: '2', ust: 300, alt: 400 }, { sira: '0', ust: 40, alt: 80 }, { sira: '1', ust: 100, alt: 280 },
+    { sira: '3', ust: 900, alt: 960 }, // görünüm altında
+    { sira: '1', ust: -200, alt: -10 }, // görünüm üstünde
+    { sira: '4', ust: 500, alt: 500 }, // yüksekliği yok (gizli)
+    { sira: 'x', ust: 420, alt: 460 }, // sayı değil: sona
+    { sira: '1', ust: 600, alt: 700 }, // eş sıra: belge sırası
+    null, { sira: '0', ust: NaN, alt: 10 },
+  ];
+  assert.deepEqual(sahneSirasi(l, 0, 844), [1, 2, 7, 0, 6]);
+  assert.deepEqual(sahneSirasi(l, 0, 844, 2), [1, 2]);
+  assert.deepEqual(sahneSirasi(l, 0, 844, -1), []);
+  assert.deepEqual(sahneSirasi([{ sira: 0, ust: 0, alt: 10 }], 10, 20), [], 'yalnız kenara değen görünür sayılmaz');
+  assert.deepEqual(sahneSirasi([], 0, 10), []);
+  assert.deepEqual(sahneSirasi(null, 0, 10), []);
+  assert.deepEqual(sahneSirasi(l, NaN, 10), []);
 });

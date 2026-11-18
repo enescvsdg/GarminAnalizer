@@ -329,6 +329,9 @@ html.genis,html.genis body{background:#08050c}
 /* Aktiviteler ve Takvim: sayfa değil kapsayıcı kayar. Telefonda tüm sahneyi, geniş ekranda Trend bölgesini kaplar; üstte güvenli alan ve sağ üst düğmeler, altta kapsül menü kadar boşluk bırakılır. */
 .ekran{position:absolute;inset:0;z-index:3;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:none;background:#0c0812;padding:calc(var(--st) + 52px) 16px calc(var(--tb) + var(--sb) + 20px);user-select:text;-webkit-user-select:text}
 .ekran::-webkit-scrollbar{display:none}
+/* Sahne geçişi: ufuktan süpüren ince ışık çizgisi (yalnız transform/opacity ile canlanır) */
+#sahneIsik{position:absolute;left:0;top:0;width:100%;height:2px;margin-top:-1px;z-index:4;pointer-events:none;visibility:hidden;opacity:0;will-change:transform,opacity;background:linear-gradient(90deg,rgba(255,226,196,0),rgba(255,238,220,.85) 22%,#fff 50%,rgba(214,246,236,.85) 78%,rgba(214,246,236,0))}
+#sahneIsik::before{content:"";position:absolute;left:4%;right:4%;top:-44px;height:90px;background:radial-gradient(50% 50% at 50% 50%,rgba(255,206,168,.26),rgba(196,150,255,.08) 55%,rgba(196,150,255,0))}
 .ekran[hidden]{display:none}
 .ekranHata{margin-top:28vh;text-align:center;font-size:15px;line-height:1.45;color:rgba(255,246,236,.7)}
 .genis .ekran{background:#08050c;padding-left:24px;padding-right:24px}
@@ -376,6 +379,7 @@ html.genis,html.genis body{background:#08050c}
 
     <section id="aktivite" class="ekran" aria-label="Aktiviteler" hidden></section>
     <section id="takvim" class="ekran" aria-label="Takvim" hidden></section>
+    <div id="sahneIsik" aria-hidden="true"></div>
 
     <button id="sesBtn" type="button" aria-pressed="true" aria-label="Ses efektleri">
       <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3.5v-11L6 8z"/><path class="dalga" d="M13 7.5a3.5 3.5 0 010 5M15.2 5.3a6.5 6.5 0 010 9.4"/><path class="cizik" d="M13.5 8l4 4M17.5 8l-4 4"/></svg>
