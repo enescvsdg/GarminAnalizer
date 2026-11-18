@@ -401,11 +401,12 @@ function kabukOrtami({ controller = null, sw = true, readyState = 'complete', ye
       getRegistration() { return Promise.resolve({ unregister() { log.kaldirildi++; return Promise.resolve(true); } }); },
     },
   } : {};
+  const secenekler = {};
   const ctx = {
     navigator: nav,
     document: { readyState, getElementById: (id) => (id === 'surum' ? satir : null) },
     location: { hostname, search, reload() { log.reload++; } },
-    addEventListener(t, f) { olaylar[t] = f; },
+    addEventListener(t, f, o) { olaylar[t] = f; secenekler[t] = o; },
     setTimeout(f, ms) { zamanlayici.push({ f, ms }); return zamanlayici.length; },
     clearTimeout() {},
     // Gerçek MessagePort süreci açık tutar; eşzamanlı sahte kanal.
@@ -427,7 +428,7 @@ function kabukOrtami({ controller = null, sw = true, readyState = 'complete', ye
   }
   vm.createContext(ctx);
   vm.runInContext(oku('kabuk.js'), ctx, { filename: 'kabuk.js' });
-  return { ctx, depo, olaylar, swDinleyici, zamanlayici, log, satir, aktif };
+  return { ctx, depo, olaylar, secenekler, swDinleyici, zamanlayici, log, satir, aktif };
 }
 const bekle = () => new Promise((r) => setImmediate(r));
 
@@ -449,6 +450,26 @@ test('service worker yoksa kabuk.js sessizce çıkar ve sürüm satırı gizli k
   const k = kabukOrtami({ sw: false });
   assert.equal(k.satir.hidden, true);
   assert.equal(k.log.kayit.length, 0);
+});
+
+test('sabit ekran: gesture olayları passive:false ile engellenir; touchmove dinlenmez; service worker olmasa da kurulur', () => {
+  for (const sw of [true, false]) {
+    const k = kabukOrtami({ sw });
+    for (const tur of ['gesturestart', 'gesturechange', 'gestureend']) {
+      assert.equal(typeof k.olaylar[tur], 'function', tur + ' dinleyicisi yok');
+      assert.equal(k.secenekler[tur]?.passive, false, tur + ' passive:false olmalı');
+      let engel = 0;
+      k.olaylar[tur]({ preventDefault() { engel++; } });
+      assert.equal(engel, 1);
+    }
+    assert.equal(k.olaylar.touchmove, undefined, 'iki parmak touchmove engellenmemeli');
+  }
+});
+
+test('sabit ekran: viewport yakınlaştırmayı kapatır, html/body touch-action: manipulation', () => {
+  const idx = oku('index.html');
+  assert.match(idx, /<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">/);
+  assert.match(idx, /html,body\{[^}]*touch-action:manipulation[^}]*\}/);
 });
 
 test('ilk kurulumda (denetleyici yok) controllerchange sayfayı yenilemez', () => {

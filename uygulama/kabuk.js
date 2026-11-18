@@ -1,6 +1,12 @@
 // Service worker kaydı, güncelleme akışı ve Ayarlar'daki sürüm satırı.
 (() => {
   'use strict';
+  // Sabit ekran: iOS Safari user-scalable=no'yu yok sayar; iki parmak yakınlaştırma gesture olaylarıyla
+  // engellenir. touchmove'a dokunulmaz (Trend'de iki parmak çark/sürükleme var); çift dokunma
+  // yakınlaştırmasını html/body'deki touch-action: manipulation keser.
+  const yakinlastirmaYok = (olay) => { olay.preventDefault(); };
+  for (const tur of ['gesturestart', 'gesturechange', 'gestureend']) addEventListener(tur, yakinlastirmaYok, { passive: false });
+
   const sw = navigator.serviceWorker;
   if (!sw) return;
 
