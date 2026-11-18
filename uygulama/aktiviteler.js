@@ -23,48 +23,99 @@ const metinMi = (v) => typeof v === 'string' && v.length > 0;
 /* ================= Saf yardımcılar ================= */
 
 const TUR_AD = {
-  running: 'Koşu',
-  treadmill_running: 'Koşu bandı',
-  trail_running: 'Patika koşusu',
-  walking: 'Yürüyüş',
+  running: 'Koşu', treadmill_running: 'Koşu bandı', trail_running: 'Patika koşusu', track_running: 'Pist koşusu',
+  indoor_running: 'Salon koşusu', virtual_run: 'Sanal koşu', ultra_run: 'Ultra koşu', street_running: 'Cadde koşusu',
+  obstacle_run: 'Engel parkuru koşusu',
+  walking: 'Yürüyüş', casual_walking: 'Gezinti yürüyüşü', speed_walking: 'Tempolu yürüyüş', indoor_walking: 'Salon yürüyüşü',
   hiking: 'Doğa yürüyüşü',
-  cycling: 'Bisiklet',
-  indoor_cycling: 'Salon bisikleti',
-  swimming: 'Yüzme',
-  lap_swimming: 'Havuz yüzme',
-  open_water_swimming: 'Açık su yüzme',
-  strength_training: 'Kuvvet',
-  yoga: 'Yoga',
-  pilates: 'Pilates',
-  hiit: 'HIIT',
-  cardio: 'Kardiyo',
-  elliptical: 'Eliptik',
-  rowing: 'Kürek',
-  indoor_rowing: 'Salon küreği',
+  cycling: 'Bisiklet', indoor_cycling: 'Salon bisikleti', road_biking: 'Yol bisikleti', mountain_biking: 'Dağ bisikleti',
+  gravel_cycling: 'Arazi yolu bisikleti', cyclocross: 'Cyclocross', track_cycling: 'Pist bisikleti', virtual_ride: 'Sanal bisiklet',
+  bmx: 'BMX', recumbent_cycling: 'Yatık bisiklet', e_bike_fitness: 'Elektrikli bisiklet', e_bike_mountain: 'Elektrikli dağ bisikleti',
+  swimming: 'Yüzme', lap_swimming: 'Havuz yüzme', open_water_swimming: 'Açık su yüzme',
+  strength_training: 'Kuvvet', yoga: 'Yoga', pilates: 'Pilates', mobility: 'Mobilite', stretching: 'Esneme',
+  breathwork: 'Nefes çalışması', meditation: 'Meditasyon',
+  hiit: 'HIIT', boxing: 'Boks', mixed_martial_arts: 'Karma dövüş sanatları',
+  cardio: 'Kardiyo', indoor_cardio: 'Salon kardiyosu', elliptical: 'Eliptik', stair_climbing: 'Merdiven çıkma',
+  floor_climbing: 'Kat çıkma', jump_rope: 'İp atlama',
+  rowing: 'Kürek', indoor_rowing: 'Salon küreği', kayaking: 'Kano', canoeing: 'Kanadyen kano',
+  stand_up_paddleboarding: 'Ayakta kürek (SUP)', whitewater_rafting: 'Rafting',
+  surfing: 'Sörf', kiteboarding: 'Uçurtma sörfü', windsurfing: 'Rüzgâr sörfü', wakeboarding: 'Wakeboard', sailing: 'Yelken',
+  single_gas_diving: 'Tüplü dalış', multi_gas_diving: 'Çok gazlı dalış', ccr_diving: 'Kapalı devre dalış',
+  apnea_diving: 'Serbest dalış', gauge_diving: 'Gösterge modunda dalış', snorkeling: 'Şnorkel',
+  resort_skiing: 'Pist kayağı', resort_skiing_snowboarding: 'Kayak ve snowboard', backcountry_skiing: 'Pist dışı kayak',
+  cross_country_skiing: 'Kayaklı koşu', cross_country_skiing_ws: 'Kayaklı koşu', skate_skiing: 'Kayaklı koşu (paten)',
+  snowboarding: 'Snowboard', backcountry_snowboarding: 'Pist dışı snowboard', snowshoeing: 'Kar raketiyle yürüyüş',
+  tennis: 'Tenis', padel: 'Padel', pickleball: 'Pickleball', table_tennis: 'Masa tenisi', badminton: 'Badminton',
+  squash: 'Squash', racquetball: 'Raketbol', platform_tennis: 'Platform tenisi',
+  rock_climbing: 'Kaya tırmanışı', bouldering: 'Bouldering', indoor_climbing: 'Salon tırmanışı', mountaineering: 'Dağcılık',
+  atv: 'ATV', motocross: 'Motokros', motorcycling: 'Motosiklet', overland: 'Arazi yolculuğu', snowmobiling: 'Kar motoru',
+  golf: 'Golf', disc_golf: 'Disk golf',
+  soccer: 'Futbol', basketball: 'Basketbol', volleyball: 'Voleybol', american_football: 'Amerikan futbolu', rugby: 'Ragbi',
+  hockey: 'Hokey', ice_hockey: 'Buz hokeyi', field_hockey: 'Çim hokeyi', cricket: 'Kriket', baseball: 'Beyzbol',
+  softball: 'Softbol', lacrosse: 'Lakros', ultimate_disc: 'Ultimate frizbi',
+  triathlon: 'Triatlon', duathlon: 'Duatlon', multi_sport: 'Çoklu spor',
   other: 'Diğer',
 };
 
-// Tür anahtarı → simge grubu.
-const TUR_GRUP = {
-  running: 'kosu', treadmill_running: 'kosu', trail_running: 'kosu',
-  walking: 'yuruyus', hiking: 'dag',
-  cycling: 'bisiklet', indoor_cycling: 'bisiklet',
-  swimming: 'yuzme', lap_swimming: 'yuzme', open_water_swimming: 'yuzme',
-  strength_training: 'kuvvet', yoga: 'yoga', pilates: 'pilates', hiit: 'hiit', cardio: 'kardiyo',
-  elliptical: 'eliptik', rowing: 'kurek', indoor_rowing: 'kurek', other: 'diger',
+// Tür anahtarı → simge grubu. Her grubun SIMGE_TUR ve TUR_RENK'te karşılığı vardır (test denetler).
+const grupla = (grup, anahtarlar) => anahtarlar.split(' ').map((k) => [k, grup]);
+const TUR_GRUP = Object.fromEntries([
+  ...grupla('kosu', 'running treadmill_running trail_running track_running indoor_running virtual_run ultra_run street_running obstacle_run'),
+  ...grupla('yuruyus', 'walking casual_walking speed_walking indoor_walking'),
+  ...grupla('dag', 'hiking'),
+  ...grupla('bisiklet', 'cycling indoor_cycling road_biking mountain_biking gravel_cycling cyclocross track_cycling virtual_ride bmx recumbent_cycling e_bike_fitness e_bike_mountain'),
+  ...grupla('yuzme', 'swimming lap_swimming open_water_swimming'),
+  ...grupla('kuvvet', 'strength_training'),
+  ...grupla('yoga', 'yoga'), ...grupla('pilates', 'pilates'),
+  ...grupla('esneme', 'mobility stretching breathwork meditation'),
+  ...grupla('hiit', 'hiit boxing mixed_martial_arts'),
+  ...grupla('kardiyo', 'cardio indoor_cardio stair_climbing floor_climbing jump_rope'),
+  ...grupla('eliptik', 'elliptical'),
+  ...grupla('kurek', 'rowing indoor_rowing kayaking canoeing stand_up_paddleboarding whitewater_rafting'),
+  ...grupla('dalga', 'surfing kiteboarding windsurfing wakeboarding sailing'),
+  ...grupla('dalis', 'single_gas_diving multi_gas_diving ccr_diving apnea_diving gauge_diving snorkeling'),
+  ...grupla('kar', 'resort_skiing resort_skiing_snowboarding backcountry_skiing cross_country_skiing cross_country_skiing_ws skate_skiing snowboarding backcountry_snowboarding snowshoeing'),
+  ...grupla('raket', 'tennis padel pickleball table_tennis badminton squash racquetball platform_tennis'),
+  ...grupla('tirmanis', 'rock_climbing bouldering indoor_climbing mountaineering'),
+  ...grupla('motor', 'atv motocross motorcycling overland snowmobiling'),
+  ...grupla('golf', 'golf disc_golf'),
+  ...grupla('takim', 'soccer basketball volleyball american_football rugby hockey ice_hockey field_hockey cricket baseball softball lacrosse ultimate_disc'),
+  ...grupla('coklu', 'triathlon duathlon multi_sport'),
+  ...grupla('diger', 'other'),
+]);
+
+// Tam eşleşme yoksa adın içindeki kelimeden grup; sıra önemli (paddle_tennis kürek değil raket, snowshoe_run kar,
+// water_skiing kar değil dalga; sky_diving/indoor_skydiving dalış değil, genel).
+const ANAHTAR_KELIME = [
+  [/tennis|padel|squash/, 'raket'], [/swim/, 'yuzme'], [/water_?ski/, 'dalga'], [/^(?!.*sky).*(?:dive|diving|snorkel)/, 'dalis'],
+  [/ski|snow/, 'kar'], [/climb/, 'tirmanis'],
+  [/paddl|kayak|canoe|row/, 'kurek'], [/cycl|bik|ride/, 'bisiklet'], [/run/, 'kosu'], [/walk/, 'yuruyus'],
+];
+
+// Küçük harf, boşluk/tire → alt çizgi, Garmin sürüm eki (_v2, _v3) atılır.
+const anahtar = (tur) => {
+  if (!metinMi(tur)) return null;
+  const k = tur.trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/_v\d+$/, '');
+  return k || null;
 };
 
-const anahtar = (tur) => (metinMi(tur) ? tur.trim().toLowerCase() : null);
-
-// Garmin'in ham tür anahtarı → Türkçe ad. Bilinmeyen ya da boş: "Antrenman".
+// Garmin'in ham tür anahtarı → Türkçe ad. Bilinmeyen anahtar okunur yazılır ("paddle_tennis" → "Paddle tennis");
+// boş ya da harf içermeyen: "Antrenman".
 export function turAdi(tur) {
   const k = anahtar(tur);
-  return (k && Object.hasOwn(TUR_AD, k)) ? TUR_AD[k] : 'Antrenman';
+  if (!k) return 'Antrenman';
+  if (Object.hasOwn(TUR_AD, k)) return TUR_AD[k];
+  if (!/^[\p{L}\p{N}_]+$/u.test(k) || !/\p{L}/u.test(k)) return 'Antrenman';
+  const s = k.replace(/_+/g, ' ').trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export function turGrubu(tur) {
   const k = anahtar(tur);
-  return (k && Object.hasOwn(TUR_GRUP, k)) ? TUR_GRUP[k] : 'genel';
+  if (!k) return 'genel';
+  if (Object.hasOwn(TUR_GRUP, k)) return TUR_GRUP[k];
+  for (const [d, g] of ANAHTAR_KELIME) if (d.test(k)) return g;
+  return 'genel';
 }
 
 // Saniye → "59 sn", "45 dk", "1s 5dk". Geçersiz: null.
@@ -577,19 +628,266 @@ const CANLI = {
       },
     };
   },
+  // Dalış: tüplü dalgıç yatay süzülür, paletler sırayla çırpar, kabarcıklar salınarak yükselip söner.
+  dalis(g) {
+    const tup = sv('path', { 'stroke-width': 2.4, opacity: 0.8 }, g);
+    const govde = sv('path', {}, g);
+    const kafa = sv('circle', { r: 1.8 }, g);
+    const bacaklar = [0, 1].map(() => sv('path', {}, g));
+    const kabarcik = [0, 1, 2].map(() => sv('circle', { 'stroke-width': 0.9 }, g));
+    return {
+      statik: 0.9,
+      ciz(t) {
+        const bob = 0.5 * Math.sin(t * 1.7);
+        const H = [8.4, 13.6 + bob * 0.6]; const S = [15.2, 12.2 + bob];
+        ata(govde, 'd', yol(H, S));
+        ata(tup, 'd', yol([9.8, 11.5 + bob * 0.7], [13.8, 10.7 + bob * 0.9]));
+        ata(kafa, 'cx', 17.6); ata(kafa, 'cy', 11.2 + bob);
+        [0, Math.PI].forEach((ek, i) => {
+          const p = t * TAU * 0.9 + ek;
+          const a1 = -1.42 + 0.26 * Math.sin(p);
+          const K = uzat(H, 3.4, a1);
+          const a2 = a1 - 0.22 * Math.sin(p - 0.9);
+          const F = uzat(K, 3.2, a2);
+          ata(bacaklar[i], 'd', yol(H, K, F, uzat(F, 1.9, a2 + 0.95)));
+          ata(bacaklar[i], 'opacity', i ? 0.45 : 1);
+        });
+        kabarcik.forEach((c, i) => {
+          const u = (t / 2.4 + i / 3) % 1;
+          ata(c, 'cx', 19.4 + 0.6 * Math.sin(u * TAU * 1.5 + i));
+          ata(c, 'cy', 9.2 - u * 7.2);
+          ata(c, 'r', 0.5 + 0.7 * u);
+          ata(c, 'opacity', u < 0.15 ? u / 0.15 : Math.max(0, 1 - (u - 0.15) * 1.1));
+        });
+      },
+    };
+  },
+  // Kar: kayakçı yamaçtan iner; dizler yaylanır, iz akar, kuyruktan kar tozu savrulur.
+  kar(g) {
+    const iz = sv('path', { d: 'M2 12.1L22 20.5', 'stroke-width': 1, opacity: 0.4, 'stroke-dasharray': '1.6 2.2' }, g);
+    const kisi = sv('g', {}, g);
+    sv('path', { d: 'M7.4 12.9L16.6 16.8q1.3.5 1.7-.6' }, kisi);
+    const bacak = sv('path', {}, kisi);
+    const govde = sv('path', {}, kisi);
+    const kafa = sv('circle', { r: 1.7 }, kisi);
+    const kol = sv('path', {}, kisi);
+    const baston = sv('path', { 'stroke-width': 1, opacity: 0.7 }, kisi);
+    const toz = [0, 1, 2].map(() => sv('circle', { r: 0.5, fill: 'currentColor', stroke: 'none' }, g));
+    return {
+      statik: 0.4,
+      ciz(t) {
+        const c = 0.5 * Math.sin((t * TAU) / 1.6);
+        const dx = 0.6 * Math.sin((t * TAU) / 3.2);
+        ata(kisi, 'transform', `translate(${f2(dx)} ${f2(dx * 0.42)})`);
+        const F = [12, 14.8]; const K = [13.5, 12.4 + c * 0.4]; const H = [11.2, 10.2 + c];
+        const S = [13.4, 6.8 + c]; const W = [15.6, 9.4 + c];
+        ata(bacak, 'd', yol(F, K, H));
+        ata(govde, 'd', yol(H, S));
+        ata(kafa, 'cx', 14.6); ata(kafa, 'cy', 4.5 + c);
+        ata(kol, 'd', yol(S, [15, 8 + c], W));
+        ata(baston, 'd', yol(W, [10.6, 15.2]));
+        ata(iz, 'stroke-dashoffset', (t * 6) % 3.8);
+        toz.forEach((p, i) => {
+          const u = (t / 1.1 + i / 3) % 1;
+          ata(p, 'cx', 7.2 + dx - u * 5);
+          ata(p, 'cy', 12.6 + dx * 0.42 - u * 2.6 + u * u * 3);
+          ata(p, 'opacity', Math.max(0, 1 - u));
+        });
+      },
+    };
+  },
+  // Raket: top yere sekip rakete döner; vuruş anında raket kısa bir savuruş yapar.
+  raket(g) {
+    sv('path', { d: 'M14.6 21.4h7', 'stroke-width': 1, opacity: 0.4 }, g);
+    const raket = sv('g', {}, g);
+    sv('ellipse', { cx: 8.4, cy: 8.4, rx: 3.6, ry: 4.6, transform: 'rotate(-35 8.4 8.4)' }, raket);
+    sv('path', { d: 'M7.43 4.93L11.33 10.49M5.47 6.31L9.37 11.87M6.27 9.89L10.53 6.91M7.68 10.86L10.96 8.56', 'stroke-width': 0.7, opacity: 0.5 }, raket);
+    sv('path', { d: 'M11 12.2L14.4 16.9', 'stroke-width': 2 }, raket);
+    const top = sv('circle', { r: 1.5 }, g);
+    return {
+      statik: 0.3,
+      ciz(t) {
+        const u = (t / 1.4) % 1;
+        let x; let y;
+        if (u < 0.5) { const s = u / 0.5; x = 13 + 5.6 * s; y = 8 + 11.8 * s * s; }
+        else { const s = (u - 0.5) / 0.5; x = 18.6 - 5.6 * s; y = 19.8 - 11.8 * (1 - (1 - s) * (1 - s)); }
+        ata(top, 'cx', x); ata(top, 'cy', y);
+        const k = Math.exp(-u * 8) + 0.6 * Math.exp(-(1 - u) * 14);
+        ata(raket, 'transform', `rotate(${f2(-12 * k)} 14.4 16.9)`);
+      },
+    };
+  },
+  // Tırmanış: duvardaki tutamaklar aşağı akar; figür çapraz kol-bacakla uzanıp çekilir.
+  tirmanis(g) {
+    const TUT = [[5, 2], [18.6, 6], [6.2, 10], [17.8, 14], [5.4, 18], [19, 22]];
+    const tut = TUT.map(() => sv('circle', { r: 0.95, fill: 'currentColor', stroke: 'none' }, g));
+    sv('circle', { cx: 12, cy: 5.6, r: 1.8 }, g);
+    const govde = sv('path', {}, g);
+    const kollar = [0, 1].map(() => sv('path', {}, g));
+    const bacaklar = [0, 1].map(() => sv('path', {}, g));
+    return {
+      statik: 0.45,
+      ciz(t) {
+        TUT.forEach(([x, y0], i) => {
+          const y = ((y0 + t * 1.6) % 24) - 1;
+          ata(tut[i], 'cx', x); ata(tut[i], 'cy', y);
+          ata(tut[i], 'opacity', 0.15 + 0.5 * Math.max(0, Math.sin((Math.PI * (y + 1)) / 24)));
+        });
+        const f = (t * TAU) / 1.8;
+        const sal = 0.5 * Math.sin(f);
+        const S = [12 + sal * 0.4, 8.2]; const H = [12 - sal * 0.4, 13.6];
+        ata(govde, 'd', yol([12, 7.4], S, H));
+        [-1, 1].forEach((yon, i) => {
+          const l = 0.5 + 0.5 * Math.sin(f) * yon; const m = 1 - l;
+          ata(kollar[i], 'd', yol(S, [12 + yon * 3.4, 9.2 - 1.6 * l], [12 + yon * 3.6, 6.4 - 3 * l]));
+          ata(bacaklar[i], 'd', yol(H, [12 + yon * 3.2, 15 - 1.8 * m], [12 + yon * 3, 19.6 - 2.6 * m]));
+        });
+      },
+    };
+  },
+  // Motor: tırtıllı tekerler döner, gövde ve sürücü engebede yaylanır, yer çizgileri akar.
+  motor(g) {
+    const zemin = [0, 1].map(() => sv('path', { 'stroke-width': 1.1, opacity: 0.4 }, g));
+    const T = [[5.6, 17], [18.4, 17]];
+    const disler = T.map(([x, y]) => {
+      sv('circle', { cx: x, cy: y, r: 3.1 }, g);
+      sv('circle', { cx: x, cy: y, r: 0.8 }, g);
+      return [sv('circle', { cx: x, cy: y, r: 3.6, 'stroke-width': 1.3, 'stroke-dasharray': '1 1.25' }, g), x, y];
+    });
+    const ust = sv('g', {}, g);
+    sv('path', { d: 'M5.6 17l3.4-5.4h6.4l3 5.4M9.8 10.6h4.4M15.4 11.6l1.4-2.8h2.2' }, ust);
+    sv('circle', { cx: 12.8, cy: 4.4, r: 1.6 }, ust);
+    sv('path', { d: 'M12.4 6.2l-1.4 4.2M12.2 7.2l4.4 1.6' }, ust);
+    return {
+      statik: 0.2,
+      ciz(t) {
+        const a = (t * 300) % 360;
+        for (const [k, x, y] of disler) ata(k, 'transform', `rotate(${f2(a)} ${x} ${y})`);
+        ata(ust, 'transform', `translate(0 ${f2(-0.7 * Math.abs(Math.sin(t * 4.6)))})`);
+        zemin.forEach((z, i) => {
+          const x = 24 - ((t * 14 + i * 13) % 27);
+          ata(z, 'd', `M${f2(x)} ${i ? 22.4 : 21.4}h${i ? 2 : 3.2}`);
+        });
+      },
+    };
+  },
+  // Takım sporları: top dönerek seker, yere değince hafif basılır; gölgesi yükseklikle küçülür.
+  takim(g) {
+    const golge = sv('ellipse', { cx: 12, cy: 21.6, ry: 0.7, 'stroke-width': 1, opacity: 0.4 }, g);
+    const top = sv('g', {}, g);
+    sv('circle', { cx: 0, cy: 0, r: 4.2 }, top);
+    const P = [0, 1, 2, 3, 4].map((i) => { const a = -Math.PI / 2 + (i * TAU) / 5; return [Math.cos(a), Math.sin(a)]; });
+    sv('path', { d: `${yol(...P.map(([x, y]) => [x * 1.5, y * 1.5]))}Z`, fill: 'currentColor', 'stroke-width': 0.8 }, top);
+    sv('path', { d: P.map(([x, y]) => yol([x * 1.5, y * 1.5], [x * 4.2, y * 4.2])).join(''), 'stroke-width': 0.8, opacity: 0.7 }, top);
+    return {
+      statik: 0.5,
+      ciz(t) {
+        const u = (t / 1.2) % 1;
+        const h = 4 * u * (1 - u);
+        const ez = Math.max(0, 1 - h / 0.12);
+        ata(top, 'transform', `translate(12 ${f2(17 - 9 * h + 0.4 * ez)}) scale(${f2(1 + 0.1 * ez)} ${f2(1 - 0.12 * ez)}) rotate(${f2((t * 140) % 360)})`);
+        ata(golge, 'rx', 4 * (1 - 0.45 * h));
+        ata(golge, 'opacity', 0.45 - 0.3 * h);
+      },
+    };
+  },
+  // Sörf: dalga kıvrılır, sörfçü dalga yüzünde süzülür, kuyruktan köpük savrulur.
+  dalga(g) {
+    const su = sv('path', { d: 'M1.5 21.2h21', 'stroke-width': 1, opacity: 0.4, 'stroke-dasharray': '2.4 1.8' }, g);
+    const dalga = sv('path', { d: 'M10.4 20.6c2.8 0 4.8-1.8 6.2-4.8 1.2-2.6 2.4-5 4.2-5 1.2 0 1.8.9 1.6 1.9-.2.9-1 1.3-1.8.8' }, g);
+    const kisi = sv('g', {}, g);
+    sv('path', { d: 'M5.8 19.8L12.2 17.3', 'stroke-width': 1.7 }, kisi);
+    sv('path', { d: 'M7.8 19.1L8 16.2l1.4-.9M10.6 18L11.2 16.2l-1.8-.9M9.4 15.3L10 12.2M10 12.7L6.8 12.9M10 12.7l3.6-1.3' }, kisi);
+    sv('circle', { cx: 10.6, cy: 10.2, r: 1.6 }, kisi);
+    const kopuk = [0, 1, 2].map(() => sv('circle', { r: 0.5, fill: 'currentColor', stroke: 'none' }, g));
+    return {
+      statik: 0.6,
+      ciz(t) {
+        const o = Math.sin((t * TAU) / 2.2);
+        const dx = o * 1.1 - 1.6; const dy = -o * 0.5;
+        ata(kisi, 'transform', `translate(${f2(dx)} ${f2(dy)}) rotate(${f2(o * 4)} 9 18)`);
+        ata(dalga, 'transform', `translate(${f2(0.4 * Math.sin(t * 1.3))} 0)`);
+        ata(su, 'stroke-dashoffset', (t * 4) % 4.2);
+        kopuk.forEach((p, i) => {
+          const u = (t / 1 + i / 3) % 1;
+          ata(p, 'cx', 5.6 + dx - u * 3.6);
+          ata(p, 'cy', 19.4 + dy - u * 2.4 + u * u * 2.6);
+          ata(p, 'opacity', Math.max(0, 1 - u));
+        });
+      },
+    };
+  },
+  // Çoklu spor: üç parçalı halka döner, parlaklık parçadan parçaya geçer; merkezde nefes alan nokta.
+  coklu(g) {
+    const ic = sv('circle', { cx: 12, cy: 12, r: 4.4, 'stroke-width': 0.8, 'stroke-dasharray': '1.2 1.6', opacity: 0.45 }, g);
+    const merkez = sv('circle', { cx: 12, cy: 12, r: 1.6, fill: 'currentColor', stroke: 'none' }, g);
+    const halka = sv('g', {}, g);
+    const yay = (a0, a1) => {
+      const r = 8; const p = (a) => [12 + r * Math.cos(a), 12 + r * Math.sin(a)];
+      const [x0, y0] = p(a0); const [x1, y1] = p(a1);
+      return `M${f2(x0)} ${f2(y0)}A${r} ${r} 0 0 1 ${f2(x1)} ${f2(y1)}`;
+    };
+    const parca = [0, 1, 2].map((i) => {
+      const a = -Math.PI / 2 + (i * TAU) / 3;
+      return sv('path', { d: yay(a + 0.2, a + TAU / 3 - 0.2), 'stroke-width': 1.8 }, halka);
+    });
+    return {
+      statik: 0.4,
+      ciz(t) {
+        ata(halka, 'transform', `rotate(${f2((t * 60) % 360)} 12 12)`);
+        ata(ic, 'transform', `rotate(${f2(-(t * 40) % 360)} 12 12)`);
+        const s = (t / 0.9) % 3;
+        parca.forEach((p, i) => {
+          const d = Math.min(Math.abs(s - i), 3 - Math.abs(s - i));
+          ata(p, 'opacity', 0.35 + 0.65 * Math.max(0, 1 - d));
+        });
+        const n = 0.5 - 0.5 * Math.cos((t * TAU) / 2.7);
+        ata(merkez, 'r', 1.2 + 0.7 * n);
+      },
+    };
+  },
+  // Golf: top kavis çizip deliğe düşer; bayrak rüzgârda dalgalanır.
+  golf(g) {
+    sv('path', { d: 'M2 20c4-1 16-1 20 0', 'stroke-width': 1, opacity: 0.4 }, g);
+    sv('ellipse', { cx: 17, cy: 19.3, rx: 1.6, ry: 0.5, 'stroke-width': 1 }, g);
+    sv('path', { d: 'M17 19.2V4.4' }, g);
+    const bayrak = sv('path', { fill: 'currentColor', 'stroke-width': 1, opacity: 0.85 }, g);
+    const top = sv('circle', { r: 1.3 }, g);
+    return {
+      statik: 1.2,
+      ciz(t) {
+        const d = Math.sin(t * 3.4);
+        ata(bayrak, 'd', `M17 4.4Q${f2(19 + d * 0.6)} ${f2(4.6 - d * 0.6)} ${f2(21.4 + d * 0.3)} 6.3Q${f2(19 - d * 0.6)} ${f2(6.9 + d * 0.6)} 17 8.2Z`);
+        const u = (t / 2.6) % 1;
+        let x = 4; let y = 18.6; let op = 1;
+        if (u < 0.6) { const s = u / 0.6; x = 4 + 13 * s; y = 18.6 - 38 * s * (1 - s); }
+        else if (u < 0.75) { const s = (u - 0.6) / 0.15; x = 17; y = 18.6 + 1.2 * s; op = 1 - s; }
+        else { op = (u - 0.75) / 0.25; }
+        ata(top, 'cx', x); ata(top, 'cy', y); ata(top, 'opacity', op);
+      },
+    };
+  },
 };
 
 const SIMGE_TUR = {
   kosu: 'kosu', yuruyus: 'ayak', dag: 'dag', bisiklet: 'bisiklet', yuzme: 'yuzme', kuvvet: 'kuvvet',
-  yoga: 'nefes', pilates: 'nefes', hiit: 'simsek', kardiyo: 'nabiz', eliptik: 'nabiz', kurek: 'kurek', diger: 'nabiz', genel: 'nabiz',
+  yoga: 'nefes', pilates: 'nefes', esneme: 'nefes', hiit: 'simsek', kardiyo: 'nabiz', eliptik: 'nabiz', kurek: 'kurek',
+  dalga: 'dalga', dalis: 'dalis', kar: 'kar', raket: 'raket', tirmanis: 'tirmanis', motor: 'motor', golf: 'golf',
+  takim: 'takim', coklu: 'coklu', diger: 'nabiz', genel: 'nabiz',
 };
 export const simgeTuru = (grup) => (Object.hasOwn(SIMGE_TUR, grup) ? SIMGE_TUR[grup] : 'nabiz');
 
 // Tür grubuna göre vurgu rengi (yalnız süs; tür adı her zaman yazıyla da verilir).
 const TUR_RENK = {
   kosu: '#ff9d7a', yuruyus: '#ffc9a6', dag: '#ffc9a6', bisiklet: '#ffd88a', yuzme: '#9ec8ff', kuvvet: '#c8a8ff',
-  yoga: '#bfeedd', pilates: '#bfeedd', hiit: '#ff9fb8', kardiyo: '#ff9fb8', eliptik: '#ffd88a', kurek: '#9ec8ff', diger: '#d9cdea', genel: '#d9cdea',
+  yoga: '#bfeedd', pilates: '#bfeedd', esneme: '#bfeedd', hiit: '#ff9fb8', kardiyo: '#ff9fb8', eliptik: '#ffd88a', kurek: '#9ec8ff',
+  dalga: '#8fdcec', dalis: '#7fd6d0', kar: '#d6ebff', raket: '#dcef8a', tirmanis: '#ffb48a', motor: '#ffcf7a', golf: '#c9eeaa',
+  takim: '#a8e6b4', coklu: '#d8b8ff', diger: '#d9cdea', genel: '#d9cdea',
 };
+// Test ve denetim için: bilinen her grup, simgesinin kurulumu.
+export const TUR_GRUPLARI = Object.freeze(Object.keys(TUR_RENK));
+export const turRengi = (grup) => (Object.hasOwn(TUR_RENK, grup) ? TUR_RENK[grup] : TUR_RENK.genel);
+export function simgeKur(grup, g) { return CANLI[simgeTuru(grup)](g); }
 
 /* ================= Stil ================= */
 
@@ -1113,6 +1411,7 @@ export function aktiviteKur(kap, baglam = {}) {
 
   function baslik() {
     const b = el('div', 'akt-bas');
+    b.setAttribute('data-sahne', '0'); // sahne geçişi sırası (uygulama.js okur)
     const h = el('h1', null, 'Aktiviteler');
     h.setAttribute('tabindex', '-1'); // menüden gelince odak buraya taşınır
     b.appendChild(h);
@@ -1123,6 +1422,7 @@ export function aktiviteKur(kap, baglam = {}) {
   function cizYukleniyor() {
     anaBaslikla();
     const k = el('div', 'akt-iskelet');
+    k.setAttribute('data-sahne', '1');
     k.setAttribute('role', 'status');
     k.setAttribute('aria-busy', 'true');
     k.setAttribute('aria-label', 'Aktiviteler yükleniyor');
@@ -1134,6 +1434,7 @@ export function aktiviteKur(kap, baglam = {}) {
     anaBaslikla();
     const m = el('div', 'akt-mesaj');
     m.setAttribute('role', 'status');
+    m.setAttribute('data-sahne', '1');
     m.appendChild(el('p', null, metin));
     if (alt) m.appendChild(el('p', 'alt', alt));
     if (tekrarDugmesi) {
@@ -1149,6 +1450,7 @@ export function aktiviteKur(kap, baglam = {}) {
   function kahramanKart(a) {
     const grup = turGrubu(a.tur);
     const k = el('section', 'akt-kahraman');
+    k.setAttribute('data-sahne', '1');
     k.setAttribute('aria-label', 'Son antrenman');
     k.style.setProperty('--t', TUR_RENK[grup]);
     const ad = turAdi(a.tur);
@@ -1188,6 +1490,7 @@ export function aktiviteKur(kap, baglam = {}) {
     const { haftalar, yukBant } = veri;
     const bu = haftalar[0] || null;
     const kart = el('section', 'akt-ozet');
+    kart.setAttribute('data-sahne', '2');
     kart.setAttribute('aria-label', 'Haftalık yük özeti');
 
     const sol = el('div', 'akt-ozetUst');
@@ -1271,17 +1574,20 @@ export function aktiviteKur(kap, baglam = {}) {
     const liste = el('div', 'akt-liste');
     liste.setAttribute('aria-label', 'Önceki antrenmanlar');
     let onceki = null; let kartlar = null;
+    // Sahne geçişi: listenin ilk birkaç satırı (gün başlığı ve kartlar) 4'ten başlayıp sırayla yükselir
+    let sira = 4;
+    const sahnele = (e) => { if (sira < 10) e.setAttribute('data-sahne', String(sira++)); return e; };
     for (const a of aktiviteler) {
       if (!kartlar || a.tarih !== onceki) {
         const grup = el('div', 'akt-grup');
         const b = gunBaslik(a.tarih, bugun);
-        if (b) grup.appendChild(el('h3', 'akt-gun', b));
+        if (b) grup.appendChild(sahnele(el('h3', 'akt-gun', b)));
         kartlar = el('div', 'akt-kartlar');
         grup.appendChild(kartlar);
         liste.appendChild(grup);
         onceki = a.tarih;
       }
-      kartlar.appendChild(ogeKart(a));
+      kartlar.appendChild(sahnele(ogeKart(a)));
     }
     return liste;
   }
@@ -1292,11 +1598,14 @@ export function aktiviteKur(kap, baglam = {}) {
     if (son) ana.appendChild(kahramanKart(son));
     if (veri.haftalar.length > 0) ana.appendChild(ozetKart());
     if (kalan.length) {
-      ana.appendChild(el('h2', 'akt-onceki', 'Önceki antrenmanlar'));
+      const h = el('h2', 'akt-onceki', 'Önceki antrenmanlar');
+      h.setAttribute('data-sahne', '3');
+      ana.appendChild(h);
       ana.appendChild(listeKur(kalan));
     }
     if (!son) {
       const m = el('div', 'akt-mesaj');
+      m.setAttribute('data-sahne', '1');
       m.appendChild(el('p', null, 'Bu aralıkta kayıtlı aktivite yok.'));
       m.appendChild(el('p', 'alt', 'Veri yok'));
       ana.appendChild(m);

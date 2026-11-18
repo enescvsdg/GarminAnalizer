@@ -1,4 +1,4 @@
-import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
+import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, sahneGecisi, sahneSirasi, sahneKademe, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
 import { simgeKur } from './simgeler.js';
 import { ACIKLAMA } from './aciklama.js';
 const $ = (id) => document.getElementById(id);
@@ -723,7 +723,7 @@ function bugunGec(anlik, menuden) {
   if (mesgul || ekran === 'bugun') return;
   aciklamaKapat(false); if (simge) simge.durdur();
   ekran = 'bugun'; sekmeGuncelle();
-  const gi = clamp(Math.round(st.P), 0, N - 1); if (gi >= G0 && gi - G0 !== sel7) sec(gi - G0, true);
+  const yeni = bugunSecimi(st.P, G0, N, sel7, menuden); if (yeni !== sel7) sec(yeni, true);
   yerlesimB(false);
   if (RM || anlik) {
     st.flat = 0; st.cy = lay.cy; L.forEach((l) => (l.r = 1));
@@ -791,17 +791,21 @@ function kayanGoster(ad) {
 }
 function kayanGizle(ad) { const c = KAYAN[ad].c; if (c) { try { c.gizle(); } catch (e) { /* aynı */ } } }
 let sonKay = 0;
-function kayanAc(ad, bitir) {
+function kayanSahne(ad) { // kayan ekranı en üste açar ve modülü gösterir; görünürlüğü çağıran canlandırır
   const el = KAYAN[ad].kap;
   el.hidden = false; el.style.zIndex = '4';
   menu.classList.remove('toplandi'); sonKay = el.scrollTop;
   kayanGoster(ad);
+  return el;
+}
+function kayanAc(ad, bitir) {
+  const el = kayanSahne(ad);
   if (RM) { gsap.set(el, { autoAlpha: 1, y: 0 }); bitir(); return; }
   gsap.fromTo(el, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.32, ease: 'power2.out', overwrite: 'auto', onComplete: bitir });
 }
 function kayanKapat(ad, bitir, anlik) {
   const el = KAYAN[ad].kap; kayanGizle(ad);
-  const son = () => { el.hidden = true; el.style.zIndex = ''; if (bitir) bitir(); };
+  const son = () => { el.hidden = true; el.style.zIndex = ''; sahneTemizle(el); if (bitir) bitir(); };
   if (RM || anlik) { gsap.killTweensOf(el); gsap.set(el, { autoAlpha: 0 }); son(); return; }
   gsap.to(el, { autoAlpha: 0, duration: 0.25, ease: 'power1.in', overwrite: 'auto', onComplete: son });
 }
@@ -813,33 +817,134 @@ for (const k of Object.values(KAYAN)) {
   }, { passive: true });
 }
 const anaPasif = (p) => { $('bugun').inert = p; trend.inert = p; }; // örtülen ana ekran odak ve erişilebilirlik ağacından çıkar
+// Geçiş boyunca hedef ve çıkan kayan kapsayıcı dokunuş almaz (takvimden son 7 güne dokunuş mesgul'e çarpıp kendi kartını açmasın);
+// sahneOynar sınıfı [data-sahne] öğelerinin CSS transition'ını kapatır (GSAP'in transform'u gecikmez/lastiklenmez). Bitince kalkar.
+function sahneKilit(adlar, p) {
+  for (const ad of adlar) { const el = KAYAN[ad] && KAYAN[ad].kap; if (el) { el.inert = p; el.classList.toggle('sahneOynar', p); } }
+}
+/* ---- Sahne geçişleri (telefon) ---- */
+// Bugün/Trend → kayan ekran: ana sahne ufka iner (Trend'de sırtlar tek ışıklı ufuk çizgisine alçalır; Bugün'de kartlar küreye çekilir,
+// küre ufka yayılır), ufuktan bir ışık çizgisi yukarı süpürür, kayan sayfa bu ışıktan açılır, [data-sahne] öğeleri sırayla yükselir.
+// Dönüş bunun tersidir; iki kayan ekran arasında eski öğeler batar, ışık aşağıdan yukarı geçer, yenileri yükselir.
+// Geçiş boyunca mesgul açıktır: ana döngü çizmeyi sürdürür; kayan ekran açılırken çıkış bitince durur, dönüşte ilk kareden önce başlar.
+// Ses yok (menünün rüzgârı yeter). RM ve geniş ekran eski yolu kullanır.
+const isik = $('sahneIsik'), TREND_UST = ['#tBas', '#balon', '#ust', '#ipucu', '#cip', '#ekSatir'];
+// Trend üst katmanı ufka inerken her öğenin görünürlüğü saklanır, dönüşte o değere geri gelir (sönmüş ipucu yeniden belirmez;
+// #ekSatir'ın hidden kuralına autoAlpha dokunmaz). Saklı iken yeniden okunmaz: kayan↔kayan ara adımları 0'ı kaydetmez.
+const ustAlfa = new Map(); let ustSakli = false;
+function ustSakla() {
+  if (ustSakli) return;
+  ustSakli = true;
+  for (const s of TREND_UST) { const e = document.querySelector(s); if (e) ustAlfa.set(e, Number(gsap.getProperty(e, 'opacity')) || 0); }
+}
+const ustEski = (i, e) => (ustAlfa.has(e) ? ustAlfa.get(e) : 1);
+const ustGeri = () => { ustSakli = false; };
+let anaUyur = false; // iki kayan ekran arasında ana sahne tamamen örtülüdür: döngü çizmez
+const ufukY = (alt) => (alt === 'trend' ? tl.alt : lay.cy);
+function sahneOgeleri(kap, en) { // görünen [data-sahne] öğeleri, sıra değerine göre
+  const o = kap.querySelectorAll('[data-sahne]');
+  if (!o.length) return [];
+  const k = kap.getBoundingClientRect();
+  const l = [...o].map((e) => { const r = e.getBoundingClientRect(); return { sira: e.getAttribute('data-sahne'), ust: r.top, alt: r.bottom }; });
+  return sahneSirasi(l, k.top, k.bottom, en).map((i) => o[i]);
+}
+function sahneTemizle(kap) { const o = kap.querySelectorAll('[data-sahne]'); if (o.length) { gsap.killTweensOf(o); gsap.set(o, { clearProps: 'transform,opacity,visibility' }); } }
+function isikSupur(z, t, y0, y1, sure) { // ışık çizgisi y0'da yanar, y1'e süpürür, söner
+  z.set(isik, { y: y0, scaleX: 0.2, autoAlpha: 0 }, t)
+    .to(isik, { autoAlpha: 1, scaleX: 1, duration: 0.2, ease: 'power2.out' }, t)
+    .to(isik, { y: y1, duration: sure, ease: 'power2.inOut' }, t + 0.06)
+    .to(isik, { autoAlpha: 0, duration: 0.2, ease: 'power1.in' }, t + sure - 0.1);
+}
+function sahneBat(z, t, kap) { // görünen öğeler kademeli batar (temizlik kayanKapat'ta)
+  const s = sahneOgeleri(kap, 8);
+  if (s.length) z.to(s, { y: 18, autoAlpha: 0, duration: 0.28, stagger: 0.04, ease: 'power2.in' }, t);
+}
+function sahneYuksel(z, t, ty, kap) { // t'de öğeler okunup gizlenir (modül içeriği geçişin başında henüz gelmemiş olabilir), ty'de sırayla yükselir
+  z.add(() => { // en çok 8 öğe; kademe toplam geçişi ~1.3 sn içinde tutar
+    const s = sahneOgeleri(kap, 8);
+    if (s.length) z.fromTo(s, { y: 26, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.45, stagger: sahneKademe(s.length, ty, 0.45), ease: 'power3.out', clearProps: 'transform,opacity,visibility' }, ty);
+  }, t);
+}
+function sahneAc(alt, ad, bitir) { // Bugün/Trend → kayan ekran
+  const el = kayanSahne(ad); gsap.set(el, { autoAlpha: 0, y: 0 });
+  const z = gsap.timeline({ onComplete: bitir });
+  if (alt === 'trend') {
+    z.to(st, { yuk: 0, duration: 0.45, ease: 'power3.in' }, 0)
+      .to(st, { yukA: 0, duration: 0.45, ease: 'power3.in' }, 0.05)
+      .to(st, { gunesY: 0, duration: 0.5, ease: 'power2.in' }, 0);
+    ustSakla(); z.to(TREND_UST, { autoAlpha: 0, duration: 0.25 }, 0);
+  } else {
+    z.to(L, { r: 0, duration: 0.38, stagger: 0.03, ease: 'power2.in' }, 0)
+      .to('#bugunUst', { autoAlpha: 0, duration: 0.28 }, 0)
+      .to(st, { flat: 1, cy: lay.cy, duration: 0.42, ease: 'power3.inOut' }, 0.12);
+  }
+  isikSupur(z, 0.42, ufukY(alt), 0, 0.5);
+  z.fromTo(el, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out' }, 0.52);
+  sahneYuksel(z, 0.52, 0.62, el);
+}
+function sahneDegis(once, ad, bitir) { // kayan ekran ↔ kayan ekran
+  const z = gsap.timeline({ onComplete: bitir });
+  sahneBat(z, 0, KAYAN[once].kap);
+  const el = kayanSahne(ad); gsap.set(el, { autoAlpha: 0, y: 0 });
+  isikSupur(z, 0.16, H * 0.9, 0, 0.5);
+  z.to(el, { autoAlpha: 1, duration: 0.36, ease: 'power1.out' }, 0.3);
+  sahneYuksel(z, 0.3, 0.48, el);
+}
+function anaToplu(alt) { // ana ekranı ufka inmiş durumuna koyar: dönüş canlandırması buradan başlar
+  if (alt === 'trend') { st.yuk = st.yukA = st.gunesY = 0; ustSakla(); gsap.set(TREND_UST, { autoAlpha: 0 }); return; }
+  st.flat = 1; st.cy = lay.cy; L.forEach((l) => (l.r = 0)); gsap.set('#bugunUst', { autoAlpha: 0 });
+  if (ustSakli) { gsap.set(TREND_UST, { autoAlpha: ustEski }); ustGeri(); } // gizli Trend'in üst katmanı sonraki Trend geçişi için eski hâline
+}
+function sahneDon(ad, hedefEkran, bitir) { // kayan ekran → Bugün/Trend
+  const el = KAYAN[ad].kap, z = gsap.timeline({ onComplete: bitir });
+  sahneBat(z, 0, el);
+  anaToplu(hedefEkran);
+  isikSupur(z, 0.12, 0, ufukY(hedefEkran), 0.46);
+  z.to(el, { autoAlpha: 0, y: 8, duration: 0.34, ease: 'power1.in' }, 0.2)
+    .add(() => kayanKapat(ad, null, true), 0.58);
+  if (hedefEkran === 'trend') {
+    z.to(st, { yukA: 1, duration: 0.9, ease: 'expo.out' }, 0.52)
+      .to(st, { yuk: 1, duration: 0.9, ease: 'expo.out' }, 0.58)
+      .to(st, { gunesY: 1, duration: 1, ease: 'power3.out' }, 0.52)
+      .to(TREND_UST, { autoAlpha: ustEski, duration: 0.45, stagger: 0.06 }, 0.7);
+    ustGeri();
+  } else {
+    z.to(st, { flat: 0, cy: lay.cy, duration: 0.85, ease: 'elastic.out(1,0.7)' }, 0.5)
+      .to(L, { r: 1, duration: 0.6, stagger: 0.045, ease: 'back.out(1.5)' }, 0.6)
+      .to('#bugunUst', { autoAlpha: 1, duration: 0.45 }, 0.68);
+  }
+}
 // Telefon: dört ekran arasında geçiş. Bugün ↔ Trend eski geçişlerini (uçan sayı dahil) kullanır; yeni ekranlar solarak gelir.
 function ekranGit(hedefEkran, menuden) {
   if (mesgul) return false;
   const g = ekranGecisi(ekran, hedefEkran, altEkran);
   if (!g) return false;
   dokunBirak(); aciklamaKapat(false);
-  const onceki = ekran;
+  const onceki = ekran, sahne = RM || GENIS ? null : sahneGecisi(onceki, hedefEkran, altEkran);
   if (g.tur === 'ana') { if (hedefEkran === 'trend') trendeGec(null, null, false, menuden); else bugunGec(false, menuden); return true; }
   if (g.tur === 'ac') {
     altEkran = g.alt; if (onceki === 'trend' && simge) simge.durdur();
-    ekran = hedefEkran; sekmeGuncelle(); mesgul = true; anaPasif(true);
-    kayanAc(hedefEkran, () => { mesgul = false; kayanOdak(); });
+    ekran = hedefEkran; sekmeGuncelle(); mesgul = true; anaPasif(true); sahneKilit([hedefEkran], true);
+    const bitir = () => { sahneKilit([hedefEkran], false); mesgul = false; kayanOdak(); }; // ana döngü burada, çıkış bittikten sonra durur
+    if (sahne) sahneAc(g.alt, hedefEkran, bitir); else kayanAc(hedefEkran, bitir);
     return true;
   }
   if (g.tur === 'degis') {
-    ekran = hedefEkran; sekmeGuncelle(); mesgul = true;
-    KAYAN[onceki].kap.style.zIndex = '3';
-    kayanAc(hedefEkran, () => { kayanKapat(onceki, null, true); mesgul = false; kayanOdak(); });
+    ekran = hedefEkran; sekmeGuncelle(); mesgul = true; sahneKilit([onceki, hedefEkran], true);
+    KAYAN[onceki].kap.style.zIndex = '3'; anaUyur = true;
+    const bitir = () => { kayanKapat(onceki, null, true); sahneKilit([onceki, hedefEkran], false); anaUyur = false; mesgul = false; kayanOdak(); };
+    if (sahne) sahneDegis(onceki, hedefEkran, bitir); else kayanAc(hedefEkran, bitir);
     return true;
   }
   ekran = g.alt; sekmeGuncelle(); anaPasif(false); menu.classList.remove('toplandi');
   if (g.tur === 'kapat') {
-    if (g.alt === 'trend') { if (simge) simge.baslat(); yerlesimT(); st.cy = yy(cur.v[hedef]); } else { yerlesimB(false); st.cy = lay.cy; }
+    if (g.alt === 'trend') { if (simge) simge.baslat(); yerlesimT(); st.cy = yy(cur.v[hedef]); } else { const yeni = bugunSecimi(st.P, G0, N, sel7, menuden); if (menuden && yeni !== sel7) sec(yeni, true); yerlesimB(false); st.cy = lay.cy; }
   } else if (hedefEkran === 'trend') trendeGec(null, null, true); // kapsayıcının altında anlık, sonra kapsayıcı solar
-  else bugunGec(true);
-  mesgul = true;
-  kayanKapat(onceki, () => { mesgul = false; });
+  else bugunGec(true, menuden);
+  mesgul = true; sahneKilit([onceki], true); // ana döngü geçişin ilk karesinden önce yeniden başlar
+  const bitir = () => { sahneKilit([onceki], false); mesgul = false; };
+  if (sahne) sahneDon(onceki, hedefEkran, bitir);
+  else kayanKapat(onceki, bitir);
   return true;
 }
 // Geniş ekran: Aktiviteler ve Takvim sağ bölgede Trend'in yerini alır; ad null ise Trend'e dönülür
@@ -853,10 +958,20 @@ function genisKayan(ad) {
   $('wAktivite').setAttribute('aria-pressed', kayanAcik === 'aktivite'); $('wTakvim').setAttribute('aria-pressed', kayanAcik === 'takvim');
   $('wTrend').hidden = !kayanAcik;
 }
+// Bugün ekranında eski bir gün seçiliyken menüdeki Bugün'e dokunmak bugüne döndürür (şeritteki dokunuşla aynı his)
+function bugunDon() {
+  if (mesgul) return;
+  const son = bugunSecimi(st.P, G0, N, sel7, true);
+  if (son === sel7) return;
+  titret(8); sec(son); const g = GUNLER[G0 + son]; if (!g.veriYok) SES.akor(g.e);
+  if (GENIS) git(G0 + son, carkSure(Math.abs(G0 + son - st.P)));
+}
 // Gerçek bir sekme değişiminde (seçili sekmeye dokunmak ya da geçiş sürerken dokunmak değil) kısa rüzgâr sesi; yönü sekmelerin sırasından
 for (const [e, id] of Object.entries(SEKME)) $(id).addEventListener('click', () => {
+  if (mesgul) return; // geçiş sürerken ikinci dokunuş ayarı kapatmaz, odak isteğini silmez
   ayarKapat(); odakIste = null;
   const once = ekran;
+  if (e === 'bugun' && ekran === 'bugun') { bugunDon(); return; } // zaten Bugün'de: eski bir gün açıksa bugüne dön
   if (!ekranGit(e, true)) return;
   SES.ruzgar(SEKME_SIRA.indexOf(e) > SEKME_SIRA.indexOf(once) ? 1 : -1);
   if (KAYAN[e]) odakIste = e;
@@ -1179,6 +1294,7 @@ let ang = -0.35, bt = 0, curT = 60 / st.bpm, ph = 1, beat = 0;
 gsap.ticker.add((time, dt) => {
   // Aktiviteler/Takvim tüm sahneyi kaplarken şekil ve Trend çizimi görünmez: kare başı iş durur, ekrandan çıkınca sürer
   if (!GENIS && kayanMi(ekran) && !mesgul) return;
+  if (anaUyur) return;
   const ds = Math.min(dt, 50) / 1000;
   const bugunGorunur = ekran === 'bugun' || mesgul;
   dokunAdim(ds);
@@ -1243,6 +1359,11 @@ gsap.ticker.add((time, dt) => {
 /* ================= Açılış ================= */
 seritKur(); sigdir(); olcumSec(0, false); sec(6, true); st.cy = lay.cy;
 if (GENIS) { gsap.set(trend, { autoAlpha: 1 }); st.yuk = st.yukA = st.gunesY = 1; } // geniş ekranda Trend hep açık
+// Bekleme ekranı açıksa küresi Bugün küresinin yerine büyüyüp solar; açılış (delay 0.3) bununla örtüşür.
+{
+  const kok = bKok.getBoundingClientRect(), k = kok.width / W || 1;
+  bekleDevret(kok.left + cx * k, kok.top + lay.cy * k, 0.19 * lay.rs * W * k, RM);
+}
 // Başlık sözcük animasyonu ve yazı tipi yüklemesi satır sayısını değiştirebilir.
 if (typeof ResizeObserver === 'function') {
   let olcumBekliyor = false;
@@ -1281,6 +1402,52 @@ if (!RM) {
 }
 }
 
+/* ================= Bekleme ekranı ================= */
+// Altı ışık noktası (ölçüm kartlarının paleti) yörüngede dönerek merkezde toplanır ve küreyi oluşturur;
+// cam halka veri isteğinin zaman aşımı (6 sn) boyunca dolar; yazı harf harf yükselir. Yalnız transform/opacity
+// (halka: küçük SVG'de stroke-dashoffset). Bağlantı yoksa hiç gösterilmez.
+const BEKLE_SURE = 6;
+let bekleTl = null, bekleDurum = 'kapali'; // 'acik' → 'devir' → 'kapali'
+function bekleAc() {
+  const b = $('bekle'), p = b.querySelector('p');
+  b.hidden = false; bekleDurum = 'acik';
+  if (!p.querySelector('.h')) { // harflere bölünür; ekran okuyucu görsel gizli düz metni okur (paragrafa ad verilemez)
+    const metin = p.textContent; p.textContent = '';
+    const gz = document.createElement('span'); gz.className = 'gz'; gz.textContent = metin; p.appendChild(gz);
+    [...metin].forEach((ch) => { const s = document.createElement('span'); s.className = 'h'; s.setAttribute('aria-hidden', 'true'); s.textContent = ch === ' ' ? '\u00a0' : ch; p.appendChild(s); });
+  }
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return; // RM: küre, iz halkası ve yazı durağan
+  const yor = b.querySelector('.bYor'), noktalar = b.querySelectorAll('.bYor em');
+  gsap.set(b.querySelector('.bKure'), { scale: 0, autoAlpha: 0 });
+  gsap.set(noktalar, { x: 78, autoAlpha: 0, scale: 0.6 });
+  gsap.set(p.querySelectorAll('.h'), { yPercent: 85, autoAlpha: 0, rotation: 7 });
+  bekleTl = gsap.timeline()
+    .to(yor, { rotation: 300, duration: 1.7, ease: 'power2.in' }, 0)
+    .to(noktalar, { autoAlpha: 1, scale: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out' }, 0)
+    .to(noktalar, { x: 0, duration: 1.4, stagger: 0.04, ease: 'power3.in' }, 0.3)
+    .to(noktalar, { autoAlpha: 0, scale: 0.4, duration: 0.25 }, 1.65)
+    .to(b.querySelector('.bKure'), { scale: 1, autoAlpha: 1, duration: 0.9, ease: 'back.out(1.6)' }, 1.6)
+    .fromTo(b.querySelector('.bHalka .dol'), { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: BEKLE_SURE, ease: 'none' }, 0)
+    .to(p.querySelectorAll('.h'), { yPercent: 0, autoAlpha: 1, rotation: 0, duration: 0.65, stagger: 0.03, ease: 'back.out(1.8)' }, 0.45);
+}
+// Bekleme açıksa küre (x, y ekran koordinatı, r ekran yarıçapı) hedefine büyüyüp solarken ekran kalkar.
+function bekleDevret(x, y, r, anlik) {
+  const b = $('bekle');
+  if (bekleDurum !== 'acik') return;
+  const tl = bekleTl; bekleTl = null; bekleDurum = 'devir';
+  const temizle = () => { if (tl) tl.kill(); b.hidden = true; bekleDurum = 'kapali'; gsap.set([b, ...b.querySelectorAll('.bKure,.bYor,.bYor em,.bHalka,.bHalka .dol,p,p .h')], { clearProps: 'all' }); };
+  const kure = b.querySelector('.bKure'), kk = kure.getBoundingClientRect(), olcek = b.getBoundingClientRect().width / (b.offsetWidth || 1) || 1;
+  const yaricap = (kure.offsetWidth / 2) * olcek;
+  if (anlik || !(yaricap > 0) || ![x, y, r].every(Number.isFinite)) { temizle(); return; }
+  if (tl) tl.pause();
+  const sx = (kk.left + kk.width / 2), sy = (kk.top + kk.height / 2);
+  gsap.timeline({ onComplete: temizle })
+    .to(b.querySelectorAll('.bYor em'), { autoAlpha: 0, duration: 0.2 }, 0)
+    .to([b.querySelector('.bHalka'), b.querySelector('p')], { autoAlpha: 0, scale: 1.06, duration: 0.35, ease: 'power2.in' }, 0)
+    .to(kure, { x: (x - sx) / olcek, y: (y - sy) / olcek, scale: Math.max(0.4, r / yaricap), autoAlpha: 1, duration: 0.6, ease: 'power3.inOut' }, 0)
+    .to(b, { autoAlpha: 0, duration: 0.45, ease: 'power1.in' }, 0.3);
+}
+
 // Başlangıç: bağlantı varsa veri gelene kadar nötr bekleme durumu; açılış animasyonu örnek veriyle başlamaz.
 // Her koşulda uygulama bir kez açılır: modül yüklenemezse, veri alınamazsa ya da gerçek veriyle başlatma patlarsa örnek veriyle.
 let basladi = false;
@@ -1311,13 +1478,16 @@ function ac(v, bag) {
   let canliHata = false;
   try { canliHata = sessionStorage.getItem('gk-canli-hata') === '1'; sessionStorage.removeItem('gk-canli-hata'); } catch (x) {}
   if (canliHata) return ac(window.VERI, { ...ORNEK, baglanti: true });
-  telOlcek(); addEventListener('resize', telOlcek); $('bekle').hidden = false;
+  telOlcek(); addEventListener('resize', telOlcek); bekleAc();
   let r = null;
   try { r = await CANLI.veriYukle(); } catch (e) { r = null; }
-  removeEventListener('resize', telOlcek); $('bekle').hidden = true;
-  if (r && r.veri && (r.kaynak === 'canli' || r.kaynak === 'onbellek')) {
-    ac(r.veri, { baglanti: true, canli: r.kaynak === 'canli', kaynak: r.kaynak, neden: r.neden || null, zaman: typeof r.zaman === 'number' ? r.zaman : null });
-  } else {
-    ac(window.VERI, { ...ORNEK, baglanti: true, neden: r && r.neden ? r.neden : null });
-  }
+  removeEventListener('resize', telOlcek);
+  // Bekleme ekranı burada kapanmaz: baslat açılışında bekleDevret küreyi Bugün'ün küresine devreder.
+  try {
+    if (r && r.veri && (r.kaynak === 'canli' || r.kaynak === 'onbellek')) {
+      ac(r.veri, { baglanti: true, canli: r.kaynak === 'canli', kaynak: r.kaynak, neden: r.neden || null, zaman: typeof r.zaman === 'number' ? r.zaman : null });
+    } else {
+      ac(window.VERI, { ...ORNEK, baglanti: true, neden: r && r.neden ? r.neden : null });
+    }
+  } finally { bekleDevret(NaN, NaN, NaN, true); } // açılış devralmadıysa (ör. hata) bekleme anında kalkar
 })();

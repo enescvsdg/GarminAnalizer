@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, sahneGecisi, sahneSirasi, sahneKademe, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
 
 const hepsiSonlu = (o) => Object.entries(o).every(([, v]) => typeof v === 'number' && Number.isFinite(v));
 
@@ -362,4 +362,68 @@ test('sapmaMetni / ozetCumlesi: yönlü ölçümde "normalin", yönsüz (iyi 0) 
   assert.equal(sapmaVurgusu(0, 'hi'), false);
   assert.equal(sapmaVurgusu(0, 'lo'), false);
   assert.equal(sapmaVurgusu(1, null), false);
+});
+
+test('bugunSecimi: menüden Bugün her zaman son günü seçer', () => {
+  // N=28, G0=21 → şeritte 0..6; son gün 6
+  assert.equal(bugunSecimi(22, 21, 28, 1, true), 6);      // Trend'de eski gün
+  assert.equal(bugunSecimi(5, 21, 28, 2, true), 6);       // Trend şeridin dışında
+  assert.equal(bugunSecimi(NaN, 21, 28, 0, true), 6);     // Takvim'den açılmış eski gün
+  assert.equal(bugunSecimi(27, 21, 28, 6, true), 6);
+});
+test('bugunSecimi: menü dışı dönüşte Trend konumu korunur', () => {
+  assert.equal(bugunSecimi(23.4, 21, 28, 6, false), 2);
+  assert.equal(bugunSecimi(5, 21, 28, 4, false), 4);      // şeridin dışında: mevcut seçim
+  assert.equal(bugunSecimi(99, 21, 28, 1, false), 6);     // sınır kırpılır
+  assert.equal(bugunSecimi(undefined, 21, 28, 3, false), 3);
+});
+
+test('sahneGecisi: telefonda beş sahneli geçiş türü; Bugün ↔ Trend ve geçersiz null', () => {
+  assert.equal(sahneGecisi('bugun', 'aktivite'), 'bugun-kayan');
+  assert.equal(sahneGecisi('trend', 'takvim'), 'trend-kayan');
+  assert.equal(sahneGecisi('aktivite', 'takvim', 'trend'), 'kayan-kayan');
+  assert.equal(sahneGecisi('takvim', 'aktivite', 'bugun'), 'kayan-kayan');
+  assert.equal(sahneGecisi('takvim', 'bugun', 'bugun'), 'kayan-bugun');
+  assert.equal(sahneGecisi('aktivite', 'bugun', 'trend'), 'kayan-bugun');
+  assert.equal(sahneGecisi('takvim', 'trend', 'trend'), 'kayan-trend');
+  assert.equal(sahneGecisi('aktivite', 'trend', 'bugun'), 'kayan-trend');
+  assert.equal(sahneGecisi('bugun', 'trend'), null);
+  assert.equal(sahneGecisi('trend', 'bugun'), null);
+  assert.equal(sahneGecisi('takvim', 'takvim'), null);
+  assert.equal(sahneGecisi('ayar', 'bugun'), null);
+  assert.equal(sahneGecisi(undefined, null), null);
+  assert.equal(DUZEN.sahneGecisi, sahneGecisi);
+});
+
+test('sahneSirasi: görünen öğeler sıra değerine göre, eşitlerde belge sırası; görünmeyen, boyutsuz ve bozuk öğeler atlanır', () => {
+  const l = [
+    { sira: '2', ust: 300, alt: 400 }, { sira: '0', ust: 40, alt: 80 }, { sira: '1', ust: 100, alt: 280 },
+    { sira: '3', ust: 900, alt: 960 }, // görünüm altında
+    { sira: '1', ust: -200, alt: -10 }, // görünüm üstünde
+    { sira: '4', ust: 500, alt: 500 }, // yüksekliği yok (gizli)
+    { sira: 'x', ust: 420, alt: 460 }, // sayı değil: sona
+    { sira: '1', ust: 600, alt: 700 }, // eş sıra: belge sırası
+    null, { sira: '0', ust: NaN, alt: 10 },
+  ];
+  assert.deepEqual(sahneSirasi(l, 0, 844), [1, 2, 7, 0, 6]);
+  assert.deepEqual(sahneSirasi(l, 0, 844, 2), [1, 2]);
+  assert.deepEqual(sahneSirasi(l, 0, 844, -1), []);
+  assert.deepEqual(sahneSirasi([{ sira: 0, ust: 0, alt: 10 }], 10, 20), [], 'yalnız kenara değen görünür sayılmaz');
+  assert.deepEqual(sahneSirasi([], 0, 10), []);
+  assert.deepEqual(sahneSirasi(null, 0, 10), []);
+  assert.deepEqual(sahneSirasi(l, NaN, 10), []);
+});
+
+test('sahneKademe: yükselişin toplam süresi sınırı aşmaz; az öğede doğal kademe korunur', () => {
+  assert.equal(sahneKademe(1, 0.62, 0.45), 0.07);
+  assert.equal(sahneKademe(3, 0.48, 0.45), 0.07);
+  for (const [n, bas] of [[8, 0.62], [8, 0.48], [5, 0.62], [12, 0.62]]) {
+    const k = sahneKademe(n, bas, 0.45);
+    assert.ok(k >= 0 && k <= 0.07, `${n}/${bas}: ${k}`);
+    assert.ok(bas + 0.45 + k * (Math.min(n, 8) - 1) <= 1.3 + 1e-9, `${n}/${bas} sınırı aşar`);
+  }
+  assert.equal(sahneKademe(0, 0.62, 0.45), 0.07);
+  assert.equal(sahneKademe(8, 1.2, 0.45), 0, 'taban sınırı zaten aşıyorsa kademe yok');
+  assert.equal(sahneKademe(NaN, 0.62, 0.45), 0.07);
+  assert.equal(DUZEN.sahneKademe, sahneKademe);
 });

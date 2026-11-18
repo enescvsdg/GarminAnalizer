@@ -399,3 +399,30 @@ test('odak: kayan ekran başlıkları odaklanabilir; menü geçişi başlığa, 
   assert.match(u, /\$\('wTrend'\)\.addEventListener\('click', \(\) => \{ genisKayan\(null\); \$\('tSimge'\)\.focus/);
   assert.match(u, /gunAcKarar\(tarih, GUNLER, G0\)/);
 });
+
+test('uygulama.js: sahne geçişi sürerken kayan kapsayıcılar dokunuş almaz, sekme dinleyicisi mesgul iken erken döner', () => {
+  const js = oku('uygulama.js'), html = oku('index.html');
+  assert.match(js, /function sahneKilit\(/, 'geçiş kilidi yardımcısı');
+  assert.match(js, /\.inert = /);
+  assert.match(js, /classList\.toggle\('sahneOynar'/);
+  assert.match(html, /\.sahneOynar \[data-sahne\]\{transition:none!important\}/);
+  assert.match(js, /\$\(id\)\.addEventListener\('click', \(\) => \{\s*if \(mesgul\) return;/, 'ikinci dokunuş odak isteğini silmez');
+  assert.match(js, /sahneOgeleri\(kap, 8\)[\s\S]{0,200}sahneKademe\(/, 'yükselen öğe en çok 8, kademe sınırlı');
+});
+
+test('uygulama.js: Trend üst katmanı ipucu, çip ve ek satırı da kapsar; eski görünürlüğe döner', () => {
+  const js = oku('uygulama.js');
+  const m = js.match(/TREND_UST = \[([^\]]*)\]/);
+  assert.ok(m);
+  for (const s of ['#tBas', '#balon', '#ust', '#ipucu', '#cip', '#ekSatir']) assert.ok(m[1].includes(`'${s}'`), s);
+  assert.doesNotMatch(js, /\.to\(TREND_UST, \{ autoAlpha: 1/, 'dönüş sabit 1 değil, saklanan değere');
+  assert.doesNotMatch(js, /gsap\.set\(TREND_UST, \{ autoAlpha: 1 \}\)/);
+});
+
+test('bekleme yazısı: paragrafta aria-label yok, ekran okuyucu görsel gizli düz metni okur', () => {
+  const js = oku('uygulama.js');
+  const b = js.slice(js.indexOf('function bekleAc'), js.indexOf('function bekleDevret'));
+  assert.doesNotMatch(b, /aria-label/);
+  assert.match(b, /className = 'gz'/);
+  assert.match(oku('index.html'), /\.gz\{position:absolute[^}]*clip:rect\(0,0,0,0\)/);
+});

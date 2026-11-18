@@ -187,6 +187,46 @@ export function ekranGecisi(ekran, hedef, alt = 'bugun') {
   return { tur: hedef === altE ? 'kapat' : 'kapatGec', alt: altE };
 }
 
+// Telefonda sahneli geçişin türü: 'bugun-kayan' | 'trend-kayan' | 'kayan-kayan' | 'kayan-bugun' | 'kayan-trend'; Bugün ↔ Trend ya da geçersizse null
+export function sahneGecisi(ekran, hedef, alt = 'bugun') {
+  const g = ekranGecisi(ekran, hedef, alt);
+  if (!g || g.tur === 'ana') return null;
+  if (g.tur === 'ac') return g.alt + '-kayan';
+  if (g.tur === 'degis') return 'kayan-kayan';
+  return 'kayan-' + hedef;
+}
+
+// Sahne geçişinde canlanacak [data-sahne] öğeleri: kapsayıcının görünen dikey aralığına (ust..alt) giren, yüksekliği olanlar,
+// sıra değerine göre (eşitlerde belge sırası) dizilir; en fazla `en` tane. liste: [{ sira, ust, alt }] → dizin listesi
+export function sahneSirasi(liste, ust, alt, en = 12) {
+  if (!Array.isArray(liste) || !sonlu(ust) || !sonlu(alt)) return [];
+  const s = [];
+  liste.forEach((o, i) => {
+    if (!o || !sonlu(o.ust) || !sonlu(o.alt) || o.alt <= o.ust || o.alt <= ust || o.ust >= alt) return;
+    const n = Number(o.sira);
+    s.push({ i, n: Number.isFinite(n) ? n : Infinity });
+  });
+  return s.sort((x, y) => x.n - y.n || x.i - y.i).slice(0, Math.max(0, en)).map((x) => x.i);
+}
+
+// Sahne yükselişinin kademesi (sn): ilk öğe `bas`ta başlar, her biri `sure` sürer; en çok `en` öğeyle son öğe `sinir`ı aşmaz.
+// Az öğede doğal kademe (`kademe`) korunur; taban zaten sınırdaysa kademe yok. Geçersiz sayı: doğal kademe.
+export function sahneKademe(n, bas, sure, sinir = 1.3, kademe = 0.07, en = 8) {
+  const k = Math.min(Number(n), en) - 1;
+  if (!Number.isFinite(k) || k < 1 || !sonlu(bas) || !sonlu(sure)) return kademe;
+  return Math.max(0, Math.min(kademe, (sinir - bas - sure) / k));
+}
+
+// Bugün ekranına geçerken hangi gün seçili olsun (7 günlük şeritteki sıra, 0..N-1-G0).
+// Menüden gelindiyse her zaman bugün (son gün); başka yoldan (Trend'den geri dönüş) Trend'deki konum şeritteyse o gün, değilse mevcut seçim.
+export function bugunSecimi(P, G0, N, sel7, menuden) {
+  const son = N - 1 - G0;
+  if (menuden) return son;
+  if (!sonlu(P)) return sel7;
+  const gi = Math.min(Math.max(Math.round(P), 0), N - 1);
+  return gi >= G0 ? gi - G0 : sel7;
+}
+
 // Kaydırılabilir ekranda menü: aşağı kaydırınca daralır, yukarı kaydırınca ya da en üstte açılır; küçük oynamalar durumu korur.
 export function menuToplan(onceki, simdi, toplu, esik = 8) {
   if (!sonlu(onceki) || !sonlu(simdi)) return !!toplu;
@@ -223,7 +263,7 @@ export async function modulKur(ice, kurAdi, kap, baglam) {
   } catch { return null; }
 }
 
-export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, menuToplan, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
+export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, sahneGecisi, sahneSirasi, sahneKademe, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
 globalThis.DUZEN = DUZEN;
 
 /* ---------- Trend: yönsüz ölçümlerde (iyi 0, ör. en yüksek nabız) sapma nötrdür ---------- */
