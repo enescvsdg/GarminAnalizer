@@ -372,11 +372,61 @@ test('takvimKur: ay başlığı simgeleri ekran dışındayken durur (tek Inters
   tk.yokEt(); assert.equal(kopyalar[1].kesildi, true);
 });
 
-test('ayDurumSinifi: belirmemiş ay gizli bekler, belirmiş ay pop kalır, yalnız görünürken canlı', () => {
+test('ayDurumSinifi: belirmemiş ay gizli bekler, beliren ay pop oynar, bitince animasyonsuz belirdi; yalnız görünürken canlı', () => {
   assert.equal(ayDurumSinifi(false, false), 'tkv-ay once');
   assert.equal(ayDurumSinifi(false, true), 'tkv-ay once', 'belirmeden canlanmaz');
   assert.equal(ayDurumSinifi(true, true), 'tkv-ay pop canli');
   assert.equal(ayDurumSinifi(true, false), 'tkv-ay pop');
+  assert.equal(ayDurumSinifi(true, true, true), 'tkv-ay belirdi canli', 'pop bitti: yeniden oynamaz, nefes sürer');
+  assert.equal(ayDurumSinifi(true, false, true), 'tkv-ay belirdi');
+  assert.equal(ayDurumSinifi(false, true, true), 'tkv-ay once', 'belirmeden bitmiş sayılmaz');
+});
+
+test('takvimKur: ayın son gününün pop animasyonu bitince ay belirdi olur (yeniden açılışta pop yeniden oynamaz)', async (t) => {
+  const eski = globalThis.IntersectionObserver; const kopyalar = [];
+  globalThis.IntersectionObserver = class { constructor(f) { this.f = f; this.hedef = []; kopyalar.push(this); } observe(e) { this.hedef.push(e); } disconnect() {} };
+  t.after(() => { if (eski) globalThis.IntersectionObserver = eski; else delete globalThis.IntersectionObserver; });
+  const { kap, t: tk } = await kurVeGoster({ gunler: [...tamAy(2026, 9), ...tamAy(2026, 10)] }, { rm: false });
+  const aylar = kap.all((e) => e.tagName === 'section' && /^tkv-ay\b/.test(e.className));
+  kopyalar[0].f([{ target: aylar[0], isIntersecting: true }]);
+  assert.equal(aylar[0].className, 'tkv-ay pop canli');
+  const gunler = aylar[0].all((e) => e.tagName === 'button' && /tkv-gun/.test(e.className));
+  aylar[0].fire('animationend', { target: gunler[0], animationName: 'tkv-pop' });
+  assert.equal(aylar[0].className, 'tkv-ay pop canli', 'ilk gün bitince değişmez');
+  aylar[0].fire('animationend', { target: gunler.at(-1), animationName: 'tkv-soluk' });
+  assert.equal(aylar[0].className, 'tkv-ay pop canli', 'başka animasyon süzülür');
+  aylar[0].fire('animationend', { target: gunler.at(-1), animationName: 'tkv-pop' });
+  assert.equal(aylar[0].className, 'tkv-ay belirdi canli');
+  kopyalar[0].f([{ target: aylar[0], isIntersecting: false }]);
+  assert.equal(aylar[0].className, 'tkv-ay belirdi');
+  tk.gizle(); await tk.goster();
+  assert.equal(aylar[0].className, 'tkv-ay belirdi', 'yeniden gösterimde pop yeniden oynamaz');
+  kopyalar.at(-1).f([{ target: aylar[0], isIntersecting: true }]);
+  assert.equal(aylar[0].className, 'tkv-ay belirdi canli');
+  assert.match(kap.ownerDocument.head.children[0].textContent, /\.tkv-ay\.pop \.tkv-gun\{animation:tkv-pop[^}]*animation-delay:calc\(250ms \+ var\(--i,0\) \* 18ms\)/);
+});
+
+test('takvimKur: 5 dk sonra gizle/goster — yeniden yükleme sürerken (ya da başarısızken) gözlemci yeniden kurulur, aylar gizli kalmaz', async (t) => {
+  const eski = globalThis.IntersectionObserver; const kopyalar = [];
+  globalThis.IntersectionObserver = class { constructor(f) { this.f = f; this.hedef = []; this.kesildi = false; kopyalar.push(this); } observe(e) { this.hedef.push(e); } disconnect() { this.kesildi = true; } };
+  t.after(() => { if (eski) globalThis.IntersectionObserver = eski; else delete globalThis.IntersectionObserver; });
+  let ilk = true;
+  const getir = async () => { if (ilk) { ilk = false; return { gunler: [...tamAy(2026, 9), ...tamAy(2026, 10)] }; } throw new Error('ağ yok'); };
+  const { kap, t: tk } = await kurVeGoster(null, { rm: false, getir });
+  const aylar = kap.all((e) => e.tagName === 'section' && /^tkv-ay\b/.test(e.className));
+  tk.gizle();
+  const gercek = Date.now;
+  try {
+    Date.now = () => gercek() + 5 * 60 * 1000 + 1000;
+    const s = tk.goster();
+    assert.equal(kopyalar.length, 2, 'yükleme beklenmeden gözlemci kurulur');
+    await s;
+  } finally { Date.now = gercek; }
+  const io = kopyalar.at(-1);
+  assert.equal(io.kesildi, false);
+  assert.ok(aylar.every((s) => io.hedef.includes(s)), 'istek başarısız da olsa aylar gözlenir');
+  io.f([{ target: aylar[1], isIntersecting: true }]);
+  assert.equal(aylar[1].className, 'tkv-ay pop canli');
 });
 
 test('takvimKur: data-sahne sırası — başlık 0, ilk ayın başlığı 1, ızgarası 2, sonraki ay 3/4', async () => {

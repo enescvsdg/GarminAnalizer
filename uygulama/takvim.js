@@ -189,10 +189,11 @@ function ornekUret(bugun = new Date(), sayi = 120) {
 }
 export const ORNEK = ornekUret();
 
-// Ay kutusunun canlılık sınıfı: belirmemiş ay 'once' (günler gizli bekler), belirmiş ay 'pop' (bir kez oynar,
-// sınıf kalır, yeniden oynamaz); yalnız görünürken 'canli' (nefes/parıltı). Görünmeyen ayda hiç animasyon yok.
-export function ayDurumSinifi(belirdi, gorunur) {
-  return 'tkv-ay ' + (belirdi ? 'pop' : 'once') + (belirdi && gorunur ? ' canli' : '');
+// Ay kutusunun canlılık sınıfı: belirmemiş ay 'once' (günler gizli bekler), beliren ay 'pop' (günler sırayla belirir);
+// pop bitince 'belirdi' (animasyonsuz; kap display:none'dan dönünce yeniden oynamaz); yalnız görünürken 'canli'
+// (nefes/parıltı). Görünmeyen ayda hiç animasyon yok.
+export function ayDurumSinifi(belirdi, gorunur, bitti = false) {
+  return 'tkv-ay ' + (!belirdi ? 'once' : bitti ? 'belirdi' : 'pop') + (belirdi && gorunur ? ' canli' : '');
 }
 
 // ---------- stil ----------
@@ -277,12 +278,13 @@ const STIL = `
 .tkv-o .dr{display:flex;align-items:center;gap:5px;font-size:12px;margin-top:2px;color:rgba(255,246,236,.78);min-height:16px}
 .tkv-o.sap .dr{color:var(--tkv-isaret);font-weight:600}
 .tkv-o .dr svg{width:10px;height:10px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-/* Canlı çemberler. Ay ekrana ilk girişte günler sırayla belirir (pop, bir kez; düğmenin transform'u boştur).
+/* Canlı çemberler. Ay ekrana ilk girişte günler sırayla belirir (pop, bir kez; düğmenin transform'u boştur; son günün
+   animationend'inde sınıf animasyonsuz 'belirdi' olur. 250 ms taban, sahne geçişinin ızgara yükselişiyle çakışmayı azaltır).
    Yalnız görünen ayda (.canli) veri olan çemberler kendi renginde nefes alır: ayrı \`scale\` özelliği, dokunuş/seçim
    transform'una karışmaz; parıltı ::before katmanının opacity'si. Gecikme gün sırasıyla kayar → yavaş gezen dalga.
    Seçili (aria-expanded) ve atış (.atis) çemberde nefes yok: dokunuş animasyonları önceliklidir. */
 .tkv-ay.once .tkv-gun{opacity:0}
-.tkv-ay.pop .tkv-gun{animation:tkv-pop .5s cubic-bezier(.2,.9,.3,1.3) both;animation-delay:calc(var(--i,0) * 18ms)}
+.tkv-ay.pop .tkv-gun{animation:tkv-pop .5s cubic-bezier(.2,.9,.3,1.3) both;animation-delay:calc(250ms + var(--i,0) * 18ms)}
 @keyframes tkv-pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
 .tkv-d{isolation:isolate}
 .tkv-d::before{content:'';position:absolute;inset:-6px;border-radius:50%;pointer-events:none;z-index:-1;opacity:0;background:radial-gradient(closest-side,transparent 70%,color-mix(in srgb,var(--c,transparent) 60%,transparent) 80%,transparent)}
@@ -488,10 +490,18 @@ export function takvimKur(kap, baglam = {}) {
 
   // Ekran dışındaki ay başlığının simgesi durur (pil/GPU); görünür olunca sürer. Tek gözlemci, ciz/gizle/yokEt'te bırakılır.
   // Aynı gözlemci ay kutularını da izler: ilk girişte günler sırayla belirir (bir kez), yalnız görünen ay canlıdır.
-  let gozlem = null; const basliklar = [], aylarEl = []; let poplu = new WeakSet();
+  let gozlem = null; const basliklar = [], aylarEl = []; let poplu = new WeakSet(), bitmis = new WeakSet();
+  const gorulen = new WeakMap();
   function ayDurumu(sec, gor) {
     if (gor) poplu.add(sec);
-    sec.className = ayDurumSinifi(poplu.has(sec), gor);
+    gorulen.set(sec, gor);
+    sec.className = ayDurumSinifi(poplu.has(sec), gor, bitmis.has(sec));
+  }
+  // Ayın son gününün pop'u bitince ay 'belirdi' olur: CSS animasyonu kap gizlenip açılınca yeniden oynamaz.
+  function popBitti(sec, son, ev) {
+    if (!ev || ev.target !== son || ev.animationName !== 'tkv-pop' || !poplu.has(sec) || bitmis.has(sec)) return;
+    bitmis.add(sec);
+    sec.className = ayDurumSinifi(true, gorulen.get(sec) === true, true);
   }
   function gozlemBirak() { if (gozlem) { try { gozlem.disconnect(); } catch (_) { /* yok say */ } gozlem = null; } }
   function gozlemKur() {
@@ -549,12 +559,14 @@ export function takvimKur(kap, baglam = {}) {
     const hucreler = [];
     ay.gunler.forEach((g, i) => { const b = gunDugmesi(g, ay, i, hucreler, bugun); hucreler.push(b); izgara.appendChild(b); });
     sec.appendChild(izgara);
+    const son = hucreler[hucreler.length - 1];
+    if (son) sec.addEventListener('animationend', (ev) => popBitti(sec, son, ev));
     return sec;
   }
 
   function ciz() {
     kartKapat(false);
-    gozlemBirak(); basliklar.length = 0; aylarEl.length = 0; poplu = new WeakSet();
+    gozlemBirak(); basliklar.length = 0; aylarEl.length = 0; poplu = new WeakSet(); bitmis = new WeakSet();
     const aylar = aylaraBol(veri && veri.gunler);
     if (!aylar.length) { durumGoster('Henüz veri yok.'); return; }
     icerik.textContent = '';
@@ -584,8 +596,11 @@ export function takvimKur(kap, baglam = {}) {
   return {
     goster() {
       kok.hidden = false; gorunur = true;
+      // Çizili aylar varsa gözlemci hemen geri kurulur: yeniden yükleme sürerken ya da başarısız olursa
+      // görülmemiş aylar 'once' (gizli) kalmasın.
+      if (!gozlem && basliklar.length) gozlemKur();
       // Veri 5 dakikadan tazeyse yeniden alınmaz ve çizilmez; açık gün kartı bir ziyaretle kapanmaz
-      if (veri && Date.now() - sonYukleme < 5 * 60 * 1000) { if (!gozlem && basliklar.length) gozlemKur(); return Promise.resolve(); }
+      if (veri && Date.now() - sonYukleme < 5 * 60 * 1000) return Promise.resolve();
       return yukle();
     },
     gizle() { kok.hidden = true; gorunur = false; kartKapat(false); gozlemBirak(); },

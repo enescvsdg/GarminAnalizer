@@ -209,6 +209,14 @@ export function sahneSirasi(liste, ust, alt, en = 12) {
   return s.sort((x, y) => x.n - y.n || x.i - y.i).slice(0, Math.max(0, en)).map((x) => x.i);
 }
 
+// Sahne yükselişinin kademesi (sn): ilk öğe `bas`ta başlar, her biri `sure` sürer; en çok `en` öğeyle son öğe `sinir`ı aşmaz.
+// Az öğede doğal kademe (`kademe`) korunur; taban zaten sınırdaysa kademe yok. Geçersiz sayı: doğal kademe.
+export function sahneKademe(n, bas, sure, sinir = 1.3, kademe = 0.07, en = 8) {
+  const k = Math.min(Number(n), en) - 1;
+  if (!Number.isFinite(k) || k < 1 || !sonlu(bas) || !sonlu(sure)) return kademe;
+  return Math.max(0, Math.min(kademe, (sinir - bas - sure) / k));
+}
+
 // Bugün ekranına geçerken hangi gün seçili olsun (7 günlük şeritteki sıra, 0..N-1-G0).
 // Menüden gelindiyse her zaman bugün (son gün); başka yoldan (Trend'den geri dönüş) Trend'deki konum şeritteyse o gün, değilse mevcut seçim.
 export function bugunSecimi(P, G0, N, sel7, menuden) {
@@ -255,7 +263,7 @@ export async function modulKur(ice, kurAdi, kap, baglam) {
   } catch { return null; }
 }
 
-export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, sahneGecisi, sahneSirasi, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
+export const DUZEN = { iosTamMi, iosTamGecerli, olcuSatiri, gorunumYuksekligi, duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, ekranGecisi, sahneGecisi, sahneSirasi, sahneKademe, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, BUGUN_W, GENIS_MIN_W, GENIS_MIN_H, TELEFON_MAX_W };
 globalThis.DUZEN = DUZEN;
 
 /* ---------- Trend: yönsüz ölçümlerde (iyi 0, ör. en yüksek nabız) sapma nötrdür ---------- */

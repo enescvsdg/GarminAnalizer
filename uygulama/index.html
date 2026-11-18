@@ -273,6 +273,8 @@ button.serit svg.ok{width:10px;height:10px;stroke-width:1.6;fill:none;stroke-lin
 #bekle .bYor em{display:block;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:var(--c);box-shadow:0 0 12px var(--c),0 0 3px #fff6ec}
 #bekle p{font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100;font-weight:430;font-size:22px;letter-spacing:-.01em;color:rgba(255,246,236,.9)}
 #bekle p .h{display:inline-block}
+.gz{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%);white-space:nowrap} /* görsel gizli, ekran okuyucu okur */
+.sahneOynar [data-sahne]{transition:none!important} /* sahne geçişinde GSAP transform'u CSS geçişiyle gecikmez */
 @keyframes nefes{50%{transform:scale(1.09);opacity:.82}}
 @media (prefers-reduced-motion:reduce){#bekle .bKure i{animation:none}#bekle .bYor{display:none}#bekle .bHalka .dol{stroke-dashoffset:0;opacity:.5}}
 

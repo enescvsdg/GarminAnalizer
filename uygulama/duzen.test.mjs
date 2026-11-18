@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, sahneGecisi, sahneSirasi, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
+import { duzenModu, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, DUZEN, ekranGecisi, sahneGecisi, sahneSirasi, sahneKademe, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, tarihAnahtari, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
 
 const hepsiSonlu = (o) => Object.entries(o).every(([, v]) => typeof v === 'number' && Number.isFinite(v));
 
@@ -412,4 +412,18 @@ test('sahneSirasi: görünen öğeler sıra değerine göre, eşitlerde belge s�
   assert.deepEqual(sahneSirasi([], 0, 10), []);
   assert.deepEqual(sahneSirasi(null, 0, 10), []);
   assert.deepEqual(sahneSirasi(l, NaN, 10), []);
+});
+
+test('sahneKademe: yükselişin toplam süresi sınırı aşmaz; az öğede doğal kademe korunur', () => {
+  assert.equal(sahneKademe(1, 0.62, 0.45), 0.07);
+  assert.equal(sahneKademe(3, 0.48, 0.45), 0.07);
+  for (const [n, bas] of [[8, 0.62], [8, 0.48], [5, 0.62], [12, 0.62]]) {
+    const k = sahneKademe(n, bas, 0.45);
+    assert.ok(k >= 0 && k <= 0.07, `${n}/${bas}: ${k}`);
+    assert.ok(bas + 0.45 + k * (Math.min(n, 8) - 1) <= 1.3 + 1e-9, `${n}/${bas} sınırı aşar`);
+  }
+  assert.equal(sahneKademe(0, 0.62, 0.45), 0.07);
+  assert.equal(sahneKademe(8, 1.2, 0.45), 0, 'taban sınırı zaten aşıyorsa kademe yok');
+  assert.equal(sahneKademe(NaN, 0.62, 0.45), 0.07);
+  assert.equal(DUZEN.sahneKademe, sahneKademe);
 });

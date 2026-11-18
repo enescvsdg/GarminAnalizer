@@ -25,7 +25,7 @@ const metinMi = (v) => typeof v === 'string' && v.length > 0;
 const TUR_AD = {
   running: 'Koşu', treadmill_running: 'Koşu bandı', trail_running: 'Patika koşusu', track_running: 'Pist koşusu',
   indoor_running: 'Salon koşusu', virtual_run: 'Sanal koşu', ultra_run: 'Ultra koşu', street_running: 'Cadde koşusu',
-  obstacle_run: 'Engelli parkur koşusu',
+  obstacle_run: 'Engel parkuru koşusu',
   walking: 'Yürüyüş', casual_walking: 'Gezinti yürüyüşü', speed_walking: 'Tempolu yürüyüş', indoor_walking: 'Salon yürüyüşü',
   hiking: 'Doğa yürüyüşü',
   cycling: 'Bisiklet', indoor_cycling: 'Salon bisikleti', road_biking: 'Yol bisikleti', mountain_biking: 'Dağ bisikleti',
@@ -84,9 +84,11 @@ const TUR_GRUP = Object.fromEntries([
   ...grupla('diger', 'other'),
 ]);
 
-// Tam eşleşme yoksa adın içindeki kelimeden grup; sıra önemli (paddle_tennis kürek değil raket, snowshoe_run kar).
+// Tam eşleşme yoksa adın içindeki kelimeden grup; sıra önemli (paddle_tennis kürek değil raket, snowshoe_run kar,
+// water_skiing kar değil dalga; sky_diving/indoor_skydiving dalış değil, genel).
 const ANAHTAR_KELIME = [
-  [/tennis|padel|squash/, 'raket'], [/swim/, 'yuzme'], [/div/, 'dalis'], [/ski|snow/, 'kar'], [/climb/, 'tirmanis'],
+  [/tennis|padel|squash/, 'raket'], [/swim/, 'yuzme'], [/water_?ski/, 'dalga'], [/^(?!.*sky).*(?:dive|diving|snorkel)/, 'dalis'],
+  [/ski|snow/, 'kar'], [/climb/, 'tirmanis'],
   [/paddl|kayak|canoe|row/, 'kurek'], [/cycl|bik|ride/, 'bisiklet'], [/run/, 'kosu'], [/walk/, 'yuruyus'],
 ];
 

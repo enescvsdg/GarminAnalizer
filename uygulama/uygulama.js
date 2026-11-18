@@ -1,4 +1,4 @@
-import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, sahneGecisi, sahneSirasi, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
+import { duzenModu, gorunumYuksekligi, iosTamMi, iosTamGecerli, olcuSatiri, genisDuzen, gunIndeksi, etiketGunleri, balonX, klavyeEylem, carkBirikim, carkSure, carkHedef, simgeOrani, ekranGecisi, sahneGecisi, sahneSirasi, sahneKademe, menuToplan, bugunSecimi, gunSirasi, gunAcKarar, modulKur, kayanMi, sapmaMetni, ozetCumlesi, sapmaVurgusu } from './duzen.js';
 import { simgeKur } from './simgeler.js';
 import { ACIKLAMA } from './aciklama.js';
 const $ = (id) => document.getElementById(id);
@@ -817,13 +817,28 @@ for (const k of Object.values(KAYAN)) {
   }, { passive: true });
 }
 const anaPasif = (p) => { $('bugun').inert = p; trend.inert = p; }; // örtülen ana ekran odak ve erişilebilirlik ağacından çıkar
+// Geçiş boyunca hedef ve çıkan kayan kapsayıcı dokunuş almaz (takvimden son 7 güne dokunuş mesgul'e çarpıp kendi kartını açmasın);
+// sahneOynar sınıfı [data-sahne] öğelerinin CSS transition'ını kapatır (GSAP'in transform'u gecikmez/lastiklenmez). Bitince kalkar.
+function sahneKilit(adlar, p) {
+  for (const ad of adlar) { const el = KAYAN[ad] && KAYAN[ad].kap; if (el) { el.inert = p; el.classList.toggle('sahneOynar', p); } }
+}
 /* ---- Sahne geçişleri (telefon) ---- */
 // Bugün/Trend → kayan ekran: ana sahne ufka iner (Trend'de sırtlar tek ışıklı ufuk çizgisine alçalır; Bugün'de kartlar küreye çekilir,
 // küre ufka yayılır), ufuktan bir ışık çizgisi yukarı süpürür, kayan sayfa bu ışıktan açılır, [data-sahne] öğeleri sırayla yükselir.
 // Dönüş bunun tersidir; iki kayan ekran arasında eski öğeler batar, ışık aşağıdan yukarı geçer, yenileri yükselir.
 // Geçiş boyunca mesgul açıktır: ana döngü çizmeyi sürdürür; kayan ekran açılırken çıkış bitince durur, dönüşte ilk kareden önce başlar.
 // Ses yok (menünün rüzgârı yeter). RM ve geniş ekran eski yolu kullanır.
-const isik = $('sahneIsik'), TREND_UST = ['#tBas', '#balon', '#ust'];
+const isik = $('sahneIsik'), TREND_UST = ['#tBas', '#balon', '#ust', '#ipucu', '#cip', '#ekSatir'];
+// Trend üst katmanı ufka inerken her öğenin görünürlüğü saklanır, dönüşte o değere geri gelir (sönmüş ipucu yeniden belirmez;
+// #ekSatir'ın hidden kuralına autoAlpha dokunmaz). Saklı iken yeniden okunmaz: kayan↔kayan ara adımları 0'ı kaydetmez.
+const ustAlfa = new Map(); let ustSakli = false;
+function ustSakla() {
+  if (ustSakli) return;
+  ustSakli = true;
+  for (const s of TREND_UST) { const e = document.querySelector(s); if (e) ustAlfa.set(e, Number(gsap.getProperty(e, 'opacity')) || 0); }
+}
+const ustEski = (i, e) => (ustAlfa.has(e) ? ustAlfa.get(e) : 1);
+const ustGeri = () => { ustSakli = false; };
 let anaUyur = false; // iki kayan ekran arasında ana sahne tamamen örtülüdür: döngü çizmez
 const ufukY = (alt) => (alt === 'trend' ? tl.alt : lay.cy);
 function sahneOgeleri(kap, en) { // görünen [data-sahne] öğeleri, sıra değerine göre
@@ -845,9 +860,9 @@ function sahneBat(z, t, kap) { // görünen öğeler kademeli batar (temizlik ka
   if (s.length) z.to(s, { y: 18, autoAlpha: 0, duration: 0.28, stagger: 0.04, ease: 'power2.in' }, t);
 }
 function sahneYuksel(z, t, ty, kap) { // t'de öğeler okunup gizlenir (modül içeriği geçişin başında henüz gelmemiş olabilir), ty'de sırayla yükselir
-  z.add(() => {
-    const s = sahneOgeleri(kap, 12);
-    if (s.length) z.fromTo(s, { y: 26, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.45, stagger: 0.07, ease: 'power3.out', clearProps: 'transform,opacity,visibility' }, ty);
+  z.add(() => { // en çok 8 öğe; kademe toplam geçişi ~1.3 sn içinde tutar
+    const s = sahneOgeleri(kap, 8);
+    if (s.length) z.fromTo(s, { y: 26, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.45, stagger: sahneKademe(s.length, ty, 0.45), ease: 'power3.out', clearProps: 'transform,opacity,visibility' }, ty);
   }, t);
 }
 function sahneAc(alt, ad, bitir) { // Bugün/Trend → kayan ekran
@@ -856,8 +871,8 @@ function sahneAc(alt, ad, bitir) { // Bugün/Trend → kayan ekran
   if (alt === 'trend') {
     z.to(st, { yuk: 0, duration: 0.45, ease: 'power3.in' }, 0)
       .to(st, { yukA: 0, duration: 0.45, ease: 'power3.in' }, 0.05)
-      .to(st, { gunesY: 0, duration: 0.5, ease: 'power2.in' }, 0)
-      .to(TREND_UST, { autoAlpha: 0, duration: 0.25 }, 0);
+      .to(st, { gunesY: 0, duration: 0.5, ease: 'power2.in' }, 0);
+    ustSakla(); z.to(TREND_UST, { autoAlpha: 0, duration: 0.25 }, 0);
   } else {
     z.to(L, { r: 0, duration: 0.38, stagger: 0.03, ease: 'power2.in' }, 0)
       .to('#bugunUst', { autoAlpha: 0, duration: 0.28 }, 0)
@@ -876,9 +891,9 @@ function sahneDegis(once, ad, bitir) { // kayan ekran ↔ kayan ekran
   sahneYuksel(z, 0.3, 0.48, el);
 }
 function anaToplu(alt) { // ana ekranı ufka inmiş durumuna koyar: dönüş canlandırması buradan başlar
-  if (alt === 'trend') { st.yuk = st.yukA = st.gunesY = 0; gsap.set(TREND_UST, { autoAlpha: 0 }); return; }
+  if (alt === 'trend') { st.yuk = st.yukA = st.gunesY = 0; ustSakla(); gsap.set(TREND_UST, { autoAlpha: 0 }); return; }
   st.flat = 1; st.cy = lay.cy; L.forEach((l) => (l.r = 0)); gsap.set('#bugunUst', { autoAlpha: 0 });
-  gsap.set(TREND_UST, { autoAlpha: 1 }); // gizli Trend'in üst katmanı sonraki Trend geçişi için yerine
+  if (ustSakli) { gsap.set(TREND_UST, { autoAlpha: ustEski }); ustGeri(); } // gizli Trend'in üst katmanı sonraki Trend geçişi için eski hâline
 }
 function sahneDon(ad, hedefEkran, bitir) { // kayan ekran → Bugün/Trend
   const el = KAYAN[ad].kap, z = gsap.timeline({ onComplete: bitir });
@@ -891,7 +906,8 @@ function sahneDon(ad, hedefEkran, bitir) { // kayan ekran → Bugün/Trend
     z.to(st, { yukA: 1, duration: 0.9, ease: 'expo.out' }, 0.52)
       .to(st, { yuk: 1, duration: 0.9, ease: 'expo.out' }, 0.58)
       .to(st, { gunesY: 1, duration: 1, ease: 'power3.out' }, 0.52)
-      .to(TREND_UST, { autoAlpha: 1, duration: 0.45, stagger: 0.06 }, 0.7);
+      .to(TREND_UST, { autoAlpha: ustEski, duration: 0.45, stagger: 0.06 }, 0.7);
+    ustGeri();
   } else {
     z.to(st, { flat: 0, cy: lay.cy, duration: 0.85, ease: 'elastic.out(1,0.7)' }, 0.5)
       .to(L, { r: 1, duration: 0.6, stagger: 0.045, ease: 'back.out(1.5)' }, 0.6)
@@ -908,15 +924,15 @@ function ekranGit(hedefEkran, menuden) {
   if (g.tur === 'ana') { if (hedefEkran === 'trend') trendeGec(null, null, false, menuden); else bugunGec(false, menuden); return true; }
   if (g.tur === 'ac') {
     altEkran = g.alt; if (onceki === 'trend' && simge) simge.durdur();
-    ekran = hedefEkran; sekmeGuncelle(); mesgul = true; anaPasif(true);
-    const bitir = () => { mesgul = false; kayanOdak(); }; // ana döngü burada, çıkış bittikten sonra durur
+    ekran = hedefEkran; sekmeGuncelle(); mesgul = true; anaPasif(true); sahneKilit([hedefEkran], true);
+    const bitir = () => { sahneKilit([hedefEkran], false); mesgul = false; kayanOdak(); }; // ana döngü burada, çıkış bittikten sonra durur
     if (sahne) sahneAc(g.alt, hedefEkran, bitir); else kayanAc(hedefEkran, bitir);
     return true;
   }
   if (g.tur === 'degis') {
-    ekran = hedefEkran; sekmeGuncelle(); mesgul = true;
+    ekran = hedefEkran; sekmeGuncelle(); mesgul = true; sahneKilit([onceki, hedefEkran], true);
     KAYAN[onceki].kap.style.zIndex = '3'; anaUyur = true;
-    const bitir = () => { kayanKapat(onceki, null, true); anaUyur = false; mesgul = false; kayanOdak(); };
+    const bitir = () => { kayanKapat(onceki, null, true); sahneKilit([onceki, hedefEkran], false); anaUyur = false; mesgul = false; kayanOdak(); };
     if (sahne) sahneDegis(onceki, hedefEkran, bitir); else kayanAc(hedefEkran, bitir);
     return true;
   }
@@ -925,9 +941,10 @@ function ekranGit(hedefEkran, menuden) {
     if (g.alt === 'trend') { if (simge) simge.baslat(); yerlesimT(); st.cy = yy(cur.v[hedef]); } else { const yeni = bugunSecimi(st.P, G0, N, sel7, menuden); if (menuden && yeni !== sel7) sec(yeni, true); yerlesimB(false); st.cy = lay.cy; }
   } else if (hedefEkran === 'trend') trendeGec(null, null, true); // kapsayıcının altında anlık, sonra kapsayıcı solar
   else bugunGec(true, menuden);
-  mesgul = true; // ana döngü geçişin ilk karesinden önce yeniden başlar
-  if (sahne) sahneDon(onceki, hedefEkran, () => { mesgul = false; });
-  else kayanKapat(onceki, () => { mesgul = false; });
+  mesgul = true; sahneKilit([onceki], true); // ana döngü geçişin ilk karesinden önce yeniden başlar
+  const bitir = () => { sahneKilit([onceki], false); mesgul = false; };
+  if (sahne) sahneDon(onceki, hedefEkran, bitir);
+  else kayanKapat(onceki, bitir);
   return true;
 }
 // Geniş ekran: Aktiviteler ve Takvim sağ bölgede Trend'in yerini alır; ad null ise Trend'e dönülür
@@ -951,6 +968,7 @@ function bugunDon() {
 }
 // Gerçek bir sekme değişiminde (seçili sekmeye dokunmak ya da geçiş sürerken dokunmak değil) kısa rüzgâr sesi; yönü sekmelerin sırasından
 for (const [e, id] of Object.entries(SEKME)) $(id).addEventListener('click', () => {
+  if (mesgul) return; // geçiş sürerken ikinci dokunuş ayarı kapatmaz, odak isteğini silmez
   ayarKapat(); odakIste = null;
   const once = ekran;
   if (e === 'bugun' && ekran === 'bugun') { bugunDon(); return; } // zaten Bugün'de: eski bir gün açıksa bugüne dön
@@ -1393,8 +1411,9 @@ let bekleTl = null, bekleDurum = 'kapali'; // 'acik' → 'devir' → 'kapali'
 function bekleAc() {
   const b = $('bekle'), p = b.querySelector('p');
   b.hidden = false; bekleDurum = 'acik';
-  if (!p.querySelector('.h')) { // harflere bölünür; ekran okuyucu tek metni okur
-    const metin = p.textContent; p.textContent = ''; p.setAttribute('aria-label', metin);
+  if (!p.querySelector('.h')) { // harflere bölünür; ekran okuyucu görsel gizli düz metni okur (paragrafa ad verilemez)
+    const metin = p.textContent; p.textContent = '';
+    const gz = document.createElement('span'); gz.className = 'gz'; gz.textContent = metin; p.appendChild(gz);
     [...metin].forEach((ch) => { const s = document.createElement('span'); s.className = 'h'; s.setAttribute('aria-hidden', 'true'); s.textContent = ch === ' ' ? '\u00a0' : ch; p.appendChild(s); });
   }
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return; // RM: küre, iz halkası ve yazı durağan

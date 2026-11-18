@@ -517,6 +517,15 @@ test('tür tanıma: anahtar kelime yedeği ve okunur ad yedeği', () => {
   assert.equal(turAdi('__proto__'), 'Proto');
 });
 
+test('tür tanıma: paraşüt dalış değildir, su kayağı kar değildir; obstacle_run adı', () => {
+  const yedek = {
+    sky_diving: 'genel', indoor_skydiving: 'genel', skydiving_v2: 'genel', water_skiing: 'dalga', water_ski_v2: 'dalga',
+    free_dive: 'dalis', reef_snorkel: 'dalis', cave_diving: 'dalis', ski_touring: 'kar', snow_biking: 'kar',
+  };
+  for (const [tur, grup] of Object.entries(yedek)) assert.equal(turGrubu(tur), grup, tur);
+  assert.equal(turAdi('obstacle_run'), 'Engel parkuru koşusu');
+});
+
 test('simgeler: her grup bir renk ve simge alır; çizim yolları sonlu sayılardır', () => {
   const KOTU_SAYI = /NaN|undefined|null|Infinity/;
   const turler = new Set();
