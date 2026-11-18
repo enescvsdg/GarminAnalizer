@@ -189,6 +189,12 @@ function ornekUret(bugun = new Date(), sayi = 120) {
 }
 export const ORNEK = ornekUret();
 
+// Ay kutusunun canlılık sınıfı: belirmemiş ay 'once' (günler gizli bekler), belirmiş ay 'pop' (bir kez oynar,
+// sınıf kalır, yeniden oynamaz); yalnız görünürken 'canli' (nefes/parıltı). Görünmeyen ayda hiç animasyon yok.
+export function ayDurumSinifi(belirdi, gorunur) {
+  return 'tkv-ay ' + (belirdi ? 'pop' : 'once') + (belirdi && gorunur ? ' canli' : '');
+}
+
 // ---------- stil ----------
 const STIL = `
 .tkv{--tkv-metin:#fff6ec;--tkv-isaret:#ffc9a6;container-type:inline-size;color:var(--tkv-metin);padding:4px 16px 20px;font-family:'Onest',system-ui,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
@@ -271,14 +277,31 @@ const STIL = `
 .tkv-o .dr{display:flex;align-items:center;gap:5px;font-size:12px;margin-top:2px;color:rgba(255,246,236,.78);min-height:16px}
 .tkv-o.sap .dr{color:var(--tkv-isaret);font-weight:600}
 .tkv-o .dr svg{width:10px;height:10px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* Canlı çemberler. Ay ekrana ilk girişte günler sırayla belirir (pop, bir kez; düğmenin transform'u boştur).
+   Yalnız görünen ayda (.canli) veri olan çemberler kendi renginde nefes alır: ayrı \`scale\` özelliği, dokunuş/seçim
+   transform'una karışmaz; parıltı ::before katmanının opacity'si. Gecikme gün sırasıyla kayar → yavaş gezen dalga.
+   Seçili (aria-expanded) ve atış (.atis) çemberde nefes yok: dokunuş animasyonları önceliklidir. */
+.tkv-ay.once .tkv-gun{opacity:0}
+.tkv-ay.pop .tkv-gun{animation:tkv-pop .5s cubic-bezier(.2,.9,.3,1.3) both;animation-delay:calc(var(--i,0) * 18ms)}
+@keyframes tkv-pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+.tkv-d{isolation:isolate}
+.tkv-d::before{content:'';position:absolute;inset:-6px;border-radius:50%;pointer-events:none;z-index:-1;opacity:0;background:radial-gradient(closest-side,transparent 70%,color-mix(in srgb,var(--c,transparent) 60%,transparent) 80%,transparent)}
+.tkv-ay.canli .tkv-gun:not(.bos):not([aria-expanded=true]) .tkv-d:not(.atis),.tkv-ay.canli .tkv-gun:not(.bos):not([aria-expanded=true]) .tkv-d:not(.atis)::before{animation:tkv-soluk 3.2s ease-in-out infinite;animation-delay:calc(600ms + var(--i,0) * 110ms)}
+.tkv-ay.canli .tkv-gun:not(.bos):not([aria-expanded=true]) .tkv-d:not(.atis)::before{animation-name:tkv-isil}
+.tkv-ay.canli .tkv-gun.bugun:not(.bos):not([aria-expanded=true]) .tkv-d:not(.atis){animation-name:tkv-soluk-b}
+.tkv-ay.canli .tkv-gun.bugun:not(.bos):not([aria-expanded=true]) .tkv-d:not(.atis)::before{animation-name:tkv-isil-b}
+@keyframes tkv-soluk{0%,100%{scale:1}50%{scale:1.04}}
+@keyframes tkv-isil{0%,100%{opacity:0}50%{opacity:.7}}
+@keyframes tkv-soluk-b{0%,100%{scale:1}45%{scale:1.09}}
+@keyframes tkv-isil-b{0%,100%{opacity:.35}45%{opacity:1}}
 .tkv-durum{padding:56px 20px;text-align:center;font-family:'Fraunces',Georgia,serif;font-variation-settings:'SOFT' 100;font-weight:430;font-size:19px;line-height:1.35;color:rgba(255,246,236,.85)}
 @container (min-width:760px){
   .tkv{padding:8px 24px 28px}
   .tkv-aylar{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:18px}
   .tkv-ay{padding:20px 18px 14px}
 }
-@media (prefers-reduced-motion:reduce){.tkv-kart,.tkv-kart .tkv-o,.tkv-kart .tkv-gs,.tkv-d.atis,.tkv-d.atis::after,.tkv-ayik *{animation:none!important}.tkv-d{transition:none}.tkv-gun:active .tkv-d,.tkv-gun:hover .tkv-d,.tkv-gun[aria-expanded=true] .tkv-d{transform:none}}
-.tkv.rm .tkv-kart,.tkv.rm .tkv-kart .tkv-o,.tkv.rm .tkv-kart .tkv-gs,.tkv.rm .tkv-d.atis,.tkv.rm .tkv-d.atis::after,.tkv.rm .tkv-ayik *{animation:none!important}.tkv.rm .tkv-d{transition:none}
+@media (prefers-reduced-motion:reduce){.tkv-kart,.tkv-kart .tkv-o,.tkv-kart .tkv-gs,.tkv-d.atis,.tkv-d.atis::after,.tkv-ayik *,.tkv-gun,.tkv-d,.tkv-d::before{animation:none!important}.tkv-ay.once .tkv-gun{opacity:1}.tkv-d{transition:none}.tkv-gun:active .tkv-d,.tkv-gun:hover .tkv-d,.tkv-gun[aria-expanded=true] .tkv-d{transform:none}}
+.tkv.rm .tkv-kart,.tkv.rm .tkv-kart .tkv-o,.tkv.rm .tkv-kart .tkv-gs,.tkv.rm .tkv-d.atis,.tkv.rm .tkv-d.atis::after,.tkv.rm .tkv-ayik *,.tkv.rm .tkv-gun,.tkv.rm .tkv-d,.tkv.rm .tkv-d::before{animation:none!important}.tkv.rm .tkv-ay.once .tkv-gun{opacity:1}.tkv.rm .tkv-d{transition:none}
 `;
 const stilVerildi = new WeakSet();
 function stilEkle(doc) {
@@ -315,6 +338,7 @@ export function takvimKur(kap, baglam = {}) {
   const kok = ek('div', 'tkv' + (rm ? ' rm' : ''));
   kok.hidden = true;
   const ust = ek('div', 'tkv-ust');
+  ust.setAttribute('data-sahne', '0'); // sahne geçişi: başlık önce yükselir
   const baslikEl = ek('h2', null, 'Takvim');
   baslikEl.setAttribute('tabindex', '-1'); // menüden gelince odak buraya taşınır
   ust.appendChild(baslikEl);
@@ -322,6 +346,7 @@ export function takvimKur(kap, baglam = {}) {
   etiket.hidden = !baglam.ornek;
   ust.appendChild(etiket);
   const lejant = ek('div', 'tkv-lejant');
+  lejant.setAttribute('data-sahne', '0');
   lejant.appendChild(ek('span', null, 'yorgun'));
   const bar = ek('span', 'bar');
   bar.style.background = `linear-gradient(90deg,${enerjiRengi(0)},${enerjiRengi(0.5)},${enerjiRengi(1)})`;
@@ -444,6 +469,7 @@ export function takvimKur(kap, baglam = {}) {
     if (gun.tarih === bugun) d.setAttribute('aria-current', 'date');
     const daire = ek('span', 'tkv-d', String(t.g));
     if (renk) daire.style.setProperty('--c', renk);
+    d.style.setProperty('--i', String(indeks)); // pop ve nefes gecikmesi gün sırasıyla kayar
     d.appendChild(daire);
     if (!rm) {
       daire.addEventListener('animationend', (ev) => { if (!ev || ev.animationName === 'tkv-halka') daire.className = 'tkv-d'; });
@@ -461,22 +487,33 @@ export function takvimKur(kap, baglam = {}) {
   }
 
   // Ekran dışındaki ay başlığının simgesi durur (pil/GPU); görünür olunca sürer. Tek gözlemci, ciz/gizle/yokEt'te bırakılır.
-  let gozlem = null; const basliklar = [];
+  // Aynı gözlemci ay kutularını da izler: ilk girişte günler sırayla belirir (bir kez), yalnız görünen ay canlıdır.
+  let gozlem = null; const basliklar = [], aylarEl = []; let poplu = new WeakSet();
+  function ayDurumu(sec, gor) {
+    if (gor) poplu.add(sec);
+    sec.className = ayDurumSinifi(poplu.has(sec), gor);
+  }
   function gozlemBirak() { if (gozlem) { try { gozlem.disconnect(); } catch (_) { /* yok say */ } gozlem = null; } }
   function gozlemKur() {
     gozlemBirak();
     const IO = globalThis.IntersectionObserver;
     if (rm || typeof IO !== 'function') return;
     try {
-      gozlem = new IO((es) => es.forEach((e) => { e.target.className = e.isIntersecting ? 'tkv-ayba' : 'tkv-ayba dur'; }), { rootMargin: '60px 0px' });
+      gozlem = new IO((es) => es.forEach((e) => {
+        if (/^tkv-ayba/.test(e.target.className)) e.target.className = e.isIntersecting ? 'tkv-ayba' : 'tkv-ayba dur';
+        else ayDurumu(e.target, !!e.isIntersecting);
+      }), { rootMargin: '60px 0px' });
       basliklar.forEach((b) => gozlem.observe(b));
+      // Henüz belirmemiş ay gizli bekler; gözlemci kurulamazsa hiç gizlenmez (günler her zaman görünür kalır).
+      aylarEl.forEach((s) => { if (!poplu.has(s)) s.className = ayDurumSinifi(false, false); gozlem.observe(s); });
     } catch (_) { gozlem = null; }
   }
 
-  function ayKur(ay, bugun) {
-    const sec = ek('section', 'tkv-ay');
+  function ayKur(ay, bugun, sira) {
+    const sec = ek('section', 'tkv-ay'); aylarEl.push(sec);
     sec.setAttribute('aria-label', `${ay.ad} ${ay.yil}`);
     const ba = ek('div', 'tkv-ayba'); basliklar.push(ba);
+    ba.setAttribute('data-sahne', String(1 + 2 * sira));
     const oz = ayOzeti(ay.gunler);
     const ik = ek('span', null);
     ik.innerHTML = ayikSvg(++ayikSayac); // sabit şablon; veri yalnız CSS değişkeniyle gelir
@@ -506,6 +543,7 @@ export function takvimKur(kap, baglam = {}) {
     ba.appendChild(ozet);
     sec.appendChild(ba);
     const izgara = ek('div', 'tkv-izgara');
+    izgara.setAttribute('data-sahne', String(2 + 2 * sira));
     HG_BAS.forEach((c) => { const x = ek('span', 'tkv-hg', c); x.setAttribute('aria-hidden', 'true'); izgara.appendChild(x); });
     for (let i = 0; i < ay.bosluk; i++) { const b = ek('span', 'tkv-bos'); b.setAttribute('aria-hidden', 'true'); izgara.appendChild(b); }
     const hucreler = [];
@@ -516,13 +554,13 @@ export function takvimKur(kap, baglam = {}) {
 
   function ciz() {
     kartKapat(false);
-    gozlemBirak(); basliklar.length = 0;
+    gozlemBirak(); basliklar.length = 0; aylarEl.length = 0; poplu = new WeakSet();
     const aylar = aylaraBol(veri && veri.gunler);
     if (!aylar.length) { durumGoster('Henüz veri yok.'); return; }
     icerik.textContent = '';
     const kapAylar = ek('div', 'tkv-aylar');
     const bugun = bugunTarih();
-    aylar.forEach((ay) => kapAylar.appendChild(ayKur(ay, bugun)));
+    aylar.forEach((ay, k) => kapAylar.appendChild(ayKur(ay, bugun, k)));
     icerik.appendChild(kapAylar);
     gozlemKur();
   }
