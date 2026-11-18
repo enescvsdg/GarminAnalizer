@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ORNEK, aylaraBol, enerjiRengi, enerjiKelime, ayOzeti, gunEtiketi, tarihCoz, degerMetni, takvimKur, GUNLUK, gunlukMetni, gunlukVeri } from './takvim.js';
+import { ORNEK, ayDurumSinifi, aylaraBol, enerjiRengi, enerjiKelime, ayOzeti, gunEtiketi, tarihCoz, degerMetni, takvimKur, GUNLUK, gunlukMetni, gunlukVeri } from './takvim.js';
 
 const iki = (n) => String(n).padStart(2, '0');
 function tamAy(y, a, e = 0.5) {
@@ -361,8 +361,8 @@ test('takvimKur: ay başlığı simgeleri ekran dışındayken durur (tek Inters
   t.after(() => { if (eski) globalThis.IntersectionObserver = eski; else delete globalThis.IntersectionObserver; });
   const { kap, t: tk } = await kurVeGoster({ gunler: [...tamAy(2026, 9), ...tamAy(2026, 10)] }, { rm: false });
   assert.equal(kopyalar.length, 1);
-  const io = kopyalar[0]; assert.equal(io.hedef.length, 2, 'her ay başlığı gözlenir');
-  assert.ok(io.hedef.every((e) => /tkv-ayba/.test(e.className)));
+  const io = kopyalar[0]; assert.equal(io.hedef.filter((e) => /tkv-ayba/.test(e.className)).length, 2, 'her ay başlığı gözlenir');
+  io.hedef = io.hedef.filter((e) => /tkv-ayba/.test(e.className));
   io.f([{ target: io.hedef[0], isIntersecting: false }, { target: io.hedef[1], isIntersecting: true }]);
   assert.match(io.hedef[0].className, /\bdur\b/); assert.doesNotMatch(io.hedef[1].className, /\bdur\b/);
   io.f([{ target: io.hedef[0], isIntersecting: true }]);
@@ -370,4 +370,62 @@ test('takvimKur: ay başlığı simgeleri ekran dışındayken durur (tek Inters
   tk.gizle(); assert.equal(io.kesildi, true);
   await tk.goster(); assert.equal(kopyalar.length, 2, 'taze veriyle yeniden gösterilince yeniden gözlenir');
   tk.yokEt(); assert.equal(kopyalar[1].kesildi, true);
+});
+
+test('ayDurumSinifi: belirmemiş ay gizli bekler, belirmiş ay pop kalır, yalnız görünürken canlı', () => {
+  assert.equal(ayDurumSinifi(false, false), 'tkv-ay once');
+  assert.equal(ayDurumSinifi(false, true), 'tkv-ay once', 'belirmeden canlanmaz');
+  assert.equal(ayDurumSinifi(true, true), 'tkv-ay pop canli');
+  assert.equal(ayDurumSinifi(true, false), 'tkv-ay pop');
+});
+
+test('takvimKur: data-sahne sırası — başlık 0, ilk ayın başlığı 1, ızgarası 2, sonraki ay 3/4', async () => {
+  const { kap } = await kurVeGoster({ gunler: [...tamAy(2026, 9), ...tamAy(2026, 10)] });
+  const sahne = kap.all((e) => e.attrs && e.attrs['data-sahne'] != null).map((e) => [e.className, e.attrs['data-sahne']]);
+  assert.deepEqual(sahne, [['tkv-ust', '0'], ['tkv-lejant', '0'], ['tkv-ayba', '1'], ['tkv-izgara', '2'], ['tkv-ayba', '3'], ['tkv-izgara', '4']]);
+  assert.ok(sahne.every(([, v]) => /^\d+$/.test(v)));
+});
+
+test('takvimKur: ay ekrana girince bir kez belirir, yalnız görünen ay canlı; RM ve gözlemcisiz ortamda sınıf yok', async (t) => {
+  const eski = globalThis.IntersectionObserver; const kopyalar = [];
+  globalThis.IntersectionObserver = class { constructor(f) { this.f = f; this.hedef = []; kopyalar.push(this); } observe(e) { this.hedef.push(e); } disconnect() {} };
+  t.after(() => { if (eski) globalThis.IntersectionObserver = eski; else delete globalThis.IntersectionObserver; });
+  const { kap, t: tk } = await kurVeGoster({ gunler: [...tamAy(2026, 9), ...tamAy(2026, 10)] }, { rm: false });
+  const aylar = kap.all((e) => e.tagName === 'section' && /^tkv-ay\b/.test(e.className));
+  assert.equal(aylar.length, 2);
+  const io = kopyalar[0];
+  assert.ok(aylar.every((s) => io.hedef.includes(s)), 'ay kutuları gözlenir');
+  assert.ok(aylar.every((s) => s.className === 'tkv-ay once'), 'belirmeden önce gizli bekler');
+  io.f([{ target: aylar[0], isIntersecting: true }, { target: aylar[1], isIntersecting: false }]);
+  assert.equal(aylar[0].className, 'tkv-ay pop canli');
+  assert.equal(aylar[1].className, 'tkv-ay once');
+  io.f([{ target: aylar[0], isIntersecting: false }, { target: aylar[1], isIntersecting: true }]);
+  assert.equal(aylar[0].className, 'tkv-ay pop', 'ekran dışı ay canlı değil, yeniden belirmez');
+  assert.equal(aylar[1].className, 'tkv-ay pop canli');
+  tk.gizle(); await tk.goster();
+  assert.equal(kopyalar[1].hedef.filter((e) => /^tkv-ay /.test(e.className)).every((s) => /pop/.test(s.className)), true, 'yeniden gösterimde belirmiş ay yeniden gizlenmez');
+  // RM: gözlemci kurulmaz, ay sınıfsız (günler her zaman görünür)
+  const rmKur = await kurVeGoster({ gunler: tamAy(2026, 10) }, { rm: true });
+  assert.ok(rmKur.kap.all((e) => e.tagName === 'section' && /tkv-ay/.test(e.className)).every((s) => s.className === 'tkv-ay'));
+  // IntersectionObserver yoksa da günler gizlenmez
+  delete globalThis.IntersectionObserver;
+  const yokKur = await kurVeGoster({ gunler: tamAy(2026, 10) }, { rm: false });
+  assert.ok(yokKur.kap.all((e) => e.tagName === 'section' && /tkv-ay/.test(e.className)).every((s) => s.className === 'tkv-ay'));
+});
+
+test('takvimKur: gün düğmesi --i sırasını taşır; stil nefesi boş/seçili/atış günlerinden ayırır', async () => {
+  const { doc } = sahteDom();
+  const ozler = [];
+  const asil = doc.createElement;
+  doc.createElement = (tag) => { const e = asil(tag); e.style = { setProperty: (k, v) => ozler.push([e, k, v]) }; return e; };
+  const tk = takvimKur(doc.createElement('section'), { getir: async () => ({ gunler: tamAy(2026, 10) }), rm: true, gunAc: () => false });
+  await tk.goster();
+  const iler = ozler.filter(([e, k]) => k === '--i' && e.tagName === 'button').map(([, , v]) => v);
+  assert.deepEqual(iler.slice(0, 30), Array.from({ length: 30 }, (_, i) => String(i)));
+  const stil = doc.head.children[0].textContent;
+  assert.match(stil, /\.tkv-ay\.canli \.tkv-gun:not\(\.bos\):not\(\[aria-expanded=true\]\) \.tkv-d:not\(\.atis\)/);
+  assert.match(stil, /@keyframes tkv-soluk\{0%,100%\{scale:1\}50%\{scale:1\.04\}\}/);
+  assert.match(stil, /3\.2s/);
+  assert.match(stil, /var\(--i,0\) \* 18ms/);
+  assert.match(stil, /\.tkv\.rm [^{]*\.tkv-d::before\{animation:none!important\}/);
 });
