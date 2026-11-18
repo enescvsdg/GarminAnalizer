@@ -33,6 +33,7 @@ globalThis.document = sahteDoc;
 const {
   turAdi, sureBicim, mesafeBicim, gunBaslik, haftaDurum, saatBicim, insanAdi, bugunTarih, ornekUret, ORNEK, AKTIVITE_ANAHTARLARI,
   aktiviteKur, yanitDuzenle, haftalikGrafik, bolgeOzet, bolgeDakika, etkiEtiketi, simgeTuru, turGrubu,
+  TUR_GRUPLARI, turRengi, simgeKur,
 } = await import('./aktiviteler.js');
 
 function hepsi(d, f, cikti = []) { f(d) && cikti.push(d); d.childNodes.forEach((c) => hepsi(c, f, cikti)); return cikti; }
@@ -48,8 +49,12 @@ test('turAdi: bilinen, bilinmeyen, boş', () => {
   assert.equal(turAdi('INDOOR_CYCLING'), 'Salon bisikleti');
   assert.equal(turAdi('lap_swimming'), 'Havuz yüzme');
   assert.equal(turAdi('other'), 'Diğer');
-  assert.equal(turAdi('quidditch'), 'Antrenman');
-  assert.equal(turAdi('constructor'), 'Antrenman');
+  assert.equal(turAdi('quidditch'), 'Quidditch'); // bilinmeyen: okunur ham ad
+  assert.equal(turAdi('constructor'), 'Constructor');
+  assert.equal(turAdi('  '), 'Antrenman');
+  assert.equal(turAdi('_v2'), 'Antrenman');
+  assert.equal(turAdi('123'), 'Antrenman');
+  assert.equal(turAdi('<b>'), 'Antrenman');
   assert.equal(turAdi(null), 'Antrenman');
 });
 
@@ -434,4 +439,117 @@ test('canlı simgeler: baglam.rm altında döngü hiç kurulmaz, halka/kadran do
     assert.equal(ozBozuk(kap).length, 0);
     m.yokEt();
   } finally { o.temizle(); }
+});
+
+/* ---- aktivite türleri, yedekler ve yeni simgeler ---- */
+test('tür tanıma: gerçek veride görülen türler doğru ad ve grubu alır', () => {
+  const beklenen = {
+    strength_training: ['Kuvvet', 'kuvvet'], walking: ['Yürüyüş', 'yuruyus'], treadmill_running: ['Koşu bandı', 'kosu'],
+    open_water_swimming: ['Açık su yüzme', 'yuzme'], kayaking_v2: ['Kano', 'kurek'], running: ['Koşu', 'kosu'],
+    lap_swimming: ['Havuz yüzme', 'yuzme'], hiking: ['Doğa yürüyüşü', 'dag'], cycling: ['Bisiklet', 'bisiklet'],
+    single_gas_diving: ['Tüplü dalış', 'dalis'], pilates: ['Pilates', 'pilates'], mobility: ['Mobilite', 'esneme'],
+    indoor_cardio: ['Salon kardiyosu', 'kardiyo'], hiit: ['HIIT', 'hiit'], atv_v2: ['ATV', 'motor'],
+  };
+  for (const [tur, [ad, grup]] of Object.entries(beklenen)) {
+    assert.equal(turAdi(tur), ad, tur);
+    assert.equal(turGrubu(tur), grup, tur);
+    assert.ok(TUR_GRUPLARI.includes(grup), grup);
+  }
+  assert.equal(simgeTuru(turGrubu('single_gas_diving')), 'dalis');
+  assert.equal(simgeTuru(turGrubu('mobility')), 'nefes');
+  assert.equal(simgeTuru(turGrubu('indoor_cardio')), 'nabiz');
+  assert.equal(simgeTuru(turGrubu('atv_v2')), 'motor');
+  assert.equal(simgeTuru(turGrubu('kayaking_v2')), 'kurek');
+});
+
+test('tür tanıma: sürüm eki, büyük harf ve sözleşmedeki aileler', () => {
+  assert.equal(turAdi('KAYAKING_V3'), 'Kano');
+  assert.equal(turAdi('running_v12'), 'Koşu');
+  const aile = {
+    kurek: 'kayaking canoeing stand_up_paddleboarding whitewater_rafting rowing indoor_rowing',
+    dalis: 'single_gas_diving multi_gas_diving apnea_diving gauge_diving snorkeling',
+    kar: 'resort_skiing backcountry_skiing cross_country_skiing cross_country_skiing_ws skate_skiing snowboarding snowshoeing',
+    raket: 'tennis padel pickleball table_tennis badminton squash racquetball platform_tennis',
+    tirmanis: 'rock_climbing bouldering indoor_climbing mountaineering',
+    esneme: 'mobility stretching breathwork meditation',
+    kardiyo: 'indoor_cardio cardio stair_climbing floor_climbing jump_rope',
+    motor: 'atv motocross motorcycling overland snowmobiling',
+    dalga: 'surfing kiteboarding windsurfing wakeboarding sailing',
+    hiit: 'hiit boxing mixed_martial_arts',
+    golf: 'golf',
+    takim: 'soccer basketball volleyball american_football rugby hockey cricket baseball',
+    coklu: 'triathlon multi_sport duathlon',
+    kosu: 'virtual_run indoor_running track_running ultra_run',
+    bisiklet: 'road_biking mountain_biking gravel_cycling e_bike_fitness e_bike_mountain virtual_ride bmx',
+    yuruyus: 'casual_walking speed_walking',
+  };
+  for (const [grup, liste] of Object.entries(aile)) {
+    for (const tur of liste.split(' ')) {
+      assert.equal(turGrubu(tur), grup, tur);
+      assert.ok(TUR_GRUPLARI.includes(grup));
+      // her tanımlı türün elle yazılmış adı var (ham anahtar yedeğine düşmez)
+      assert.doesNotMatch(turAdi(tur), /_/, tur);
+      assert.notEqual(turAdi(tur), 'Antrenman', tur);
+    }
+  }
+  assert.equal(turAdi('elliptical'), 'Eliptik');
+  assert.equal(turGrubu('elliptical'), 'eliptik');
+  assert.equal(simgeTuru(turGrubu('yoga')), 'nefes');
+});
+
+test('tür tanıma: anahtar kelime yedeği ve okunur ad yedeği', () => {
+  const yedek = {
+    obscure_swim_drill: 'yuzme', beach_run_v2: 'kosu', fat_bike: 'bisiklet', e_bike_road: 'bisiklet', indoor_ride: 'bisiklet',
+    nordic_walk: 'yuruyus', ski_touring: 'kar', snow_biking: 'kar', cave_diving: 'dalis', paddle_boarding: 'kurek',
+    sea_kayak: 'kurek', dragon_canoe: 'kurek', ice_climbing: 'tirmanis', paddle_tennis: 'raket', beach_padel: 'raket',
+    squash_doubles: 'raket', quidditch: 'genel',
+  };
+  for (const [tur, grup] of Object.entries(yedek)) assert.equal(turGrubu(tur), grup, tur);
+  assert.equal(turAdi('paddle_tennis'), 'Paddle tennis');
+  assert.equal(turAdi('paddle_tennis_v2'), 'Paddle tennis');
+  assert.equal(turAdi('Sea Kayak'), 'Sea kayak');
+  assert.equal(turAdi('beach-run'), 'Beach run');
+  assert.equal(turAdi(''), 'Antrenman');
+  assert.equal(turAdi(undefined), 'Antrenman');
+  assert.equal(turAdi(42), 'Antrenman');
+  assert.equal(turGrubu(null), 'genel');
+  assert.equal(turGrubu('__proto__'), 'genel');
+  assert.equal(turAdi('__proto__'), 'Proto');
+});
+
+test('simgeler: her grup bir renk ve simge alır; çizim yolları sonlu sayılardır', () => {
+  const KOTU_SAYI = /NaN|undefined|null|Infinity/;
+  const turler = new Set();
+  for (const grup of TUR_GRUPLARI) {
+    assert.match(turRengi(grup), /^#[0-9a-f]{6}$/, grup);
+    const tur = simgeTuru(grup);
+    turler.add(tur);
+    const g = new Dugum('g');
+    const tanim = simgeKur(grup, g);
+    assert.equal(typeof tanim.ciz, 'function', grup);
+    assert.ok(Number.isFinite(tanim.statik), grup);
+    for (const t of [0, tanim.statik, 0.37, 1.1, 2.6, 7.9, 33.3, 120.05]) {
+      tanim.ciz(t);
+      for (const d of hepsi(g, () => true)) {
+        for (const [k, v] of Object.entries(d.attrs)) assert.doesNotMatch(v, KOTU_SAYI, `${grup}/${tur} ${d.tag}.${k} t=${t}`);
+      }
+    }
+    assert.ok(hepsi(g, (d) => d.tag !== 'g').length > 0, `${grup} çizim içerir`);
+  }
+  for (const yeni of ['dalis', 'kar', 'raket', 'tirmanis', 'motor', 'takim', 'dalga', 'coklu', 'golf']) assert.ok(turler.has(yeni), yeni);
+  assert.equal(turRengi('yok-boyle'), turRengi('genel'));
+});
+
+test('data-sahne: başlık 0, kahraman 1, haftalık 2, liste başlığı 3, ilk satırlar 4…9', async () => {
+  const { kap, m } = await kur(ORNEK);
+  const sahne = hepsi(kap, (d) => d.attrs['data-sahne'] != null);
+  const deger = (sinif) => sahne.filter((d) => d.className === sinif).map((d) => d.attrs['data-sahne']);
+  assert.deepEqual(deger('akt-bas'), ['0']);
+  assert.deepEqual(deger('akt-kahraman'), ['1']);
+  assert.deepEqual(deger('akt-ozet'), ['2']);
+  assert.deepEqual(deger('akt-onceki'), ['3']);
+  const satir = sahne.filter((d) => /akt-oge|akt-gun/.test(d.className)).map((d) => Number(d.attrs['data-sahne']));
+  assert.deepEqual(satir, satir.map((_, i) => i + 4));
+  assert.equal(satir.length, 6);
+  m.yokEt();
 });
